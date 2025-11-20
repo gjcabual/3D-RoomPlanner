@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>3D Room Planner - Three.js</title>
+    <link rel="stylesheet" href="css/planner.css" />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      #three-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      /* Ensure back button stays above side panel */
+      #back-button {
+        z-index: 1700 !important;
+        transition: opacity 0.3s ease;
+      }
+
+      #panel-toggle {
+        z-index: 1700 !important;
+        transition: opacity 0.3s ease;
+      }
+
+      /* Hide buttons when side panel is open */
+      .buttons-hidden #back-button,
+      .buttons-hidden #panel-toggle {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Close button for side panel */
+      #panel-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.3em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 10;
+      }
+
+      #panel-close:hover {
+        background: rgba(255, 255, 255, 0.35);
+        transform: rotate(90deg) scale(1.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Close button for cost panel */
+      #cost-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.3em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 10;
+      }
+
+      #cost-close:hover {
+        background: rgba(255, 255, 255, 0.35);
+        transform: rotate(90deg) scale(1.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      #room-info {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        z-index: 100;
+        font-size: 14px;
+      }
+
+      #placement-instruction {
+        position: fixed;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(102, 126, 234, 0.85);
+        color: white;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 150;
+        pointer-events: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      #placement-instruction.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* Hide cost toggle button when side panel is open */
+      .buttons-hidden #cost-toggle {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Back Button -->
+    <button id="back-button" onclick="goBack()">← Back to Setup</button>
+
+    <!-- Side Panel Toggle Button -->
+    <button id="panel-toggle" onclick="togglePanel()">📦</button>
+
+    <!-- Cost Panel Toggle Button -->
+    <button
+      id="cost-toggle"
+      onclick="toggleCostPanel()"
+      style="
+        position: fixed;
+        right: 20px;
+        bottom: 30px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 1600;
+        font-size: 1.4em;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+      "
+    >
+      💰
+    </button>
+
+    <!-- Room Info Display -->
+    <div id="room-info"></div>
+
+    <!-- Side Panel with 3D Models -->
+    <div id="side-panel">
+      <button id="panel-close" onclick="togglePanel()">×</button>
+      <div class="panel-header">
+        <h3>🎯 Furniture Library</h3>
+        <small>Click furniture to place in room</small>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🍽️ Tables</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="table1"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">
+              <svg
+                width="28"
+                height="22"
+                viewBox="0 0 28 22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="2" y="2" width="24" height="4" rx="1" fill="#6b7280" />
+                <rect x="3" y="6" width="2" height="14" rx="1" fill="#6b7280" />
+                <rect
+                  x="23"
+                  y="6"
+                  width="2"
+                  height="14"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect x="8" y="6" width="2" height="10" rx="1" fill="#6b7280" />
+                <rect
+                  x="18"
+                  y="6"
+                  width="2"
+                  height="10"
+                  rx="1"
+                  fill="#6b7280"
+                />
+              </svg>
+            </span>
+            <div class="model-name">Center Table</div>
+          </div>
+          <div class="model-item disabled" data-model="coffee-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">☕</span>
+            <div class="model-name">Coffee Table</div>
+          </div>
+          <div class="model-item disabled" data-model="desk">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">💻</span>
+            <div class="model-name">Desk</div>
+          </div>
+          <div class="model-item disabled" data-model="side-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Side Table</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🪑 Seating</div>
+        <div class="model-grid">
+          <div class="model-item disabled" data-model="chair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Chair</div>
+          </div>
+          <div class="model-item disabled" data-model="sofa">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛋️</span>
+            <div class="model-name">Sofa</div>
+          </div>
+          <div class="model-item disabled" data-model="armchair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛋️</span>
+            <div class="model-name">Armchair</div>
+          </div>
+          <div class="model-item disabled" data-model="stool">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Stool</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🛏️ Bedroom</div>
+        <div class="model-grid">
+          <div class="model-item disabled" data-model="bed">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛏️</span>
+            <div class="model-name">Bed</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="wardrobe"
+            onclick="showWardrobeSubcategory()"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe</div>
+          </div>
+          <div class="model-item disabled" data-model="dresser">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪞</span>
+            <div class="model-name">Dresser</div>
+          </div>
+          <div class="model-item disabled" data-model="nightstand">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">💡</span>
+            <div class="model-name">Nightstand</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wardrobe Subcategory -->
+      <div
+        class="model-category"
+        id="wardrobe-subcategory"
+        style="display: none"
+      >
+        <div class="category-title">👔 Wardrobe Options</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe1"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 1</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe2"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 2</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe3"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cost Estimator Panel -->
+    <div id="cost-panel">
+      <button id="cost-close" onclick="toggleCostPanel()">×</button>
+      <div class="cost-header">
+        <h3>💰 Cost Estimator</h3>
+      </div>
+      <div class="cost-body">
+        <div id="cost-list"></div>
+      </div>
+      <div class="cost-footer">
+        <div class="cost-total-row">
+          <span>TOTAL:</span>
+          <span id="total-cost">₱0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Furniture Control Panel (appears when furniture is selected) -->
+    <div id="furniture-control-panel">
+      <button class="close-controls">×</button>
+      <h3>Furniture Controls</h3>
+      <div class="control-buttons">
+        <button class="control-btn rotate-left">
+          <span>↶</span> Rotate Left
+        </button>
+        <button class="control-btn rotate-right">
+          <span>↷</span> Rotate Right
+        </button>
+        <button class="control-btn delete"><span>🗑️</span> Delete</button>
+      </div>
+    </div>
+
+    <!-- Instructions Panel -->
+    <div id="instructions">
+      <button id="instructions-toggle" onclick="toggleInstructions()">☰</button>
+      <div class="instructions-content">
+        <h3 style="margin: 0 0 15px 0; font-size: 1.1em">🎮 Controls</h3>
+        <p><strong>Mouse Drag:</strong> Rotate view</p>
+        <p><strong>Mouse Wheel:</strong> Zoom in/out</p>
+        <p><strong>Right Click:</strong> Pan view</p>
+        <hr
+          style="
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 15px 0;
+          "
+        />
+        <p><strong>🪑 Furniture:</strong></p>
+        <p><small>1️⃣ Click furniture from side panel</small></p>
+        <p><small>2️⃣ Click in room to place it</small></p>
+        <p><small>3️⃣ Click placed furniture to move</small></p>
+        <p><small>4️⃣ Use control panel to rotate/delete</small></p>
+        <hr
+          style="
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 15px 0;
+          "
+        />
+        <p><small>📦 Open side panel (bottom-left)</small></p>
+        <p><small>💰 Toggle cost panel (bottom-right)</small></p>
+      </div>
+    </div>
+
+    <!-- Three.js Container (canvas will be injected here) -->
+    <div id="three-container"></div>
+
+    <!-- UI Scripts -->
+    <script>
+      function goBack() {
+        if (confirm("Return to room setup? Current furniture will be lost.")) {
+          window.location.href = "index.html";
+        }
+      }
+
+      function togglePanel() {
+        const panel = document.getElementById("side-panel");
+        const body = document.body;
+        panel.classList.toggle("open");
+
+        // Hide/show other buttons when panel is open
+        if (panel.classList.contains("open")) {
+          body.classList.add("buttons-hidden");
+        } else {
+          body.classList.remove("buttons-hidden");
+        }
+      }
+
+      function toggleInstructions() {
+        const instructions = document.getElementById("instructions");
+        instructions.classList.toggle("collapsed");
+      }
+
+      function toggleCostPanel() {
+        const panel = document.getElementById("cost-panel");
+        panel.classList.toggle("open");
+      }
+
+      function showWardrobeSubcategory() {
+        const subcategory = document.getElementById("wardrobe-subcategory");
+        if (subcategory.style.display === "none") {
+          subcategory.style.display = "block";
+        } else {
+          subcategory.style.display = "none";
+        }
+      }
+
+      // Close control panel when clicking outside
+      document.addEventListener("click", (e) => {
+        const controlPanel = document.getElementById("furniture-control-panel");
+        if (
+          controlPanel &&
+          !controlPanel.contains(e.target) &&
+          e.target.tagName !== "CANVAS"
+        ) {
+          if (controlPanel.style.display === "block") {
+            controlPanel.style.display = "none";
+          }
+        }
+      });
+    </script>
+
+    <!-- Three.js Integration (as ES6 module) -->
+    <script type="module">
+      import { initializeThreeScene } from "./javascript/three/three-integration.js";
+
+      // Initialize when ready
+      window.addEventListener("load", () => {
+        initializeThreeScene();
+      });
+    </script>
+  </body>
+</html>

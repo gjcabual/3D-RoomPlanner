@@ -1,0 +1,141 @@
+<!-- Side Panel with 3D Models -->
+<div id="side-panel">
+  <div class="panel-header">
+    <h3>🎯 Furniture Library</h3>
+    <small>Drag & drop furniture into your room</small>
+  </div>
+
+  <div class="model-category">
+    <div class="category-title">🍽️ Tables</div>
+    <div class="model-grid">
+      <div
+        class="model-item enabled"
+        draggable="true"
+        data-model="table1"
+        data-scale="1 1 1"
+      >
+        <span class="model-icon">
+          <!-- Inline SVG: simple table icon -->
+          <svg
+            width="28"
+            height="22"
+            viewBox="0 0 28 22"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="2" y="2" width="24" height="4" rx="1" fill="#6b7280" />
+            <rect x="3" y="6" width="2" height="14" rx="1" fill="#6b7280" />
+            <rect x="23" y="6" width="2" height="14" rx="1" fill="#6b7280" />
+            <rect x="8" y="6" width="2" height="10" rx="1" fill="#6b7280" />
+            <rect x="18" y="6" width="2" height="10" rx="1" fill="#6b7280" />
+          </svg>
+        </span>
+        <div class="model-name">Center Table</div>
+      </div>
+      <div class="model-item disabled" data-model="coffee-table">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">☕</span>
+        <div class="model-name">Coffee Table</div>
+      </div>
+      <div class="model-item disabled" data-model="desk">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">💻</span>
+        <div class="model-name">Desk</div>
+      </div>
+      <div class="model-item disabled" data-model="side-table">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🪑</span>
+        <div class="model-name">Side Table</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="model-category">
+    <div class="category-title">🪑 Seating</div>
+    <div class="model-grid">
+      <div class="model-item disabled" data-model="chair">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🪑</span>
+        <div class="model-name">Chair</div>
+      </div>
+      <div class="model-item disabled" data-model="sofa">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🛋️</span>
+        <div class="model-name">Sofa</div>
+      </div>
+      <div class="model-item disabled" data-model="armchair">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🛋️</span>
+        <div class="model-name">Armchair</div>
+      </div>
+      <div class="model-item disabled" data-model="stool">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🪑</span>
+        <div class="model-name">Stool</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="model-category">
+    <div class="category-title">🛏️ Bedroom</div>
+    <div class="model-grid">
+      <div class="model-item disabled" data-model="bed">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🛏️</span>
+        <div class="model-name">Bed</div>
+      </div>
+      <div
+        class="model-item enabled"
+        draggable="false"
+        data-category="wardrobe"
+        onclick="showWardrobeSubcategory()"
+      >
+        <span class="model-icon">👔</span>
+        <div class="model-name">Wardrobe</div>
+      </div>
+      <div class="model-item disabled" data-model="dresser">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">🪞</span>
+        <div class="model-name">Dresser</div>
+      </div>
+      <div class="model-item disabled" data-model="nightstand">
+        <div class="disabled-overlay">SOON</div>
+        <span class="model-icon">💡</span>
+        <div class="model-name">Nightstand</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wardrobe Subcategory (hidden by default) -->
+  <div class="model-category" id="wardrobe-subcategory" style="display: none">
+    <div class="category-title">👔 Wardrobe Options</div>
+    <div class="model-grid">
+      <div
+        class="model-item enabled"
+        draggable="true"
+        data-model="wardrobe1"
+        data-scale="1 1 1"
+      >
+        <span class="model-icon">👔</span>
+        <div class="model-name">Wardrobe 1</div>
+      </div>
+      <div
+        class="model-item enabled"
+        draggable="true"
+        data-model="wardrobe2"
+        data-scale="1 1 1"
+      >
+        <span class="model-icon">👔</span>
+        <div class="model-name">Wardrobe 2</div>
+      </div>
+      <div
+        class="model-item enabled"
+        draggable="true"
+        data-model="wardrobe3"
+        data-scale="1 1 1"
+      >
+        <span class="model-icon">👔</span>
+        <div class="model-name">Wardrobe 3</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,126 @@
+<!-- A-Frame Scene - Full Screen Workspace -->
+<a-scene
+  id="scene"
+  embedded
+  style="height: 100vh; width: 100vw"
+  vr-mode-ui="enabled: false"
+  renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; maxCanvasWidth: 1920; maxCanvasHeight: 1080; shadowMap: true; shadowMapType: PCFSoft"
+  fog="type: linear; color: #9a9a9a; near: 30; far: 50"
+  stats="false"
+>
+  <!-- Sky/Background with gradient -->
+  <a-sky color="#9a9a9a"></a-sky>
+
+  <!-- Camera Rig with continuous movement -->
+  <a-entity id="cameraRig" position="0 1.6 5" custom-movement>
+    <a-camera
+      look-controls="pointerLockEnabled: false; enabled: true; magicWindowTrackingEnabled: false"
+      wasd-controls="enabled: false"
+      cursor="rayOrigin: mouse; fuse: false"
+      raycaster="objects: [draggable-furniture]; interval: 100"
+    ></a-camera>
+  </a-entity>
+
+  <!-- Professional Lighting Setup -->
+  <!-- Hemisphere light for realistic sky/ground ambient -->
+  <a-light
+    type="hemisphere"
+    color="#ffffff"
+    groundColor="#aaaaaa"
+    intensity="0.5"
+  ></a-light>
+
+  <!-- Ambient base light -->
+  <a-light type="ambient" color="#ffffff" intensity="0.5"></a-light>
+
+  <!-- Main key light (primary shadow caster) -->
+  <a-light
+    type="directional"
+    position="5 10 5"
+    color="#ffffff"
+    intensity="1.2"
+    castShadow="true"
+    shadow="type: pcfsoft; mapSize: 2048 2048; camera: near: 1; far: 30; left: -15; right: 15; top: 15; bottom: -15"
+  ></a-light>
+
+  <!-- Secondary key light (softer, no shadow) -->
+  <a-light
+    type="directional"
+    position="-5 8 5"
+    color="#ffffff"
+    intensity="0.6"
+  ></a-light>
+
+  <!-- Fill light (opposite side, fills shadows) -->
+  <a-light
+    type="directional"
+    position="0 5 -5"
+    color="#ffffff"
+    intensity="0.4"
+  ></a-light>
+
+  <!-- Rim light (subtle separation from background) -->
+  <a-light
+    type="directional"
+    position="-3 3 -3"
+    color="#ffeedd"
+    intensity="0.3"
+  ></a-light>
+
+  <!-- Floor with enhanced PBR material -->
+  <a-plane
+    id="floor"
+    rotation="-90 0 0"
+    width="10"
+    height="10"
+    color="#8B7355"
+    material="roughness: 0.3; metalness: 0.5; shader: standard; envMapIntensity: 0.3"
+    shadow="receive: true; cast: false"
+    floor-resize
+  ></a-plane>
+
+  <!-- Room Walls -->
+  <a-entity id="room-walls"></a-entity>
+
+  <!-- Furniture Container -->
+  <a-entity id="furniture-container"></a-entity>
+
+  <!-- Blender-style Grid Helper (outside room) -->
+  <a-entity id="blender-grid" position="0 0 0">
+    <!-- Main grid lines -->
+    <a-entity
+      geometry="primitive: plane; width: 150; height: 150"
+      material="shader: flat; src: #grid-texture; transparent: true; opacity: 0.3; side: double"
+      rotation="-90 0 0"
+    ></a-entity>
+  </a-entity>
+
+  <!-- Traditional grid helper for spatial awareness -->
+  <a-entity id="grid-helper" visible="false"></a-entity>
+
+  <!-- In-Scene Cost Board -->
+  <a-entity id="cost-board" position="-3 2 -3" rotation="0 45 0">
+    <a-plane
+      width="2.2"
+      height="1.2"
+      color="#ffffff"
+      material="roughness: 1; metalness: 0"
+      opacity="1.0"
+      shadow="receive: true"
+    ></a-plane>
+    <a-text
+      value="Cost Estimator"
+      color="#333"
+      position="-1 0.45 0.01"
+      width="3"
+    ></a-text>
+    <a-entity id="cost-lines" position="-1 0.25 0.01"></a-entity>
+    <a-text
+      id="cost-total-text"
+      value="Total: ₱0.00"
+      color="#333"
+      position="-1 -0.45 0.01"
+      width="3"
+    ></a-text>
+  </a-entity>
+</a-scene>

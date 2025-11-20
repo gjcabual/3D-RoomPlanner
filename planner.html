@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>3D Room Planner</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="javascript/components/custom-movement.js"></script>
+    <script src="javascript/components/floor-resize.js"></script>
+    <script src="javascript/components/smart-placement.js"></script>
+    <script src="javascript/components/draggable-furniture.js"></script>
+    <script src="javascript/components/clickable-furniture.js"></script>
+    <script src="javascript/debug/position-debug.js"></script>
+    <script src="javascript/debug/debug-commands.js"></script>
+    <link rel="stylesheet" href="css/planner.css" />
+  </head>
+  <body>
+    <!-- Back Button -->
+    <button id="back-button" onclick="goBack()">← Back to Setup</button>
+
+    <!-- Side Panel Toggle Button -->
+    <button id="panel-toggle" onclick="togglePanel()">📦</button>
+
+    <!-- Cost Estimator Panel (hidden; replaced by in-scene board) -->
+    <div id="cost-panel" style="display: none"></div>
+
+    <!-- Side Panel with 3D Models -->
+    <div id="side-panel">
+      <div class="panel-header">
+        <h3>🎯 Furniture Library</h3>
+        <small>Drag & drop furniture into your room</small>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🍽️ Tables</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="table1"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">
+              <!-- Inline SVG: simple table icon -->
+              <svg
+                width="28"
+                height="22"
+                viewBox="0 0 28 22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="2" y="2" width="24" height="4" rx="1" fill="#6b7280" />
+                <rect x="3" y="6" width="2" height="14" rx="1" fill="#6b7280" />
+                <rect
+                  x="23"
+                  y="6"
+                  width="2"
+                  height="14"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect x="8" y="6" width="2" height="10" rx="1" fill="#6b7280" />
+                <rect
+                  x="18"
+                  y="6"
+                  width="2"
+                  height="10"
+                  rx="1"
+                  fill="#6b7280"
+                />
+              </svg>
+            </span>
+            <div class="model-name">Center Table</div>
+          </div>
+          <div class="model-item disabled" data-model="coffee-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">☕</span>
+            <div class="model-name">Coffee Table</div>
+          </div>
+          <div class="model-item disabled" data-model="desk">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">💻</span>
+            <div class="model-name">Desk</div>
+          </div>
+          <div class="model-item disabled" data-model="side-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Side Table</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🪑 Seating</div>
+        <div class="model-grid">
+          <div class="model-item disabled" data-model="chair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Chair</div>
+          </div>
+          <div class="model-item disabled" data-model="sofa">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛋️</span>
+            <div class="model-name">Sofa</div>
+          </div>
+          <div class="model-item disabled" data-model="armchair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛋️</span>
+            <div class="model-name">Armchair</div>
+          </div>
+          <div class="model-item disabled" data-model="stool">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Stool</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🛏️ Bedroom</div>
+        <div class="model-grid">
+          <div class="model-item disabled" data-model="bed">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🛏️</span>
+            <div class="model-name">Bed</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="wardrobe"
+            onclick="showWardrobeSubcategory()"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe</div>
+          </div>
+          <div class="model-item disabled" data-model="dresser">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪞</span>
+            <div class="model-name">Dresser</div>
+          </div>
+          <div class="model-item disabled" data-model="nightstand">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">💡</span>
+            <div class="model-name">Nightstand</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wardrobe Subcategory (hidden by default) -->
+      <div
+        class="model-category"
+        id="wardrobe-subcategory"
+        style="display: none"
+      >
+        <div class="category-title">👔 Wardrobe Options</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe1"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 1</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe2"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 2</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe3"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon">👔</span>
+            <div class="model-name">Wardrobe 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+      <button id="instructions-toggle" onclick="toggleInstructions()">?</button>
+      <div class="instructions-content">
+        <p><strong>🎮 Controls:</strong></p>
+        <p>W/A/S/D → Move around</p>
+        <p>Q/R → Move Up | E/F → Move Down</p>
+        <p>SPACE → Up | SHIFT → Down</p>
+        <p>Mouse → Look around</p>
+        <hr style="margin: 10px 0; border-color: #666" />
+        <p><strong>🍽️ Furniture:</strong></p>
+        <p>📦 Click panel button to open library</p>
+        <p>🖱️ Drag the center table into your room</p>
+        <p>🎯 Table will snap to floor automatically</p>
+        <p>🖱️ Click table to select (turns green)</p>
+        <p>🔄 Use arrow buttons to rotate selected furniture</p>
+        <hr style="margin: 10px 0; border-color: #666" />
+        <p><strong>📊 Cost Board:</strong></p>
+        <p>📋 Simple white panel - positioned at right wall</p>
+        <p>💰 Shows furniture costs and total</p>
+        <p>👀 Walk around to view from different angles</p>
+        <p
+          id="room-info"
+          style="
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #666;
+          "
+        ></p>
+      </div>
+    </div>
+
+    <!-- Drop Indicator -->
+    <div class="drop-indicator" id="drop-indicator">📍 Drop Table Here</div>
+
+    <!-- Furniture Control Panel -->
+    <div id="furniture-control-panel">
+      <button class="close-controls" onclick="closeControlPanel()">×</button>
+      <h3 id="control-panel-title">Furniture Controls</h3>
+      <div class="control-buttons">
+        <button class="control-btn rotate-left" onclick="rotateFurnitureLeft()">
+          ↶ Rotate Left
+        </button>
+        <button
+          class="control-btn rotate-right"
+          onclick="rotateFurnitureRight()"
+        >
+          ↷ Rotate Right
+        </button>
+        <button class="control-btn delete" onclick="deleteFurniture()">
+          🗑️ Delete
+        </button>
+        <button class="control-btn color" disabled>🎨 Color (Soon)</button>
+      </div>
+    </div>
+
+    <!-- A-Frame Scene - Full Screen Workspace -->
+    <a-scene
+      id="scene"
+      embedded
+      style="height: 100vh; width: 100vw"
+      vr-mode-ui="enabled: false"
+      renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; maxCanvasWidth: 1920; maxCanvasHeight: 1080; shadowMap: true; shadowMapType: PCFSoft"
+      fog="type: linear; color: #9a9a9a; near: 30; far: 50"
+      stats="false"
+    >
+      <!-- Sky/Background with gradient -->
+      <a-sky color="#9a9a9a"></a-sky>
+
+      <!-- Camera Rig with continuous movement -->
+      <a-entity id="cameraRig" position="0 1.6 5" custom-movement>
+        <a-camera
+          look-controls="pointerLockEnabled: false; enabled: true; magicWindowTrackingEnabled: false"
+          wasd-controls="enabled: false"
+          cursor="rayOrigin: mouse; fuse: false"
+          raycaster="objects: [draggable-furniture]; interval: 100"
+        ></a-camera>
+      </a-entity>
+
+      <!-- Professional Lighting Setup -->
+      <!-- Hemisphere light for realistic sky/ground ambient -->
+      <a-light
+        type="hemisphere"
+        color="#ffffff"
+        groundColor="#aaaaaa"
+        intensity="0.5"
+      ></a-light>
+
+      <!-- Ambient base light -->
+      <a-light type="ambient" color="#ffffff" intensity="0.5"></a-light>
+
+      <!-- Main key light (primary shadow caster) -->
+      <a-light
+        type="directional"
+        position="5 10 5"
+        color="#ffffff"
+        intensity="1.2"
+        castShadow="true"
+        shadow="type: pcfsoft; mapSize: 2048 2048; camera: near: 1; far: 30; left: -15; right: 15; top: 15; bottom: -15"
+      ></a-light>
+
+      <!-- Secondary key light (softer, no shadow) -->
+      <a-light
+        type="directional"
+        position="-5 8 5"
+        color="#ffffff"
+        intensity="0.6"
+      ></a-light>
+
+      <!-- Fill light (opposite side, fills shadows) -->
+      <a-light
+        type="directional"
+        position="0 5 -5"
+        color="#ffffff"
+        intensity="0.4"
+      ></a-light>
+
+      <!-- Rim light (subtle separation from background) -->
+      <a-light
+        type="directional"
+        position="-3 3 -3"
+        color="#ffeedd"
+        intensity="0.3"
+      ></a-light>
+
+      <!-- Floor with enhanced PBR material -->
+      <a-plane
+        id="floor"
+        rotation="-90 0 0"
+        width="10"
+        height="10"
+        color="#8B7355"
+        material="roughness: 0.3; metalness: 0.5; shader: standard; envMapIntensity: 0.3"
+        shadow="receive: true; cast: false"
+        floor-resize
+      ></a-plane>
+
+      <!-- Room Walls -->
+      <a-entity id="room-walls"></a-entity>
+
+      <!-- Furniture Container -->
+      <a-entity id="furniture-container"></a-entity>
+
+      <!-- Blender-style Grid Helper (outside room) -->
+      <a-entity id="blender-grid" position="0 0 0">
+        <!-- Main grid lines -->
+        <a-entity
+          geometry="primitive: plane; width: 150; height: 150"
+          material="shader: flat; src: #grid-texture; transparent: true; opacity: 0.3; side: double"
+          rotation="-90 0 0"
+        ></a-entity>
+      </a-entity>
+
+      <!-- Traditional grid helper for spatial awareness -->
+      <a-entity id="grid-helper" visible="false"></a-entity>
+
+      <!-- In-Scene Cost Board -->
+      <a-entity id="cost-board" position="-3 2 -3" rotation="0 45 0">
+        <a-plane
+          width="2.2"
+          height="1.2"
+          color="#ffffff"
+          material="roughness: 1; metalness: 0"
+          opacity="1.0"
+          shadow="receive: true"
+        ></a-plane>
+        <a-text
+          value="Cost Estimator"
+          color="#333"
+          position="-1 0.45 0.01"
+          width="3"
+        ></a-text>
+        <a-entity id="cost-lines" position="-1 0.25 0.01"></a-entity>
+        <a-text
+          id="cost-total-text"
+          value="Total: ₱0.00"
+          color="#333"
+          position="-1 -0.45 0.01"
+          width="3"
+        ></a-text>
+      </a-entity>
+    </a-scene>
+
+    <script src="javascript/planner/main.js"></script>
+    <script src="javascript/planner/cost.js"></script>
+    <script src="javascript/planner/furniture-controls.js"></script>
+    <script src="javascript/planner/drag-drop.js"></script>
+    <script src="javascript/planner/ui.js"></script>
+    <script src="javascript/planner/room.js"></script>
+    <script src="javascript/planner/scene.js"></script>
+  </body>
+</html>
