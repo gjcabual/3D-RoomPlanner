@@ -1,0 +1,2 @@
+textures/*.png filter=lfs diff=lfs merge=lfs -text
+textures/WoodFloor048_8K-PNG_Color.png filter=lfs diff=lfs merge=lfs -text
