@@ -93,9 +93,7 @@ export class ThreeRoomScene {
     this.roomHeight = height;
 
     // --- Floor Material ---
-    const floorTexture = this.textureLoader.load(
-      "textures/WoodFloor048_8K-PNG_Color.png"
-    );
+    const floorTexture = this.textureLoader.load("textures/wood_floor.jpg");
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(width / 2.5, depth / 2.5);
     floorTexture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
