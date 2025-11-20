@@ -425,32 +425,208 @@ export class ThreeRoomScene {
   }
 
   /**
+   * Create furniture models from scratch using Three.js primitives
+   */
+  createTableModel() {
+    const group = new THREE.Group();
+
+    // Table top (1.2m x 0.05m x 0.8m)
+    const topGeometry = new THREE.BoxGeometry(1.2, 0.05, 0.8);
+    const woodMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b4513,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+    const top = new THREE.Mesh(topGeometry, woodMaterial);
+    top.position.y = 0.725; // 0.7m (leg height) + 0.025m (half top thickness)
+    top.castShadow = true;
+    top.receiveShadow = true;
+    group.add(top);
+
+    // 4 legs (0.05m x 0.7m x 0.05m each)
+    const legGeometry = new THREE.BoxGeometry(0.05, 0.7, 0.05);
+    const legPositions = [
+      [-0.55, 0.35, -0.35], // back-left
+      [0.55, 0.35, -0.35], // back-right
+      [-0.55, 0.35, 0.35], // front-left
+      [0.55, 0.35, 0.35], // front-right
+    ];
+
+    legPositions.forEach((pos) => {
+      const leg = new THREE.Mesh(legGeometry, woodMaterial);
+      leg.position.set(...pos);
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      group.add(leg);
+    });
+
+    return group;
+  }
+
+  createChairModel() {
+    const group = new THREE.Group();
+    const woodMaterial = new THREE.MeshStandardMaterial({
+      color: 0x654321,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+
+    // Seat (0.45m x 0.05m x 0.45m)
+    const seatGeometry = new THREE.BoxGeometry(0.45, 0.05, 0.45);
+    const seat = new THREE.Mesh(seatGeometry, woodMaterial);
+    seat.position.y = 0.45;
+    seat.castShadow = true;
+    seat.receiveShadow = true;
+    group.add(seat);
+
+    // 4 legs
+    const legGeometry = new THREE.BoxGeometry(0.04, 0.45, 0.04);
+    const legPositions = [
+      [-0.18, 0.225, -0.18],
+      [0.18, 0.225, -0.18],
+      [-0.18, 0.225, 0.18],
+      [0.18, 0.225, 0.18],
+    ];
+
+    legPositions.forEach((pos) => {
+      const leg = new THREE.Mesh(legGeometry, woodMaterial);
+      leg.position.set(...pos);
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      group.add(leg);
+    });
+
+    // Backrest (0.45m x 0.5m x 0.05m)
+    const backGeometry = new THREE.BoxGeometry(0.45, 0.5, 0.05);
+    const back = new THREE.Mesh(backGeometry, woodMaterial);
+    back.position.set(0, 0.7, -0.2);
+    back.castShadow = true;
+    back.receiveShadow = true;
+    group.add(back);
+
+    return group;
+  }
+
+  createBedModel() {
+    const group = new THREE.Group();
+
+    // Mattress (2m x 0.3m x 1.5m) - white/cream
+    const mattressGeometry = new THREE.BoxGeometry(2, 0.3, 1.5);
+    const mattressMaterial = new THREE.MeshStandardMaterial({
+      color: 0xfffaf0,
+      roughness: 0.9,
+      metalness: 0,
+    });
+    const mattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
+    mattress.position.y = 0.45; // 0.3m (frame) + 0.15m (half mattress)
+    mattress.castShadow = true;
+    mattress.receiveShadow = true;
+    group.add(mattress);
+
+    // Frame (2.1m x 0.3m x 1.6m) - dark wood
+    const frameGeometry = new THREE.BoxGeometry(2.1, 0.3, 1.6);
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3e2723,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+    frame.position.y = 0.15;
+    frame.castShadow = true;
+    frame.receiveShadow = true;
+    group.add(frame);
+
+    // Headboard (2.1m x 0.8m x 0.1m)
+    const headboardGeometry = new THREE.BoxGeometry(2.1, 0.8, 0.1);
+    const headboard = new THREE.Mesh(headboardGeometry, frameMaterial);
+    headboard.position.set(0, 0.7, -0.8);
+    headboard.castShadow = true;
+    headboard.receiveShadow = true;
+    group.add(headboard);
+
+    return group;
+  }
+
+  createDeskModel() {
+    const group = new THREE.Group();
+    const woodMaterial = new THREE.MeshStandardMaterial({
+      color: 0xa0826d,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+
+    // Desktop (1.5m x 0.05m x 0.7m)
+    const topGeometry = new THREE.BoxGeometry(1.5, 0.05, 0.7);
+    const top = new THREE.Mesh(topGeometry, woodMaterial);
+    top.position.y = 0.725;
+    top.castShadow = true;
+    top.receiveShadow = true;
+    group.add(top);
+
+    // 4 legs
+    const legGeometry = new THREE.BoxGeometry(0.05, 0.7, 0.05);
+    const legPositions = [
+      [-0.7, 0.35, -0.3],
+      [0.7, 0.35, -0.3],
+      [-0.7, 0.35, 0.3],
+      [0.7, 0.35, 0.3],
+    ];
+
+    legPositions.forEach((pos) => {
+      const leg = new THREE.Mesh(legGeometry, woodMaterial);
+      leg.position.set(...pos);
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      group.add(leg);
+    });
+
+    return group;
+  }
+
+  /**
    * Add furniture to the scene
    * @param {string} id - Unique identifier
    * @param {string} modelType - Type of furniture (table1, chair, etc.)
    * @param {object} position - {x, y, z}
    */
   addFurniture(id, modelType, position = { x: 0, y: 0, z: 0 }) {
-    // Simple placeholder table box (1.5m x 0.8m x 1.5m)
-    const geometry = new THREE.BoxGeometry(1.5, 0.8, 1.5);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x8b4513,
-      roughness: 0.7,
-      metalness: 0.2,
-    });
+    let furniture;
 
-    const furniture = new THREE.Mesh(geometry, material);
-    furniture.castShadow = true;
-    furniture.receiveShadow = true;
+    // Create appropriate model based on type
+    switch (modelType.toLowerCase()) {
+      case "table1":
+      case "centertable":
+      case "coffeetable":
+        furniture = this.createTableModel();
+        break;
+      case "chair":
+      case "diningchair":
+        furniture = this.createChairModel();
+        break;
+      case "bed":
+      case "doublebed":
+        furniture = this.createBedModel();
+        break;
+      case "desk":
+      case "officetable":
+        furniture = this.createDeskModel();
+        break;
+      default:
+        // Fallback: simple box
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x888888,
+          roughness: 0.7,
+        });
+        furniture = new THREE.Mesh(geometry, material);
+        furniture.castShadow = true;
+        furniture.receiveShadow = true;
+    }
 
-    // Place on floor: floor top Y + half furniture height
+    // Place on floor
     const floorTopY = this.floor.position.y + (this.floorThickness || 0.2) / 2;
-    const furnitureHalfHeight = geometry.parameters.height / 2;
-    furniture.position.set(
-      position.x,
-      floorTopY + furnitureHalfHeight,
-      position.z
-    );
+    furniture.position.set(position.x, floorTopY, position.z);
+
     furniture.userData.isFurniture = true;
     furniture.userData.id = id;
     furniture.userData.name = modelType;
@@ -458,6 +634,35 @@ export class ThreeRoomScene {
 
     this.scene.add(furniture);
     this.furnitureObjects.set(id, furniture);
+
+    // ADD VISUAL DEBUG: Bright line from camera to furniture
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0xff00ff,
+      linewidth: 5,
+    });
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      this.camera.position.clone(),
+      new THREE.Vector3(position.x, floorTopY + 0.5, position.z), // Point above furniture
+    ]);
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.userData.isDebugLine = true;
+    this.scene.add(line);
+
+    // Add a bright sphere marker at furniture position
+    const markerGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.set(position.x, floorTopY + 0.5, position.z);
+    marker.userData.isDebugMarker = true;
+    this.scene.add(marker);
+
+    console.log(`✅ Added ${modelType} at floor Y=${floorTopY.toFixed(2)}`);
+    console.log(
+      `   Position: (${position.x}, ${floorTopY.toFixed(2)}, ${position.z})`
+    );
+    console.log(`   🔴 RED SPHERE + MAGENTA LINE added for visual debug`);
+
+    return furniture;
 
     console.log(`✓ Added ${modelType} ID: ${id}`);
     console.log(

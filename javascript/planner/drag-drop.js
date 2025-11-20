@@ -62,26 +62,22 @@ function handleDrop(e) {
   const roomWidth = parseFloat(localStorage.getItem("roomWidth")); // Already in meters
   const roomLength = parseFloat(localStorage.getItem("roomLength"));
 
-  // Create furniture entity
+  // Create furniture entity using procedural component
   const furnitureEl = document.createElement("a-entity");
   furnitureEl.id = `furniture-${furnitureCounter++}`;
   furnitureEl.setAttribute("position", `${dropX} 0 ${dropZ}`);
+
+  // Use procedural-furniture component instead of loading .obj files
   furnitureEl.setAttribute(
-    "obj-model",
-    `obj: url(models/${draggedItem.model}.obj)`
+    "procedural-furniture",
+    `type: ${draggedItem.model}; color: #8B4513`
   );
-  furnitureEl.setAttribute("scale", draggedItem.scale);
+
   furnitureEl.setAttribute(
     "draggable-furniture",
     `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
   );
   furnitureEl.setAttribute("clickable-furniture", "");
-  // Enhanced PBR material for realistic look
-  furnitureEl.setAttribute(
-    "material",
-    "color: #8B4513; roughness: 0.5; metalness: 0.2; shader: standard; envMapIntensity: 0.3"
-  );
-  furnitureEl.setAttribute("shadow", "cast: true; receive: true");
 
   // Add to scene
   document.getElementById("furniture-container").appendChild(furnitureEl);
