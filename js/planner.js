@@ -247,7 +247,7 @@ function initializeRoom() {
   const cameraRig = document.getElementById("cameraRig");
   if (cameraRig) {
     const cameraDistance = Math.max(aframeWidth, aframeLength) * 0.8;
-    cameraRig.setAttribute("position", `0 1.6 ${cameraDistance}`);
+    cameraRig.setAttribute("position", `0 2.6 ${cameraDistance + 4}`);
   }
 
   // Wait for scene to be ready, then initialize drag and drop
