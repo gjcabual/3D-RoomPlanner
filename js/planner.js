@@ -3,6 +3,23 @@ let furnitureCounter = 0;
 let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
 
+// Register wall outline component
+AFRAME.registerComponent("wall-outline", {
+  init: function () {
+    const el = this.el;
+    const w = parseFloat(el.getAttribute("width"));
+    const h = parseFloat(el.getAttribute("height"));
+    const d = parseFloat(el.getAttribute("depth"));
+
+    const geometry = new THREE.BoxGeometry(w, h, d);
+    const edges = new THREE.EdgesGeometry(geometry);
+    const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const line = new THREE.LineSegments(edges, material);
+    line.name = "outline";
+    el.object3D.add(line);
+  },
+});
+
 // Items and prices loaded from Supabase
 let ITEMS_DATA = {}; // model_key -> {id, name, category, model_file_path}
 let PRICE_LIST = {}; // model_key -> estimated_price
@@ -227,7 +244,8 @@ function initializeRoom() {
   const floor = document.getElementById("floor");
   if (floor) {
     floor.setAttribute("width", aframeWidth);
-    floor.setAttribute("height", aframeLength);
+    floor.setAttribute("depth", aframeLength);
+    floor.setAttribute("height", 0.1);
   }
 
   // Create room walls with height
@@ -297,6 +315,11 @@ function createRoomWalls(width, length, wallHeight = 3) {
       pos: `${width / 2} ${wallHeight / 2} 0`,
       size: `${wallThickness} ${wallHeight} ${length}`,
     },
+    // Roof
+    {
+      pos: `0 ${wallHeight} 0`,
+      size: `${width} 0.1 ${length}`,
+    },
   ];
 
   walls.forEach((wall, i) => {
@@ -306,16 +329,127 @@ function createRoomWalls(width, length, wallHeight = 3) {
     wallEl.setAttribute("width", w);
     wallEl.setAttribute("height", h);
     wallEl.setAttribute("depth", d);
-    wallEl.setAttribute("color", "#eeeeee");
+    // Removed separate color attribute to avoid conflicts
+    // Removed transparent: true to fix visual glitches
     wallEl.setAttribute(
       "material",
-      "roughness: 0.1; metalness: 0.5; envMapIntensity: 1.0"
+      "color: #9d9d9d; roughness: 0.1; metalness: 0.5; envMapIntensity: 1.0"
     );
     wallEl.setAttribute("shadow", "cast: true; receive: true");
+    wallEl.setAttribute("class", "room-wall");
+    wallEl.setAttribute("data-wall-index", i);
+    wallEl.setAttribute("wall-outline", "");
     wallsContainer.appendChild(wallEl);
   });
 
+  // Start wall visibility update loop
+  startWallVisibilityUpdater();
+
   // Grid helper removed
+}
+
+/**
+ * Update wall visibility based on camera position
+ * Uses raycasting to hide walls that block the view of the room center
+ */
+function updateWallVisibility() {
+  const cameraRig = document.getElementById("cameraRig");
+  const walls = Array.from(document.querySelectorAll(".room-wall"));
+
+  if (!cameraRig || walls.length === 0) return;
+
+  const cameraPos = new THREE.Vector3();
+  cameraRig.object3D.getWorldPosition(cameraPos);
+
+  // Target the center of the room (slightly elevated)
+  const target = new THREE.Vector3(0, 1.5, 0);
+
+  // Check if camera is inside the room
+  const roomWidth = parseFloat(localStorage.getItem("roomWidth")) || 10;
+  const roomLength = parseFloat(localStorage.getItem("roomLength")) || 10;
+
+  // Get room height from roof position (index 4) or default to 3
+  let roomHeight = 3;
+  const roof = walls.find((w) => w.getAttribute("data-wall-index") === "4");
+  if (roof) {
+    const pos = roof.getAttribute("position");
+    if (pos) roomHeight = parseFloat(pos.y);
+  }
+
+  const margin = 0.1; // Small margin
+
+  const isInside =
+    cameraPos.x >= -roomWidth / 2 + margin &&
+    cameraPos.x <= roomWidth / 2 - margin &&
+    cameraPos.z >= -roomLength / 2 + margin &&
+    cameraPos.z <= roomLength / 2 - margin &&
+    cameraPos.y < roomHeight; // Must be below the roof
+
+  if (isInside) {
+    // Show all walls if inside
+    walls.forEach((wall) => wall.setAttribute("material", "opacity", 1.0));
+    return;
+  }
+
+  // Raycast from camera to center
+  const raycaster = new THREE.Raycaster();
+  const direction = new THREE.Vector3()
+    .subVectors(target, cameraPos)
+    .normalize();
+  raycaster.set(cameraPos, direction);
+
+  // Get meshes from a-box entities
+  const meshes = walls.map((w) => w.getObject3D("mesh")).filter((m) => m);
+
+  // Intersect
+  const intersects = raycaster.intersectObjects(meshes);
+
+  // Identify walls to hide
+  // Hide any wall that the ray passes through before reaching the center
+  const distToCenter = cameraPos.distanceTo(target);
+  const hiddenMeshes = new Set();
+
+  intersects.forEach((hit) => {
+    if (hit.distance < distToCenter) {
+      hiddenMeshes.add(hit.object);
+    }
+  });
+
+  // Update opacity
+  walls.forEach((wall) => {
+    const mesh = wall.getObject3D("mesh");
+    const outline = wall.object3D.getObjectByName("outline");
+
+    // If this wall's mesh was hit, hide it. Otherwise show it.
+    if (mesh && hiddenMeshes.has(mesh)) {
+      // Enable transparency only when hiding to avoid z-sorting glitches when visible
+      wall.setAttribute("material", "transparent", true);
+      wall.setAttribute("material", "opacity", 0.0);
+      if (outline) outline.visible = false;
+    } else {
+      // Disable transparency when visible for solid rendering
+      wall.setAttribute("material", "transparent", false);
+      wall.setAttribute("material", "opacity", 1.0);
+      if (outline) outline.visible = true;
+    }
+  });
+}
+
+/**
+ * Start the wall visibility updater loop
+ */
+function startWallVisibilityUpdater() {
+  // Update wall visibility every frame for smooth transitions
+  const scene = document.querySelector("a-scene");
+  if (scene) {
+    if (scene.hasLoaded) {
+      setInterval(updateWallVisibility, 100);
+    } else {
+      scene.addEventListener("loaded", () => {
+        setInterval(updateWallVisibility, 100);
+      });
+    }
+  }
 }
 
 function createBlenderGrid() {

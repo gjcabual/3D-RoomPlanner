@@ -568,15 +568,16 @@
       ></a-light>
 
       <!-- Floor with metallic material -->
-      <a-plane
+      <a-box
         id="floor"
-        rotation="-90 0 0"
+        position="0 -0.05 0"
         width="10"
-        height="10"
+        height="0.1"
+        depth="10"
         material="src: url(asset/textures/wood4k.png); roughness: 0.4; metalness: 0.8; repeat: 2 2"
         shadow="receive: true"
         floor-resize
-      ></a-plane>
+      ></a-box>
 
       <!-- Room Walls -->
       <a-entity id="room-walls"></a-entity>
