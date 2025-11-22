@@ -12,7 +12,8 @@ The 3D Room Planner is a web-based application that allows users to design and v
 - **3D Rendering**: A-Frame 1.5.0
 - **Backend**: Supabase (PostgreSQL database, Authentication, Storage)
 - **UI Libraries**: HTML2Canvas (for screenshot capture)
-- **Styling**: CSS3 with custom components
+- **Styling**: CSS3 with custom components, Tailwind CSS (utility-first)
+- **Design System**: CSS Custom Properties (variables) for theming
 
 ### Project Structure
 
@@ -54,12 +55,27 @@ TEST/
 │       ├── debug.js       # Debug utilities
 │       ├── dialog.js      # Dialog utility (alert, confirm, prompt)
 │       ├── workspace-state.js # Workspace state management
-│       └── cost-estimation.js # Cost estimation utilities
-└── models/                # 3D model files (OBJ format)
-    ├── table1.obj
-    ├── wardrobe1.obj
-    ├── wardrobe2.obj
-    └── wardrobe3.obj
+│       ├── cost-estimation.js # Cost estimation utilities
+│       └── model-analyzer.js # Model file mapping and local path resolution
+└── asset/
+    ├── models/            # Local 3D model files (OBJ format)
+    │   ├── bed1.obj
+    │   ├── bed2.obj
+    │   ├── chair1.obj
+    │   ├── chair2.obj
+    │   ├── desk1.obj
+    │   ├── desk2.obj
+    │   ├── mirror1.obj
+    │   ├── mirror2.obj
+    │   ├── shelf1.obj
+    │   ├── shelf2.obj
+    │   ├── center_table1.obj
+    │   ├── center_table2.obj
+    │   ├── wardrobe_modern.obj
+    │   ├── wardrobe_traditional.obj
+    │   └── wardrobe_openframe.obj
+    └── textures/
+        └── wood4k.png     # Floor texture
 ```
 
 ## Core Modules
@@ -102,15 +118,15 @@ The core application logic for the 3D room planner:
 
 #### Key Functions:
 
-- **`loadItemsAndPrices()`**: Fetches furniture items and prices from Supabase
+- **`loadItemsAndPrices()`**: Fetches furniture items and prices from Supabase with timeout handling and fallbacks
 - **`calculateEstimatedPrice(prices)`**: Calculates average price from multiple store prices
-- **`getModelUrl(modelKey)`**: Resolves model file URLs (Supabase Storage or local)
+- **`getModelUrl(modelKey)`**: Resolves model file URLs with fallback chain (Supabase Storage → local → model analyzer)
 - **`getItemName(modelKey)`**: Gets display name for furniture items
 - **`initializeRoom()`**: Sets up the 3D room with dimensions from localStorage (width, length, height)
 - **`createRoomWalls(width, length, height)`**: Dynamically creates room walls with specified height
 - **`showWelcomeDialog()`**: Displays welcome dialog with instructions (one-time only, tracked via localStorage)
 - **`handleDragStart(e)`**: Initiates drag operation from furniture library
-- **`handleDrop(e)`**: Handles furniture placement in the 3D scene
+- **`handleDrop(e)`**: Handles furniture placement in the 3D scene with model loading timeout
 - **`renderCost()`**: Updates cost estimation display
 - **`toggleCostPanel()`**: Shows/hides the cost panel
 - **`deleteFurniture()`**: Removes furniture from the scene
@@ -118,14 +134,19 @@ The core application logic for the 3D room planner:
 - **`saveWorkspaceState()`**: Saves current room state to localStorage
 - **`restoreRoom(roomData)`**: Restores room from saved state
 - **`restoreWorkspaceState()`**: Legacy function to restore workspace state
+- **`showBedSubcategory()` / `showChairSubcategory()` / `showDeskSubcategory()` / `showMirrorSubcategory()` / `showShelfSubcategory()`**: Display subcategory panels for furniture selection
 
 #### Data Structures:
 
 - **`ITEMS_DATA`**: Map of model_key → item data
 - **`PRICE_LIST`**: Map of model_key → estimated price
 - **`ITEM_METADATA`**: Map of model_key → metadata (name, model_file_path)
+- **`ITEM_PRICE_SOURCES`**: Map of model_key → array of {store, price} objects
 - **`costState`**: Object tracking furniture costs and totals
 - **`furnitureCounter`**: Counter for unique furniture IDs
+- **`DUMMY_PRICES`**: Fallback prices for all items when Supabase is unavailable
+- **`FALLBACK_ITEM_NAMES`**: Fallback display names for all furniture items
+- **`FALLBACK_ITEM_METADATA`**: Fallback metadata for furniture items
 
 ### 4. A-Frame Components (`js/components/`)
 
@@ -239,6 +260,17 @@ Cost estimation management:
 - **`getSavedCostEstimations()`**: Retrieves saved cost estimations from localStorage
 - **`saveCostEstimation(name)`**: Saves current cost estimation with a name
 - **`deleteCostEstimation(id)`**: Deletes a saved cost estimation
+
+#### `model-analyzer.js`
+
+Model file mapping and local path resolution:
+
+- **`getModelFilename(modelKey)`**: Gets filename from model key
+- **`getModelKeyFromFilename(filename)`**: Gets model key from filename
+- **`getAllModelKeys()`**: Returns array of all available model keys
+- **`getLocalModelPath(modelKey)`**: Returns local path to model file in `asset/models/`
+- **`hasLocalModel(modelKey)`**: Checks if model exists in local mapping
+- **`MODEL_FILE_MAP`**: Maps filenames to model keys for all 15 models
 
 ### 6. Profile Module (`js/profile.js`)
 
@@ -410,11 +442,36 @@ Bucket is set to **Public** for direct access.
 - Dynamic room creation based on user input (width, length, height)
 - Room walls created with specified height (defaults to 3M if not provided)
 - Real-time furniture placement
-- Collision detection
+- Collision detection with visual feedback (green = valid, red = invalid)
 - Wall boundary enforcement
-- Furniture rotation
-- Cost calculation
+- Furniture rotation (90-degree increments)
+- Cost calculation with real-time updates
 - Workspace state persistence (auto-saves on page unload and visibility change)
+- Model loading with timeout handling (30 seconds) and error recovery
+- Placeholder boxes during model loading for immediate visual feedback
+
+### Furniture Library
+
+**Available Categories:**
+
+- **Tables**: Center Table options (2 variants)
+- **Seating**: Chairs (2 variants)
+- **Bedroom**: Beds (2 variants), Wardrobes (3 variants)
+- **Office**: Desks (2 variants)
+- **Decor & Storage**: Mirrors (2 variants), Shelves (2 variants)
+
+**Total Items**: 15 furniture items across 5 categories
+
+### Error Handling & Fallbacks
+
+- **Supabase Timeout**: 10-second timeout for database queries
+- **Model Loading Timeout**: 30-second timeout per model file
+- **Automatic Fallbacks**:
+  - If Supabase fails → Uses fallback metadata and dummy prices
+  - If model loading fails → Keeps placeholder visible with error indication
+  - If storage URL fails → Falls back to local `asset/models/` folder
+- **Dummy Prices**: All items have pre-configured dummy prices for offline functionality
+- **Graceful Degradation**: Application continues to work even if Supabase is completely unavailable
 
 ### Cost Estimation
 
@@ -422,6 +479,10 @@ Bucket is set to **Public** for direct access.
 - Displays item quantities and unit costs
 - Shows total project cost
 - Collapsible cost panel (shows icon when collapsed)
+- **Cost panel max-height**: Constrained to viewport (calc(100vh - 100px)) to prevent overflow
+- **Price sources**: View prices from multiple stores for each item
+- **Dummy prices**: Fallback prices used when database is unavailable
+- **Scrollable cost list**: Cost panel body scrolls when content exceeds available space
 
 ### Snapshot System
 
@@ -452,21 +513,40 @@ Bucket is set to **Public** for direct access.
 
 ## Styling
 
+### Design System
+
+**CSS Architecture:**
+
+- **Design Tokens** (`css/variables.css`): Centralized CSS custom properties for colors, spacing, typography, shadows, borders, transitions, and z-index
+- **Component Classes** (`css/components.css`): Reusable component classes (buttons, cards, panels, inputs, badges, tooltips, modals)
+- **Tailwind CSS**: Utility-first CSS framework integrated via CDN with custom theme configuration
+- **Page-Specific Styles**: Individual CSS files for each page (index, planner, profile, admin)
+
 ### Color Scheme
 
 - **Index Page**: Dark theme (#0a0a0a) with subtle grid pattern, white text
 - **3D Scene**: Black (#000000) background
-- **Floor**: Brown (#8B4513)
-- **Furniture**: Orange (#FF8C00) by default, Green (#4CAF50) when selected, Red (#FF6B6B) when near walls
-- **UI Panels**: Dark theme (rgba(15, 15, 15, 0.96))
+- **Floor**: Brown (#8B4513) with wood texture
+- **Furniture**: Orange (#FF8C00) by default, Green (#4CAF50) when selected, Red (#FF6B6B) when near walls or outside boundaries
+- **UI Panels**: Dark theme (rgba(15, 15, 15, 0.96)) with backdrop blur
 - **Profile Circle**: Dark gradient (#343434 to #181818)
 - **Welcome Dialog**: Dark theme matching planner interface
+- **Scrollbars**: Custom dark-themed scrollbars (rgba(255, 255, 255, 0.2) thumb, rgba(15, 15, 15, 0.5) track)
 
 ### Typography
 
 - **Font Family**: System fonts (-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif)
 - Consistent across all pages (admin, profile, planner, index)
 - Modern, clean typography with proper letter-spacing
+- Responsive font sizes with media queries for different screen sizes
+
+### Responsive Design
+
+- **Viewport Meta Tag**: Properly configured for mobile devices
+- **Flexible Layouts**: Flexbox and CSS Grid for responsive layouts
+- **Height-Based Media Queries**: Content scales down on smaller viewport heights
+- **Cost Panel**: Max-height constrained to prevent viewport overflow
+- **Side Panel**: Scrollable with custom dark-themed scrollbar
 
 ### Index Page Design
 
@@ -496,18 +576,32 @@ Set in `js/utils/supabase.js`:
 
 ### Model Files
 
-- Local models: `models/` directory
-- Supabase Storage: `wardrobe-models` bucket
-- Model mapping defined in `STORAGE_MODEL_FILES` constant in `planner.js`
+- **Local models**: `asset/models/` directory (15 OBJ files)
+  - Tables: center_table1.obj, center_table2.obj
+  - Wardrobes: wardrobe_modern.obj, wardrobe_traditional.obj, wardrobe_openframe.obj
+  - Beds: bed1.obj, bed2.obj
+  - Chairs: chair1.obj, chair2.obj
+  - Desks: desk1.obj, desk2.obj
+  - Mirrors: mirror1.obj, mirror2.obj
+  - Shelves: shelf1.obj, shelf2.obj
+- **Supabase Storage**: `wardrobe-models` bucket (for specific files)
+- **Model mapping**: Defined in `STORAGE_MODEL_FILES` constant in `planner.js`
+- **Model analyzer**: `js/utils/model-analyzer.js` provides local path resolution
+- **Fallback system**: Automatic fallback to local files if Supabase Storage fails
 
 ## Development Notes
 
 ### Adding New Furniture Items
 
-1. Add item to database via admin panel or SQL
-2. Upload OBJ file to Supabase Storage (if needed)
-3. Update `STORAGE_MODEL_FILES` in `planner.js` if using storage
-4. Add item to furniture library in `planner.html`
+1. Add OBJ file to `asset/models/` directory
+2. Update `STORAGE_MODEL_FILES` in `planner.js` to map model_key to filename
+3. Add fallback name to `FALLBACK_ITEM_NAMES` in `planner.js`
+4. Add fallback metadata to `FALLBACK_ITEM_METADATA` in `planner.js`
+5. Add dummy price to `DUMMY_PRICES` in `planner.js`
+6. Update `MODEL_FILE_MAP` in `js/utils/model-analyzer.js`
+7. Add item to furniture library in `planner.html` (create subcategory if needed)
+8. (Optional) Add item to database via admin panel or SQL
+9. (Optional) Upload OBJ file to Supabase Storage if using cloud storage
 
 ### Customizing Colors
 
@@ -554,19 +648,48 @@ Set in `js/utils/supabase.js`:
    - Room walls created with specified height
    - Height stored in localStorage and used throughout application
 
-4. **Improved User Experience**:
+4. **Expanded Furniture Library**:
+
+   - **New Categories**: Office, Decor & Storage
+   - **New Items**: Beds (2), Chairs (2), Desks (2), Mirrors (2), Shelves (2)
+   - **Total Items**: 15 furniture items across 5 categories
+   - **Subcategory Navigation**: Click category to see variants
+   - **Organized Layout**: Furniture grouped by room type and function
+
+5. **Robust Error Handling & Fallbacks**:
+
+   - **Supabase Timeout**: 10-second timeout with automatic fallback
+   - **Model Loading Timeout**: 30-second timeout per model
+   - **Dummy Prices**: Pre-configured prices for all 15 items
+   - **Local Model Fallback**: Automatic fallback to `asset/models/` folder
+   - **Model Analyzer Utility**: Maps model files to model keys
+   - **Graceful Degradation**: App works offline with fallback data
+
+6. **Styling System Improvements**:
+
+   - **Tailwind CSS Integration**: Utility-first CSS framework
+   - **CSS Variables**: Centralized design tokens
+   - **Component Classes**: Reusable component styles
+   - **Custom Scrollbars**: Dark-themed scrollbars for all panels
+   - **Cost Panel Fix**: Max-height constrained to prevent viewport overflow
+
+7. **Improved User Experience**:
    - Better validation messages
    - Keyboard navigation support
    - Workspace state persistence improvements
    - Enhanced responsive design
+   - Visual feedback for model loading states
+   - Error indicators for failed model loads
 
 ## Future Enhancements
 
-- Load saved plans from database (currently using localStorage)
-- More furniture categories and items
-- Furniture color customization
-- Export plans as JSON
-- Share plans with other users
-- Advanced lighting and shadows
-- VR mode support
-- Room height visualization in 3D scene
+- **Database Integration**: Move from localStorage to Supabase for room plans
+- **More Furniture**: Additional categories and items
+- **Furniture Customization**: Color, size, material options
+- **Export Formats**: OBJ, GLTF, JSON export
+- **Sharing**: Share plans with other users
+- **Advanced Lighting**: PBR materials, improved shadows
+- **VR Mode**: Full VR support with A-Frame VR components
+- **Real-time Collaboration**: Multiple users editing same room
+- **Mobile Optimization**: Touch controls, improved mobile UI
+- **Performance**: Model caching, lazy loading, instancing optimization
