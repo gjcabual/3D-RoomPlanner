@@ -96,8 +96,18 @@ async function handleAuthSubmit() {
     return;
   }
 
-  if (password.length < 6) {
-    errorEl.textContent = 'Password must be at least 6 characters';
+  // Email regex validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    errorEl.textContent = 'Please enter a valid email address';
+    return;
+  }
+
+  // Password regex validation
+  // Minimum 8 characters, at least one uppercase, one lowercase, one number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    errorEl.textContent = 'Password must be at least 8 characters with uppercase, lowercase, and a number';
     return;
   }
 

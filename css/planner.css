@@ -144,6 +144,25 @@ body {
   font-size: 2em;
   margin-bottom: 8px;
   display: block;
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.model-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.model-icon svg {
+  width: 100%;
+  height: auto;
+  max-height: 60px;
 }
 
 .model-name {
@@ -877,6 +896,16 @@ body {
   border-color: rgba(76, 175, 80, 0.5);
 }
 
+.control-btn.details {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.control-btn.details:hover {
+  background: rgba(76, 175, 80, 0.25);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
 .control-btn.delete {
   background: rgba(244, 67, 54, 0.15);
   border-color: rgba(244, 67, 54, 0.3);
@@ -885,6 +914,49 @@ body {
 .control-btn.delete:hover {
   background: rgba(244, 67, 54, 0.25);
   border-color: rgba(244, 67, 54, 0.5);
+}
+
+/* Item Details Styles */
+.item-details-content {
+  text-align: left;
+}
+
+.item-details-title {
+  margin: 0 0 15px 0;
+  color: #f5f5f5;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.item-details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.item-details-row:last-child {
+  border-bottom: none;
+}
+
+.item-details-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.item-details-value {
+  color: #f5f5f5;
+  font-size: 0.95em;
+  font-weight: 600;
+  text-align: right;
 }
 
 .close-controls {

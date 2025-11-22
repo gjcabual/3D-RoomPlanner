@@ -72,6 +72,7 @@
     <script src="js/components/movement.js"></script>
     <script src="js/components/floor-resize.js"></script>
     <script src="js/components/smart-placement.js"></script>
+    <script src="js/components/wall-mounted.js"></script>
     <script src="js/components/draggable-furniture.js"></script>
     <script src="js/components/clickable-furniture.js"></script>
     <script src="js/components/position-debug.js"></script>
@@ -312,7 +313,12 @@
             data-category="chair"
             onclick="showChairSubcategory()"
           >
-            <span class="model-icon">🪑</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/chair1.jpg"
+                alt="Chairs"
+                onerror="this.parentElement.innerHTML='🪑';"
+            /></span>
             <div class="model-name">Chairs</div>
           </div>
           <div class="model-item disabled" data-model="sofa">
@@ -342,7 +348,12 @@
             data-category="bed"
             onclick="showBedSubcategory()"
           >
-            <span class="model-icon">🛏️</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/bed1.jpg"
+                alt="Beds"
+                onerror="this.parentElement.innerHTML='🛏️';"
+            /></span>
             <div class="model-name">Beds</div>
           </div>
           <div
@@ -351,7 +362,12 @@
             data-category="wardrobe"
             onclick="showWardrobeSubcategory()"
           >
-            <span class="model-icon">👔</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/wardrobe1.jpg"
+                alt="Wardrobe"
+                onerror="this.parentElement.innerHTML='👔';"
+            /></span>
             <div class="model-name">Wardrobe</div>
           </div>
           <div class="model-item disabled" data-model="dresser">
@@ -376,7 +392,12 @@
             data-category="desk"
             onclick="showDeskSubcategory()"
           >
-            <span class="model-icon">💻</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/desk1.jpg"
+                alt="Desks"
+                onerror="this.parentElement.innerHTML='💻';"
+            /></span>
             <div class="model-name">Desks</div>
           </div>
           <div class="model-item disabled" data-model="office-chair">
@@ -406,7 +427,12 @@
             data-category="mirror"
             onclick="showMirrorSubcategory()"
           >
-            <span class="model-icon">🪞</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/mirror1.jpg"
+                alt="Mirrors"
+                onerror="this.parentElement.innerHTML='🪞';"
+            /></span>
             <div class="model-name">Mirrors</div>
           </div>
           <div
@@ -415,7 +441,12 @@
             data-category="shelf"
             onclick="showShelfSubcategory()"
           >
-            <span class="model-icon">📦</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/shelf1.jpg"
+                alt="Shelves"
+                onerror="this.parentElement.innerHTML='📦';"
+            /></span>
             <div class="model-name">Shelves</div>
           </div>
           <div class="model-item disabled" data-model="lamp">
@@ -445,7 +476,12 @@
             data-model="wardrobe1"
             data-scale="1 1 1"
           >
-            <span class="model-icon">👔</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/wardrobe1.jpg"
+                alt="Wardrobe 1"
+                onerror="this.parentElement.innerHTML='👔';"
+            /></span>
             <div class="model-name">Wardrobe 1</div>
           </div>
           <div
@@ -454,7 +490,12 @@
             data-model="wardrobe2"
             data-scale="1 1 1"
           >
-            <span class="model-icon">👔</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/wardrobe2.jpg"
+                alt="Wardrobe 2"
+                onerror="this.parentElement.innerHTML='👔';"
+            /></span>
             <div class="model-name">Wardrobe 2</div>
           </div>
           <div
@@ -463,7 +504,12 @@
             data-model="wardrobe3"
             data-scale="1 1 1"
           >
-            <span class="model-icon">👔</span>
+            <span class="model-icon"
+              ><img
+                src="asset/images/thumbnails/wardrobe3.jpg"
+                alt="Wardrobe 3"
+                onerror="this.parentElement.innerHTML='👔';"
+            /></span>
             <div class="model-name">Wardrobe 3</div>
           </div>
         </div>
@@ -554,6 +600,37 @@
       <h3 id="control-panel-title">Furniture Controls</h3>
       <div class="control-buttons">
         <button
+          class="control-btn details"
+          onclick="showItemDetails()"
+          title="Item Details"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path
+              d="M12 16V12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 8H12.01"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <button
           class="control-btn rotate-left"
           onclick="rotateFurnitureLeft()"
           title="Rotate Left"
@@ -571,14 +648,14 @@
               stroke-width="2"
             />
             <path
-              d="M9 12L12 9L15 12"
+              d="M9 12L7 10L5 12"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M12 9V15"
+              d="M5 12H19"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
@@ -603,14 +680,14 @@
               stroke-width="2"
             />
             <path
-              d="M15 12L12 15L9 12"
+              d="M15 12L17 14L19 12"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
             <path
-              d="M12 15V9"
+              d="M19 12H5"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"

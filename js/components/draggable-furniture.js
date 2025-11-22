@@ -146,6 +146,10 @@ AFRAME.registerComponent('draggable-furniture', {
     this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     
+    // Check if this is a wall-mounted item
+    const wallMountedComponent = this.el.components['wall-mounted'];
+    const isWallMounted = wallMountedComponent !== undefined;
+    
     // Raycast against an infinite ground plane (y = 0)
     this.raycaster.setFromCamera(this.mouse, this.cameraObj);
     const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -153,15 +157,34 @@ AFRAME.registerComponent('draggable-furniture', {
     if (this.raycaster.ray.intersectPlane(groundPlane, intersectionPoint)) {
       const newPosition = intersectionPoint;
       
-      // Check boundaries and adjust if needed
-      const adjustedPosition = this.checkBoundaries(newPosition);
+      let adjustedPosition;
       
-      // Keep object on floor height y=0 (or small lift) while dragging
-      const yFloor = 0;
-      this.el.setAttribute('position', `${adjustedPosition.x} ${yFloor} ${adjustedPosition.z}`);
+      // Handle wall-mounted items differently
+      if (isWallMounted) {
+        // Snap to nearest wall
+        const snapPoint = wallMountedComponent.checkWallSnap(newPosition);
+        adjustedPosition = snapPoint;
+        
+        // Keep at a reasonable height on wall (not on floor)
+        const wallHeight = 1.5; // Default height for wall-mounted items
+        adjustedPosition.y = wallHeight;
+      } else {
+        // Regular items - check boundaries and adjust if needed
+        adjustedPosition = this.checkBoundaries(newPosition);
+        
+        // Keep object on floor height y=0 (or small lift) while dragging
+        adjustedPosition.y = 0;
+      }
+      
+      this.el.setAttribute('position', `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`);
       
       // Visual feedback for collision
-      if (this.isColliding(adjustedPosition)) {
+      if (isWallMounted) {
+        // Wall-mounted items are always green when attached to wall
+        this.el.setAttribute('material', 'color', '#4CAF50');
+        this.el.setAttribute('material', 'emissive', '#2E7D32');
+        this.el.setAttribute('material', 'emissiveIntensity', '0.3');
+      } else if (this.isColliding(adjustedPosition)) {
         // Red when touching/over boundary
         this.el.setAttribute('material', 'color', '#FF6B6B');
         this.el.setAttribute('material', 'emissive', '#8B0000');

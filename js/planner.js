@@ -49,6 +49,41 @@ const STORAGE_MODEL_FILES = {
   shelf2: "shelf2.obj",
 };
 
+/**
+ * Get thumbnail image path for a model key
+ * @param {string} modelKey - Model key
+ * @returns {string} - Image path
+ */
+function getThumbnailPath(modelKey) {
+  const thumbnailMap = {
+    center_table1: "asset/images/thumbnails/center_table1.jpg",
+    center_table2: "asset/images/thumbnails/center_table2.jpg",
+    wardrobe1: "asset/images/thumbnails/wardrobe1.jpg",
+    wardrobe2: "asset/images/thumbnails/wardrobe2.jpg",
+    wardrobe3: "asset/images/thumbnails/wardrobe3.jpg",
+    bed1: "asset/images/thumbnails/bed1.jpg",
+    bed2: "asset/images/thumbnails/bed2.jpg",
+    chair1: "asset/images/thumbnails/chair1.jpg",
+    chair2: "asset/images/thumbnails/chair2.jpg",
+    desk1: "asset/images/thumbnails/desk1.jpg",
+    desk2: "asset/images/thumbnails/desk2.jpg",
+    mirror1: "asset/images/thumbnails/mirror1.jpg",
+    mirror2: "asset/images/thumbnails/mirror2.jpg",
+    shelf1: "asset/images/thumbnails/shelf1.jpg",
+    shelf2: "asset/images/thumbnails/shelf2.jpg",
+    // Category fallbacks
+    "center-table": "asset/images/thumbnails/center_table1.jpg",
+    "chair": "asset/images/thumbnails/chair1.jpg",
+    "bed": "asset/images/thumbnails/bed1.jpg",
+    "wardrobe": "asset/images/thumbnails/wardrobe1.jpg",
+    "desk": "asset/images/thumbnails/desk1.jpg",
+    "mirror": "asset/images/thumbnails/mirror1.jpg",
+    "shelf": "asset/images/thumbnails/shelf1.jpg",
+  };
+  
+  return thumbnailMap[modelKey] || "asset/images/thumbnails/default.jpg";
+}
+
 const STORAGE_BUCKET_FILES = new Set([
   "wardrobe_modern.obj",
   "wardrobe_traditional.obj",
@@ -1085,6 +1120,7 @@ function handleDrop(e) {
   placeholderEl.setAttribute("depth", "1.5");
   placeholderEl.setAttribute("color", "#FF8C00");
   placeholderEl.setAttribute("opacity", "0.7");
+  placeholderEl.setAttribute("visible", "true");
   placeholderEl.id = `${furnitureEl.id}-placeholder`;
   furnitureEl.appendChild(placeholderEl);
 
@@ -1096,6 +1132,9 @@ function handleDrop(e) {
   if (furnitureEl.flushToDOM) {
     furnitureEl.flushToDOM();
   }
+  
+  // Ensure placeholder is visible regardless of camera position
+  furnitureEl.setAttribute("visible", "true");
 
   // Now set remaining attributes after entity is in the scene
   // Get model URL from Supabase Storage or local path
@@ -1106,6 +1145,16 @@ function handleDrop(e) {
     "draggable-furniture",
     `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
   );
+  
+  // Check if item should be wall-mounted (mirrors and shelves)
+  const isWallMounted = draggedItem.model.startsWith('mirror') || draggedItem.model.startsWith('shelf');
+  if (isWallMounted) {
+    furnitureEl.setAttribute(
+      "wall-mounted",
+      `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; snapDistance: 0.2`
+    );
+  }
+  
   furnitureEl.setAttribute("clickable-furniture", "");
   furnitureEl.setAttribute("material", "color: #FF8C00"); // Orange color for table
   // Store model key as data attribute for easy retrieval during deletion
@@ -1400,7 +1449,7 @@ function showCenterTableSubcategory() {
           data-model="center_table1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('center_table1')}" alt="${table1Name}" onerror="this.parentElement.innerHTML='🍽️';"></span>
           <div class="model-name">${table1Name}</div>
         </div>
         <div
@@ -1409,7 +1458,7 @@ function showCenterTableSubcategory() {
           data-model="center_table2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('center_table2')}" alt="${table2Name}" onerror="this.parentElement.innerHTML='🍽️';"></span>
           <div class="model-name">${table2Name}</div>
         </div>
       </div>
@@ -1509,7 +1558,7 @@ function showBedSubcategory() {
           data-model="bed1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('bed1')}" alt="${bed1Name}" onerror="this.parentElement.innerHTML='🛏️';"></span>
           <div class="model-name">${bed1Name}</div>
         </div>
         <div
@@ -1518,7 +1567,7 @@ function showBedSubcategory() {
           data-model="bed2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('bed2')}" alt="${bed2Name}" onerror="this.parentElement.innerHTML='🛏️';"></span>
           <div class="model-name">${bed2Name}</div>
         </div>
       </div>
@@ -1555,7 +1604,7 @@ function showChairSubcategory() {
           data-model="chair1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon"><img src="${getThumbnailPath('chair1')}" alt="${chair1Name}" onerror="this.parentElement.innerHTML='🪑';"></span>
           <div class="model-name">${chair1Name}</div>
         </div>
         <div
@@ -1564,7 +1613,7 @@ function showChairSubcategory() {
           data-model="chair2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon"><img src="${getThumbnailPath('chair2')}" alt="${chair2Name}" onerror="this.parentElement.innerHTML='🪑';"></span>
           <div class="model-name">${chair2Name}</div>
         </div>
       </div>
@@ -1601,7 +1650,7 @@ function showDeskSubcategory() {
           data-model="desk1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon"><img src="${getThumbnailPath('desk1')}" alt="${desk1Name}" onerror="this.parentElement.innerHTML='💻';"></span>
           <div class="model-name">${desk1Name}</div>
         </div>
         <div
@@ -1610,7 +1659,7 @@ function showDeskSubcategory() {
           data-model="desk2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon"><img src="${getThumbnailPath('desk2')}" alt="${desk2Name}" onerror="this.parentElement.innerHTML='💻';"></span>
           <div class="model-name">${desk2Name}</div>
         </div>
       </div>
@@ -1647,7 +1696,7 @@ function showMirrorSubcategory() {
           data-model="mirror1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon"><img src="${getThumbnailPath('mirror1')}" alt="${mirror1Name}" onerror="this.parentElement.innerHTML='🪞';"></span>
           <div class="model-name">${mirror1Name}</div>
         </div>
         <div
@@ -1656,7 +1705,7 @@ function showMirrorSubcategory() {
           data-model="mirror2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon"><img src="${getThumbnailPath('mirror2')}" alt="${mirror2Name}" onerror="this.parentElement.innerHTML='🪞';"></span>
           <div class="model-name">${mirror2Name}</div>
         </div>
       </div>
@@ -1693,7 +1742,7 @@ function showShelfSubcategory() {
           data-model="shelf1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon"><img src="${getThumbnailPath('shelf1')}" alt="${shelf1Name}" onerror="this.parentElement.innerHTML='📦';"></span>
           <div class="model-name">${shelf1Name}</div>
         </div>
         <div
@@ -1702,7 +1751,7 @@ function showShelfSubcategory() {
           data-model="shelf2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon"><img src="${getThumbnailPath('shelf2')}" alt="${shelf2Name}" onerror="this.parentElement.innerHTML='📦';"></span>
           <div class="model-name">${shelf2Name}</div>
         </div>
       </div>
@@ -1759,6 +1808,95 @@ function closeControlPanel() {
   const panel = document.getElementById("furniture-control-panel");
   panel.style.display = "none";
   selectedFurniture = null;
+}
+
+/**
+ * Show item details (dimensions, type, price, etc.)
+ */
+function showItemDetails() {
+  if (!selectedFurniture) return;
+  
+  const furniture = document.getElementById(selectedFurniture);
+  if (!furniture) return;
+  
+  const modelKey = furniture.getAttribute("data-model-key");
+  if (!modelKey) return;
+  
+  // Get item name
+  const itemName = getItemName(modelKey);
+  
+  // Get price
+  const price = PRICE_LIST[modelKey] || 0;
+  
+  // Get dimensions from draggable component if available
+  const draggableComponent = furniture.components["draggable-furniture"];
+  let dimensions = "Calculating...";
+  
+  if (draggableComponent && draggableComponent.dimensionsCalculated) {
+    const width = (draggableComponent.actualWidth || draggableComponent.data.objectWidth).toFixed(2);
+    const length = (draggableComponent.actualLength || draggableComponent.data.objectLength).toFixed(2);
+    // Try to get height from bounding box
+    const object3D = furniture.object3D;
+    let height = "N/A";
+    
+    if (object3D) {
+      const box = new THREE.Box3();
+      box.setFromObject(object3D);
+      if (box.min && box.max) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        height = Math.abs(size.y).toFixed(2);
+      }
+    }
+    
+    dimensions = `W: ${width}m × L: ${length}m × H: ${height}m`;
+  }
+  
+  // Get category
+  let category = "Furniture";
+  if (modelKey.includes("table")) category = "Table";
+  else if (modelKey.includes("bed")) category = "Bed";
+  else if (modelKey.includes("chair")) category = "Seating";
+  else if (modelKey.includes("desk")) category = "Desk";
+  else if (modelKey.includes("wardrobe")) category = "Storage";
+  else if (modelKey.includes("mirror")) category = "Mirror";
+  else if (modelKey.includes("shelf")) category = "Shelf";
+  
+  // Check if wall-mounted
+  const isWallMounted = furniture.components["wall-mounted"] !== undefined;
+  const mountType = isWallMounted ? "Wall-mounted" : "Floor-standing";
+  
+  // Build details content
+  const detailsContent = `
+    <div class="item-details-content">
+      <h4 class="item-details-title">${itemName}</h4>
+      <div class="item-details-section">
+        <div class="item-details-row">
+          <span class="item-details-label">Category:</span>
+          <span class="item-details-value">${category}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Type:</span>
+          <span class="item-details-value">${mountType}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Dimensions:</span>
+          <span class="item-details-value">${dimensions}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Estimated Price:</span>
+          <span class="item-details-value">${peso(price)}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Model Key:</span>
+          <span class="item-details-value">${modelKey}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Show in dialog or expandable panel
+  showDialog(detailsContent, "Item Details");
 }
 
 function rotateFurnitureLeft() {
@@ -2027,10 +2165,14 @@ function restoreRoom(roomData) {
       placeholderEl.setAttribute("depth", "1.5");
       placeholderEl.setAttribute("color", "#FF8C00");
       placeholderEl.setAttribute("opacity", "0.7");
+      placeholderEl.setAttribute("visible", "true");
       placeholderEl.id = `${furnitureEl.id}-placeholder`;
       furnitureEl.appendChild(placeholderEl);
 
       furnitureContainer.appendChild(furnitureEl);
+      
+      // Ensure furniture is visible regardless of camera position
+      furnitureEl.setAttribute("visible", "true");
 
       if (furnitureEl.flushToDOM) {
         furnitureEl.flushToDOM();
@@ -2043,6 +2185,16 @@ function restoreRoom(roomData) {
         "draggable-furniture",
         `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
       );
+      
+      // Check if item should be wall-mounted (mirrors and shelves)
+      const isWallMounted = itemData.model_key.startsWith('mirror') || itemData.model_key.startsWith('shelf');
+      if (isWallMounted) {
+        furnitureEl.setAttribute(
+          "wall-mounted",
+          `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; snapDistance: 0.2`
+        );
+      }
+      
       furnitureEl.setAttribute("clickable-furniture", "");
       furnitureEl.setAttribute("material", "color: #FF8C00");
 
@@ -2528,3 +2680,4 @@ window.showChairSubcategory = showChairSubcategory;
 window.showDeskSubcategory = showDeskSubcategory;
 window.showMirrorSubcategory = showMirrorSubcategory;
 window.showShelfSubcategory = showShelfSubcategory;
+window.showItemDetails = showItemDetails;
