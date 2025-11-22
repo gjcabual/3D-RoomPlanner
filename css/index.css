@@ -1,5 +1,11 @@
-body {
+html, body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
@@ -9,8 +15,8 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: auto;
-  padding: 15px;
+  overflow: hidden;
+  padding: 10px;
   box-sizing: border-box;
 }
 
@@ -36,21 +42,27 @@ body::before {
   text-align: center;
   max-width: 550px;
   width: 100%;
-  padding: 30px 25px;
+  padding: 20px 25px;
   margin: 0 auto;
   box-sizing: border-box;
+  max-height: calc(100vh - 20px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .main-title {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 12px;
+  gap: 3px;
+  margin-bottom: 8px;
 }
 
 .title-3d {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.05em;
@@ -60,7 +72,7 @@ body::before {
 }
 
 .title-room {
-  font-size: 1.75rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.15em;
@@ -70,8 +82,8 @@ body::before {
 
 .subtitle {
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 28px;
-  font-size: 0.9rem;
+  margin-bottom: 18px;
+  font-size: 0.85rem;
   font-weight: 400;
   letter-spacing: 0.05em;
 }
@@ -79,22 +91,23 @@ body::before {
 /* Room Visualization Container */
 .room-visualization {
   position: relative;
-  width: 380px;
-  height: 380px;
-  margin: 0 auto 28px;
+  width: 320px;
+  height: 320px;
+  margin: 0 auto 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 380px;
+  min-height: 320px;
   max-width: 100%;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 /* 3D Wireframe Cube */
 .wireframe-cube {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 150px;
+  height: 150px;
   transform-style: preserve-3d;
   transform: rotateX(-20deg) rotateY(45deg);
   animation: float 6s ease-in-out infinite;
@@ -111,40 +124,40 @@ body::before {
 
 .cube-face {
   position: absolute;
-  width: 180px;
-  height: 180px;
-  border: 3px solid #ffffff;
+  width: 150px;
+  height: 150px;
+  border: 2.5px solid #ffffff;
   background: transparent;
   opacity: 0.9;
 }
 
 .cube-front {
-  transform: translateZ(90px);
+  transform: translateZ(75px);
   border-color: #ffffff;
 }
 
 .cube-back {
-  transform: translateZ(-90px) rotateY(180deg);
+  transform: translateZ(-75px) rotateY(180deg);
   border-color: rgba(255, 255, 255, 0.6);
 }
 
 .cube-right {
-  transform: rotateY(90deg) translateZ(90px);
+  transform: rotateY(90deg) translateZ(75px);
   border-color: rgba(255, 255, 255, 0.8);
 }
 
 .cube-left {
-  transform: rotateY(-90deg) translateZ(90px);
+  transform: rotateY(-90deg) translateZ(75px);
   border-color: rgba(255, 255, 255, 0.8);
 }
 
 .cube-top {
-  transform: rotateX(90deg) translateZ(90px);
+  transform: rotateX(90deg) translateZ(75px);
   border-color: rgba(255, 255, 255, 0.7);
 }
 
 .cube-bottom {
-  transform: rotateX(-90deg) translateZ(90px);
+  transform: rotateX(-90deg) translateZ(75px);
   border-color: rgba(255, 255, 255, 0.5);
 }
 
@@ -165,12 +178,12 @@ body::before {
 }
 
 .dimension-label {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  min-width: 28px;
+  min-width: 25px;
 }
 
 .dimension-input {
@@ -178,11 +191,11 @@ body::before {
   border: none;
   border-bottom: 2px solid rgba(255, 255, 255, 0.5);
   color: #ffffff;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  width: 70px;
+  width: 60px;
   text-align: center;
-  padding: 4px 0;
+  padding: 3px 0;
   outline: none;
   transition: all 0.3s ease;
   font-family: inherit;
@@ -237,8 +250,8 @@ body::before {
   background: #ffffff;
   color: #0a0a0a;
   border: none;
-  padding: 12px 36px;
-  font-size: 0.9rem;
+  padding: 10px 30px;
+  font-size: 0.85rem;
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
@@ -246,7 +259,7 @@ body::before {
   font-family: inherit;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .start-button:hover {
@@ -268,9 +281,9 @@ body::before {
 
 /* Hint */
 .hint {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.5);
-  margin-top: 12px;
+  margin-top: 6px;
   font-weight: 400;
 }
 
@@ -425,5 +438,265 @@ body::before {
   .dimension-input {
     width: 50px;
     font-size: 1rem;
+  }
+}
+
+/* Media queries for small viewport heights */
+@media (max-height: 700px) {
+  body {
+    padding: 10px;
+  }
+
+  .intro-container {
+    padding: 20px 25px;
+    max-height: calc(100vh - 20px);
+  }
+
+  .main-title {
+    margin-bottom: 8px;
+  }
+
+  .title-3d {
+    font-size: 2rem;
+  }
+
+  .title-room {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+  }
+
+  .room-visualization {
+    width: 320px;
+    height: 320px;
+    min-height: 320px;
+    margin: 0 auto 20px;
+  }
+
+  .wireframe-cube {
+    width: 150px;
+    height: 150px;
+  }
+
+  .cube-face {
+    width: 150px;
+    height: 150px;
+  }
+
+  .cube-front {
+    transform: translateZ(75px);
+  }
+
+  .cube-back {
+    transform: translateZ(-75px) rotateY(180deg);
+  }
+
+  .cube-right {
+    transform: rotateY(90deg) translateZ(75px);
+  }
+
+  .cube-left {
+    transform: rotateY(-90deg) translateZ(75px);
+  }
+
+  .cube-top {
+    transform: rotateX(90deg) translateZ(75px);
+  }
+
+  .cube-bottom {
+    transform: rotateX(-90deg) translateZ(75px);
+  }
+
+  .start-button {
+    margin-bottom: 8px;
+    padding: 10px 30px;
+    font-size: 0.85rem;
+  }
+
+  .hint {
+    font-size: 0.7rem;
+    margin-top: 8px;
+  }
+}
+
+@media (max-height: 600px) {
+  body {
+    padding: 8px;
+  }
+
+  .intro-container {
+    padding: 15px 20px;
+    max-height: calc(100vh - 16px);
+  }
+
+  .main-title {
+    margin-bottom: 6px;
+  }
+
+  .title-3d {
+    font-size: 1.8rem;
+  }
+
+  .title-room {
+    font-size: 1.3rem;
+  }
+
+  .subtitle {
+    margin-bottom: 15px;
+    font-size: 0.8rem;
+  }
+
+  .room-visualization {
+    width: 280px;
+    height: 280px;
+    min-height: 280px;
+    margin: 0 auto 15px;
+  }
+
+  .wireframe-cube {
+    width: 130px;
+    height: 130px;
+  }
+
+  .cube-face {
+    width: 130px;
+    height: 130px;
+  }
+
+  .cube-front {
+    transform: translateZ(65px);
+  }
+
+  .cube-back {
+    transform: translateZ(-65px) rotateY(180deg);
+  }
+
+  .cube-right {
+    transform: rotateY(90deg) translateZ(65px);
+  }
+
+  .cube-left {
+    transform: rotateY(-90deg) translateZ(65px);
+  }
+
+  .cube-top {
+    transform: rotateX(90deg) translateZ(65px);
+  }
+
+  .cube-bottom {
+    transform: rotateX(-90deg) translateZ(65px);
+  }
+
+  .dimension-label {
+    font-size: 1.1rem;
+  }
+
+  .dimension-input {
+    width: 55px;
+    font-size: 1.1rem;
+  }
+
+  .start-button {
+    margin-bottom: 6px;
+    padding: 8px 24px;
+    font-size: 0.8rem;
+  }
+
+  .hint {
+    font-size: 0.65rem;
+    margin-top: 6px;
+  }
+}
+
+@media (max-height: 500px) {
+  body {
+    padding: 5px;
+  }
+
+  .intro-container {
+    padding: 10px 15px;
+    max-height: calc(100vh - 10px);
+  }
+
+  .main-title {
+    margin-bottom: 4px;
+  }
+
+  .title-3d {
+    font-size: 1.5rem;
+  }
+
+  .title-room {
+    font-size: 1.1rem;
+  }
+
+  .subtitle {
+    margin-bottom: 10px;
+    font-size: 0.75rem;
+  }
+
+  .room-visualization {
+    width: 240px;
+    height: 240px;
+    min-height: 240px;
+    margin: 0 auto 10px;
+  }
+
+  .wireframe-cube {
+    width: 110px;
+    height: 110px;
+  }
+
+  .cube-face {
+    width: 110px;
+    height: 110px;
+  }
+
+  .cube-front {
+    transform: translateZ(55px);
+  }
+
+  .cube-back {
+    transform: translateZ(-55px) rotateY(180deg);
+  }
+
+  .cube-right {
+    transform: rotateY(90deg) translateZ(55px);
+  }
+
+  .cube-left {
+    transform: rotateY(-90deg) translateZ(55px);
+  }
+
+  .cube-top {
+    transform: rotateX(90deg) translateZ(55px);
+  }
+
+  .cube-bottom {
+    transform: rotateX(-90deg) translateZ(55px);
+  }
+
+  .dimension-label {
+    font-size: 1rem;
+    min-width: 22px;
+  }
+
+  .dimension-input {
+    width: 50px;
+    font-size: 1rem;
+  }
+
+  .start-button {
+    margin-bottom: 4px;
+    padding: 6px 20px;
+    font-size: 0.75rem;
+  }
+
+  .hint {
+    font-size: 0.6rem;
+    margin-top: 4px;
   }
 }

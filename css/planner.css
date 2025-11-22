@@ -19,6 +19,29 @@ body {
   z-index: 1500;
   transition: left 0.3s ease;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
+}
+
+/* Custom Scrollbar for Side Panel - Webkit (Chrome, Safari, Edge) */
+#side-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#side-panel::-webkit-scrollbar-track {
+  background: rgba(15, 15, 15, 0.5);
+  border-radius: 4px;
+}
+
+#side-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(15, 15, 15, 0.3);
+}
+
+#side-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 #side-panel.open {
@@ -319,9 +342,32 @@ body {
 .cost-body {
   padding: 15px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   background: rgba(15, 15, 15, 0.96);
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
+}
+
+/* Custom Scrollbar for Cost Body - Webkit */
+.cost-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cost-body::-webkit-scrollbar-track {
+  background: rgba(15, 15, 15, 0.5);
+  border-radius: 4px;
+}
+
+.cost-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(15, 15, 15, 0.3);
+}
+
+.cost-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .cost-item {
@@ -433,8 +479,31 @@ body {
 .sources-panel-body {
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
+}
+
+/* Custom Scrollbar for Sources Panel - Webkit */
+.sources-panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sources-panel-body::-webkit-scrollbar-track {
+  background: rgba(15, 15, 15, 0.5);
+  border-radius: 4px;
+}
+
+.sources-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(15, 15, 15, 0.3);
+}
+
+.sources-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .sources-empty {
@@ -605,7 +674,30 @@ body {
   z-index: 1501;
   transition: left 0.3s ease;
   overflow-y: auto;
+  overflow-x: hidden;
   display: block;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
+}
+
+/* Custom Scrollbar for Resize Dimension Panel - Webkit */
+#resize-dimension-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#resize-dimension-panel::-webkit-scrollbar-track {
+  background: rgba(15, 15, 15, 0.5);
+  border-radius: 4px;
+}
+
+#resize-dimension-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(15, 15, 15, 0.3);
+}
+
+#resize-dimension-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 #resize-dimension-panel.open {
