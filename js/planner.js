@@ -26,6 +26,10 @@ let PRICE_LIST = {}; // model_key -> estimated_price
 let ITEM_METADATA = {}; // model_key -> {name, model_file_path}
 let ITEM_PRICE_SOURCES = {}; // model_key -> [{store, price}]
 
+// Supabase timeout configuration (in milliseconds)
+const SUPABASE_TIMEOUT = 10000; // 10 seconds
+const MODEL_LOAD_TIMEOUT = 30000; // 30 seconds for model files
+
 const STORAGE_MODEL_FILES = {
   table1: "table1.obj",
   center_table1: "center_table1.obj",
@@ -33,6 +37,16 @@ const STORAGE_MODEL_FILES = {
   wardrobe1: "wardrobe_modern.obj",
   wardrobe2: "wardrobe_traditional.obj",
   wardrobe3: "wardrobe_openframe.obj",
+  bed1: "bed1.obj",
+  bed2: "bed2.obj",
+  chair1: "chair1.obj",
+  chair2: "chair2.obj",
+  desk1: "desk1.obj",
+  desk2: "desk2.obj",
+  mirror1: "mirror1.obj",
+  mirror2: "mirror2.obj",
+  shelf1: "shelf1.obj",
+  shelf2: "shelf2.obj",
 };
 
 const STORAGE_BUCKET_FILES = new Set([
@@ -50,6 +64,16 @@ const FALLBACK_ITEM_NAMES = {
   wardrobe2: "Wardrobe Traditional",
   wardrobe3: "Wardrobe Open Frame",
   table1: "Center Table",
+  bed1: "Bed 1",
+  bed2: "Bed 2",
+  chair1: "Chair 1",
+  chair2: "Chair 2",
+  desk1: "Desk 1",
+  desk2: "Desk 2",
+  mirror1: "Mirror 1",
+  mirror2: "Mirror 2",
+  shelf1: "Shelf 1",
+  shelf2: "Shelf 2",
 };
 
 const FALLBACK_ITEM_METADATA = {
@@ -61,7 +85,208 @@ const FALLBACK_ITEM_METADATA = {
     name: "Center Table 2",
     model_file_path: "center_table2.obj",
   },
+  bed1: {
+    name: "Bed 1",
+    model_file_path: "bed1.obj",
+  },
+  bed2: {
+    name: "Bed 2",
+    model_file_path: "bed2.obj",
+  },
+  chair1: {
+    name: "Chair 1",
+    model_file_path: "chair1.obj",
+  },
+  chair2: {
+    name: "Chair 2",
+    model_file_path: "chair2.obj",
+  },
+  desk1: {
+    name: "Desk 1",
+    model_file_path: "desk1.obj",
+  },
+  desk2: {
+    name: "Desk 2",
+    model_file_path: "desk2.obj",
+  },
+  mirror1: {
+    name: "Mirror 1",
+    model_file_path: "mirror1.obj",
+  },
+  mirror2: {
+    name: "Mirror 2",
+    model_file_path: "mirror2.obj",
+  },
+  shelf1: {
+    name: "Shelf 1",
+    model_file_path: "shelf1.obj",
+  },
+  shelf2: {
+    name: "Shelf 2",
+    model_file_path: "shelf2.obj",
+  },
 };
+
+// Dummy prices for all items (used when Supabase fails or no price available)
+const DUMMY_PRICES = {
+  // Tables
+  table1: {
+    estimatedPrice: 8500,
+    sources: [
+      { store: "Default Store", price: 8500 }
+    ]
+  },
+  center_table1: {
+    estimatedPrice: 12000,
+    sources: [
+      { store: "All-Home", price: 11500 },
+      { store: "Wilcon Depot", price: 12500 },
+      { store: "Gaisano", price: 12000 }
+    ]
+  },
+  center_table2: {
+    estimatedPrice: 15000,
+    sources: [
+      { store: "All-Home", price: 14500 },
+      { store: "Wilcon Depot", price: 15500 },
+      { store: "Gaisano", price: 15000 }
+    ]
+  },
+  // Wardrobes
+  wardrobe1: {
+    estimatedPrice: 11950,
+    sources: [
+      { store: "All-Home", price: 11500 },
+      { store: "Wilcon Depot", price: 12500 },
+      { store: "Gaisano", price: 12000 },
+      { store: "Local suppliers", price: 11800 }
+    ]
+  },
+  wardrobe2: {
+    estimatedPrice: 14950,
+    sources: [
+      { store: "All-Home", price: 14500 },
+      { store: "Wilcon Depot", price: 15500 },
+      { store: "Gaisano", price: 15000 },
+      { store: "Local suppliers", price: 14800 }
+    ]
+  },
+  wardrobe3: {
+    estimatedPrice: 17950,
+    sources: [
+      { store: "All-Home", price: 17500 },
+      { store: "Wilcon Depot", price: 18500 },
+      { store: "Gaisano", price: 18000 },
+      { store: "Local suppliers", price: 17800 }
+    ]
+  },
+  // Beds
+  bed1: {
+    estimatedPrice: 25000,
+    sources: [
+      { store: "All-Home", price: 24000 },
+      { store: "Wilcon Depot", price: 26000 },
+      { store: "Gaisano", price: 25000 }
+    ]
+  },
+  bed2: {
+    estimatedPrice: 30000,
+    sources: [
+      { store: "All-Home", price: 29000 },
+      { store: "Wilcon Depot", price: 31000 },
+      { store: "Gaisano", price: 30000 }
+    ]
+  },
+  // Chairs
+  chair1: {
+    estimatedPrice: 3500,
+    sources: [
+      { store: "All-Home", price: 3400 },
+      { store: "Wilcon Depot", price: 3600 },
+      { store: "Gaisano", price: 3500 }
+    ]
+  },
+  chair2: {
+    estimatedPrice: 4500,
+    sources: [
+      { store: "All-Home", price: 4400 },
+      { store: "Wilcon Depot", price: 4600 },
+      { store: "Gaisano", price: 4500 }
+    ]
+  },
+  // Desks
+  desk1: {
+    estimatedPrice: 18000,
+    sources: [
+      { store: "All-Home", price: 17500 },
+      { store: "Wilcon Depot", price: 18500 },
+      { store: "Gaisano", price: 18000 }
+    ]
+  },
+  desk2: {
+    estimatedPrice: 22000,
+    sources: [
+      { store: "All-Home", price: 21500 },
+      { store: "Wilcon Depot", price: 22500 },
+      { store: "Gaisano", price: 22000 }
+    ]
+  },
+  // Mirrors
+  mirror1: {
+    estimatedPrice: 5500,
+    sources: [
+      { store: "All-Home", price: 5400 },
+      { store: "Wilcon Depot", price: 5600 },
+      { store: "Gaisano", price: 5500 }
+    ]
+  },
+  mirror2: {
+    estimatedPrice: 7500,
+    sources: [
+      { store: "All-Home", price: 7400 },
+      { store: "Wilcon Depot", price: 7600 },
+      { store: "Gaisano", price: 7500 }
+    ]
+  },
+  // Shelves
+  shelf1: {
+    estimatedPrice: 8000,
+    sources: [
+      { store: "All-Home", price: 7800 },
+      { store: "Wilcon Depot", price: 8200 },
+      { store: "Gaisano", price: 8000 }
+    ]
+  },
+  shelf2: {
+    estimatedPrice: 10000,
+    sources: [
+      { store: "All-Home", price: 9800 },
+      { store: "Wilcon Depot", price: 10200 },
+      { store: "Gaisano", price: 10000 }
+    ]
+  },
+};
+
+/**
+ * Create a timeout promise
+ * @param {number} ms - Timeout in milliseconds
+ * @returns {Promise} - Promise that rejects after timeout
+ */
+function createTimeout(ms) {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+  });
+}
+
+/**
+ * Fetch with timeout wrapper
+ * @param {Promise} promise - Promise to wrap
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise} - Promise with timeout
+ */
+async function withTimeout(promise, timeoutMs) {
+  return Promise.race([promise, createTimeout(timeoutMs)]);
+}
 
 /**
  * Calculate estimated price from prices array using arithmetic mean
@@ -75,36 +300,48 @@ function calculateEstimatedPrice(prices) {
 }
 
 /**
- * Load items and prices from Supabase
+ * Load items and prices from Supabase with fallbacks
  */
 async function loadItemsAndPrices() {
+  let useFallbacks = false;
+  
   try {
     ITEMS_DATA = {};
     PRICE_LIST = {};
     ITEM_METADATA = {};
     ITEM_PRICE_SOURCES = {};
 
-    // Fetch all items
-    const { data: items, error: itemsError } = await supabase
-      .from("items")
-      .select("*");
-
-    if (itemsError) {
-      console.error("Error fetching items:", itemsError);
-      return;
+    // Fetch all items with timeout
+    let items = [];
+    let itemsError = null;
+    
+    try {
+      const itemsPromise = supabase.from("items").select("*");
+      const result = await withTimeout(itemsPromise, SUPABASE_TIMEOUT);
+      items = result.data || [];
+      itemsError = result.error;
+    } catch (timeoutError) {
+      console.warn("Items fetch timed out, using fallbacks:", timeoutError);
+      itemsError = timeoutError;
+      useFallbacks = true;
     }
 
-    // Store items by model_key
-    items.forEach((item) => {
-      ITEMS_DATA[item.model_key] = item;
-      ITEM_METADATA[item.model_key] = {
-        name: item.name,
-        model_file_path:
-          item.model_file_path || STORAGE_MODEL_FILES[item.model_key] || null,
-      };
-    });
+    if (itemsError || !items || items.length === 0) {
+      console.warn("Error fetching items or no items found, using fallbacks:", itemsError);
+      useFallbacks = true;
+    } else {
+      // Store items by model_key
+      items.forEach((item) => {
+        ITEMS_DATA[item.model_key] = item;
+        ITEM_METADATA[item.model_key] = {
+          name: item.name,
+          model_file_path:
+            item.model_file_path || STORAGE_MODEL_FILES[item.model_key] || null,
+        };
+      });
+    }
 
-    // Apply fallback metadata for known models
+    // Apply fallback metadata for all known models
     Object.keys(STORAGE_MODEL_FILES).forEach((key) => {
       if (!ITEM_METADATA[key]) {
         ITEM_METADATA[key] = {
@@ -119,64 +356,103 @@ async function loadItemsAndPrices() {
       }
     });
 
-    // Fetch all prices
-    const { data: prices, error: pricesError } = await supabase
-      .from("item_prices")
-      .select("*, items(model_key)");
-
-    if (pricesError) {
-      console.error("Error fetching prices:", pricesError);
-      return;
+    // Fetch all prices with timeout
+    let prices = [];
+    let pricesError = null;
+    
+    try {
+      const pricesPromise = supabase.from("item_prices").select("*, items(model_key)");
+      const result = await withTimeout(pricesPromise, SUPABASE_TIMEOUT);
+      prices = result.data || [];
+      pricesError = result.error;
+    } catch (timeoutError) {
+      console.warn("Prices fetch timed out, using fallbacks:", timeoutError);
+      pricesError = timeoutError;
+      useFallbacks = true;
     }
 
-    // Organize prices by model_key and calculate estimated prices
-    const pricesByModel = {};
-    prices.forEach((price) => {
-      const modelKey =
-        price.items?.model_key ||
-        (Array.isArray(price.items) && price.items[0]?.model_key) ||
-        null;
+    if (!pricesError && prices && prices.length > 0) {
+      // Organize prices by model_key and calculate estimated prices
+      const pricesByModel = {};
+      prices.forEach((price) => {
+        const modelKey =
+          price.items?.model_key ||
+          (Array.isArray(price.items) && price.items[0]?.model_key) ||
+          null;
 
-      if (!modelKey) {
-        console.warn("Price record missing model_key:", price);
-        return;
-      }
+        if (!modelKey) {
+          console.warn("Price record missing model_key:", price);
+          return;
+        }
 
-      if (!pricesByModel[modelKey]) {
-        pricesByModel[modelKey] = [];
-      }
-      pricesByModel[modelKey].push(price.price);
+        if (!pricesByModel[modelKey]) {
+          pricesByModel[modelKey] = [];
+        }
+        pricesByModel[modelKey].push(price.price);
 
-      if (!ITEM_PRICE_SOURCES[modelKey]) {
-        ITEM_PRICE_SOURCES[modelKey] = [];
-      }
-      ITEM_PRICE_SOURCES[modelKey].push({
-        store: price.store_name,
-        price: price.price,
+        if (!ITEM_PRICE_SOURCES[modelKey]) {
+          ITEM_PRICE_SOURCES[modelKey] = [];
+        }
+        ITEM_PRICE_SOURCES[modelKey].push({
+          store: price.store_name,
+          price: price.price,
+        });
       });
-    });
 
-    // Calculate estimated prices
-    Object.keys(pricesByModel).forEach((modelKey) => {
-      PRICE_LIST[modelKey] = calculateEstimatedPrice(pricesByModel[modelKey]);
-    });
+      // Calculate estimated prices
+      Object.keys(pricesByModel).forEach((modelKey) => {
+        PRICE_LIST[modelKey] = calculateEstimatedPrice(pricesByModel[modelKey]);
+      });
+    }
 
-    // Ensure every known item has an entry (default to 0)
+    // Apply dummy prices for items without prices or if using fallbacks
     Object.keys(ITEM_METADATA).forEach((key) => {
-      if (typeof PRICE_LIST[key] === "undefined") {
-        PRICE_LIST[key] = 0;
+      if (typeof PRICE_LIST[key] === "undefined" || PRICE_LIST[key] === 0 || useFallbacks) {
+        // Use dummy price if available, otherwise default to 0
+        if (DUMMY_PRICES[key]) {
+          PRICE_LIST[key] = DUMMY_PRICES[key].estimatedPrice;
+          // Only set sources if we don't have any from database
+          if (!ITEM_PRICE_SOURCES[key] || ITEM_PRICE_SOURCES[key].length === 0) {
+            ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
+          }
+        } else {
+          PRICE_LIST[key] = 0;
+        }
       }
+      // Ensure sources array exists
       if (!ITEM_PRICE_SOURCES[key]) {
         ITEM_PRICE_SOURCES[key] = [];
       }
     });
+
+    if (useFallbacks) {
+      console.info("Using fallback data (dummy prices and metadata) due to Supabase issues");
+    }
   } catch (error) {
-    console.error("Error loading items and prices:", error);
+    console.error("Error loading items and prices, using fallbacks:", error);
+    // Apply all fallbacks on error
+    Object.keys(STORAGE_MODEL_FILES).forEach((key) => {
+      if (!ITEM_METADATA[key]) {
+        ITEM_METADATA[key] = {
+          name: FALLBACK_ITEM_NAMES[key] || key,
+          model_file_path: STORAGE_MODEL_FILES[key] || null,
+        };
+      }
+      if (typeof PRICE_LIST[key] === "undefined" || PRICE_LIST[key] === 0) {
+        if (DUMMY_PRICES[key]) {
+          PRICE_LIST[key] = DUMMY_PRICES[key].estimatedPrice;
+          ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
+        } else {
+          PRICE_LIST[key] = 0;
+          ITEM_PRICE_SOURCES[key] = [];
+        }
+      }
+    });
   }
 }
 
 /**
- * Get model file URL from Supabase Storage or local path
+ * Get model file URL from Supabase Storage or local path with fallbacks
  * @param {string} modelKey - Model key (e.g., 'wardrobe1', 'table1')
  * @returns {string} - Model file URL
  */
@@ -186,22 +462,31 @@ function getModelUrl(modelKey) {
   const filePath = metadata?.model_file_path || fallbackFile;
 
   if (!filePath) {
-    return `models/${modelKey}.obj`;
+    // Try to get from model analyzer if available
+    if (typeof getLocalModelPath === 'function') {
+      return getLocalModelPath(modelKey);
+    }
+    // Final fallback
+    return `asset/models/${modelKey}.obj`;
   }
 
   // Check if file is stored in Supabase bucket
   if (STORAGE_BUCKET_FILES.has(filePath)) {
-    // Get public URL from Supabase Storage
-    const { data } = supabase.storage
-      .from("wardrobe-models")
-      .getPublicUrl(filePath);
-    if (data?.publicUrl) {
-      return data.publicUrl;
+    try {
+      // Get public URL from Supabase Storage with timeout
+      const { data } = supabase.storage
+        .from("wardrobe-models")
+        .getPublicUrl(filePath);
+      if (data?.publicUrl) {
+        return data.publicUrl;
+      }
+    } catch (error) {
+      console.warn(`Failed to get Supabase Storage URL for ${filePath}, using local fallback:`, error);
     }
   }
 
-  // Fallback to local path for table1 or if storage URL fails
-  return `models/${filePath}`;
+  // Fallback to local path in asset/models folder
+  return `asset/models/${filePath}`;
 }
 
 /**
@@ -826,13 +1111,53 @@ function handleDrop(e) {
   // Store model key as data attribute for easy retrieval during deletion
   furnitureEl.setAttribute("data-model-key", draggedItem.model);
 
+  // Set up model loading timeout and error handling
+  let modelLoadTimeout;
+  let modelLoaded = false;
+
   // Listen for model-loaded event to hide placeholder
-  furnitureEl.addEventListener("model-loaded", function () {
+  const onModelLoaded = function () {
+    if (modelLoaded) return; // Prevent duplicate calls
+    modelLoaded = true;
+    clearTimeout(modelLoadTimeout);
+    
     const placeholder = furnitureEl.querySelector(
       `#${furnitureEl.id}-placeholder`
     );
     if (placeholder) {
       placeholder.remove();
+    }
+  };
+
+  furnitureEl.addEventListener("model-loaded", onModelLoaded);
+
+  // Set timeout for model loading
+  modelLoadTimeout = setTimeout(() => {
+    if (!modelLoaded) {
+      console.warn(`Model load timeout for ${draggedItem.model} at ${modelUrl}`);
+      // Keep placeholder visible but make it semi-transparent to indicate loading issue
+      const placeholder = furnitureEl.querySelector(
+        `#${furnitureEl.id}-placeholder`
+      );
+      if (placeholder) {
+        placeholder.setAttribute("opacity", "0.5");
+        placeholder.setAttribute("color", "#888888");
+        // Optionally show error message
+        console.warn(`Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`);
+      }
+    }
+  }, MODEL_LOAD_TIMEOUT);
+
+  // Listen for model error
+  furnitureEl.addEventListener("model-error", function (e) {
+    clearTimeout(modelLoadTimeout);
+    console.error(`Model load error for ${draggedItem.model}:`, e.detail);
+    const placeholder = furnitureEl.querySelector(
+      `#${furnitureEl.id}-placeholder`
+    );
+    if (placeholder) {
+      placeholder.setAttribute("opacity", "0.5");
+      placeholder.setAttribute("color", "#FF6B6B");
     }
   });
 
@@ -1155,6 +1480,236 @@ function showWardrobeSubcategory() {
   sidePanel.innerHTML = wardrobeContent;
 
   // Re-initialize drag and drop for new items
+  initializeDragAndDrop();
+  updateSubcategoryUI();
+}
+
+function showBedSubcategory() {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return;
+
+  if (!sidePanel.dataset.originalContent) {
+    sidePanel.dataset.originalContent = sidePanel.innerHTML;
+  }
+
+  const bed1Name = getItemName("bed1");
+  const bed2Name = getItemName("bed2");
+
+  const bedContent = `
+    <div class="panel-header">
+      <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
+      <h3>🛏️ Bed Options</h3>
+      <small>Choose a bed style</small>
+    </div>
+    <div class="model-category">
+      <div class="model-grid">
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="bed1"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🛏️</span>
+          <div class="model-name">${bed1Name}</div>
+        </div>
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="bed2"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🛏️</span>
+          <div class="model-name">${bed2Name}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  sidePanel.innerHTML = bedContent;
+  initializeDragAndDrop();
+  updateSubcategoryUI();
+}
+
+function showChairSubcategory() {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return;
+
+  if (!sidePanel.dataset.originalContent) {
+    sidePanel.dataset.originalContent = sidePanel.innerHTML;
+  }
+
+  const chair1Name = getItemName("chair1");
+  const chair2Name = getItemName("chair2");
+
+  const chairContent = `
+    <div class="panel-header">
+      <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
+      <h3>🪑 Chair Options</h3>
+      <small>Choose a chair style</small>
+    </div>
+    <div class="model-category">
+      <div class="model-grid">
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="chair1"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🪑</span>
+          <div class="model-name">${chair1Name}</div>
+        </div>
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="chair2"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🪑</span>
+          <div class="model-name">${chair2Name}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  sidePanel.innerHTML = chairContent;
+  initializeDragAndDrop();
+  updateSubcategoryUI();
+}
+
+function showDeskSubcategory() {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return;
+
+  if (!sidePanel.dataset.originalContent) {
+    sidePanel.dataset.originalContent = sidePanel.innerHTML;
+  }
+
+  const desk1Name = getItemName("desk1");
+  const desk2Name = getItemName("desk2");
+
+  const deskContent = `
+    <div class="panel-header">
+      <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
+      <h3>💻 Desk Options</h3>
+      <small>Choose a desk style</small>
+    </div>
+    <div class="model-category">
+      <div class="model-grid">
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="desk1"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">💻</span>
+          <div class="model-name">${desk1Name}</div>
+        </div>
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="desk2"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">💻</span>
+          <div class="model-name">${desk2Name}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  sidePanel.innerHTML = deskContent;
+  initializeDragAndDrop();
+  updateSubcategoryUI();
+}
+
+function showMirrorSubcategory() {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return;
+
+  if (!sidePanel.dataset.originalContent) {
+    sidePanel.dataset.originalContent = sidePanel.innerHTML;
+  }
+
+  const mirror1Name = getItemName("mirror1");
+  const mirror2Name = getItemName("mirror2");
+
+  const mirrorContent = `
+    <div class="panel-header">
+      <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
+      <h3>🪞 Mirror Options</h3>
+      <small>Choose a mirror style</small>
+    </div>
+    <div class="model-category">
+      <div class="model-grid">
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="mirror1"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🪞</span>
+          <div class="model-name">${mirror1Name}</div>
+        </div>
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="mirror2"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">🪞</span>
+          <div class="model-name">${mirror2Name}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  sidePanel.innerHTML = mirrorContent;
+  initializeDragAndDrop();
+  updateSubcategoryUI();
+}
+
+function showShelfSubcategory() {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return;
+
+  if (!sidePanel.dataset.originalContent) {
+    sidePanel.dataset.originalContent = sidePanel.innerHTML;
+  }
+
+  const shelf1Name = getItemName("shelf1");
+  const shelf2Name = getItemName("shelf2");
+
+  const shelfContent = `
+    <div class="panel-header">
+      <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
+      <h3>📦 Shelf Options</h3>
+      <small>Choose a shelf style</small>
+    </div>
+    <div class="model-category">
+      <div class="model-grid">
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="shelf1"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">📦</span>
+          <div class="model-name">${shelf1Name}</div>
+        </div>
+        <div
+          class="model-item enabled"
+          draggable="true"
+          data-model="shelf2"
+          data-scale="1 1 1"
+        >
+          <span class="model-icon">📦</span>
+          <div class="model-name">${shelf2Name}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  sidePanel.innerHTML = shelfContent;
   initializeDragAndDrop();
   updateSubcategoryUI();
 }
@@ -1491,19 +2046,51 @@ function restoreRoom(roomData) {
       furnitureEl.setAttribute("clickable-furniture", "");
       furnitureEl.setAttribute("material", "color: #FF8C00");
 
-      // Remove placeholder when model loads
-      furnitureEl.addEventListener(
-        "model-loaded",
-        function () {
+      // Set up model loading timeout and error handling for restored items
+      let modelLoadTimeout;
+      let modelLoaded = false;
+
+      const onModelLoaded = function () {
+        if (modelLoaded) return;
+        modelLoaded = true;
+        clearTimeout(modelLoadTimeout);
+        
+        const placeholder = furnitureEl.querySelector(
+          `#${furnitureEl.id}-placeholder`
+        );
+        if (placeholder) {
+          placeholder.remove();
+        }
+      };
+
+      furnitureEl.addEventListener("model-loaded", onModelLoaded, { once: true });
+
+      // Set timeout for model loading
+      modelLoadTimeout = setTimeout(() => {
+        if (!modelLoaded) {
+          console.warn(`Model load timeout for ${itemData.model_key} at ${modelUrl}`);
           const placeholder = furnitureEl.querySelector(
             `#${furnitureEl.id}-placeholder`
           );
           if (placeholder) {
-            placeholder.remove();
+            placeholder.setAttribute("opacity", "0.5");
+            placeholder.setAttribute("color", "#888888");
           }
-        },
-        { once: true }
-      );
+        }
+      }, MODEL_LOAD_TIMEOUT);
+
+      // Listen for model error
+      furnitureEl.addEventListener("model-error", function (e) {
+        clearTimeout(modelLoadTimeout);
+        console.error(`Model load error for ${itemData.model_key}:`, e.detail);
+        const placeholder = furnitureEl.querySelector(
+          `#${furnitureEl.id}-placeholder`
+        );
+        if (placeholder) {
+          placeholder.setAttribute("opacity", "0.5");
+          placeholder.setAttribute("color", "#FF6B6B");
+        }
+      }, { once: true });
     }
 
     // Restore cost state
@@ -1864,6 +2451,11 @@ function updateSubcategoryUI() {
   const selectors = [
     '[data-model^="wardrobe"]',
     '[data-model^="center_table"]',
+    '[data-model^="bed"]',
+    '[data-model^="chair"]',
+    '[data-model^="desk"]',
+    '[data-model^="mirror"]',
+    '[data-model^="shelf"]',
   ];
   selectors.forEach((selector) => {
     document.querySelectorAll(selector).forEach((item) => {
@@ -1931,3 +2523,8 @@ async function handleSaveEstimation() {
 window.handleSaveEstimation = handleSaveEstimation;
 window.saveWorkspaceState = saveWorkspaceState;
 window.restoreRoom = restoreRoom;
+window.showBedSubcategory = showBedSubcategory;
+window.showChairSubcategory = showChairSubcategory;
+window.showDeskSubcategory = showDeskSubcategory;
+window.showMirrorSubcategory = showMirrorSubcategory;
+window.showShelfSubcategory = showShelfSubcategory;

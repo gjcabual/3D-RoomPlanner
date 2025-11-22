@@ -3,6 +3,64 @@
   <head>
     <meta charset="utf-8" />
     <title>3D Room Planner</title>
+    <!-- Design Tokens -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "bg-primary": "#0a0a0a",
+              "bg-secondary": "#1a1a1a",
+              "bg-surface": "rgba(15, 15, 15, 0.96)",
+              "bg-overlay": "rgba(0, 0, 0, 0.7)",
+              "bg-panel": "rgba(15, 15, 15, 0.96)",
+              "bg-card": "rgba(255, 255, 255, 0.05)",
+              "bg-hover": "rgba(255, 255, 255, 0.1)",
+              "text-primary": "#ffffff",
+              "text-secondary": "#f5f5f5",
+              "text-muted": "rgba(255, 255, 255, 0.7)",
+              "border-default": "rgba(255, 255, 255, 0.08)",
+              "border-hover": "rgba(255, 255, 255, 0.15)",
+              "border-active": "rgba(255, 255, 255, 0.25)",
+              "accent-success": "#4CAF50",
+              "accent-success-hover": "#45a049",
+              "accent-error": "#f44336",
+              "accent-orange": "#FF8C00",
+            },
+            spacing: {
+              xs: "4px",
+              sm: "8px",
+              md: "12px",
+              base: "16px",
+              lg: "20px",
+              xl: "24px",
+              "2xl": "32px",
+            },
+            boxShadow: {
+              sm: "0 1px 3px rgba(0, 0, 0, 0.3)",
+              md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+              lg: "0 10px 30px rgba(0, 0, 0, 0.35)",
+              xl: "0 20px 45px rgba(0, 0, 0, 0.35)",
+              panel: "2px 0 20px rgba(0, 0, 0, 0.5)",
+            },
+            zIndex: {
+              "side-panel": "1500",
+              "resize-panel": "1501",
+              "sources-panel": "1300",
+              "furniture-control": "2000",
+              "drop-indicator": "2500",
+              dialog: "10001",
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/planner.css" />
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/profile.css" />
@@ -20,6 +78,7 @@
     <script src="js/utils/debug.js"></script>
     <!-- Supabase and Auth -->
     <script src="js/utils/supabase.js"></script>
+    <script src="js/utils/model-analyzer.js"></script>
     <script src="js/auth/auth.js"></script>
     <script src="js/auth/auth-ui.js"></script>
     <script src="js/utils/cost-estimation.js"></script>
@@ -30,7 +89,7 @@
     <!-- Main Application Script -->
     <script src="js/planner.js"></script>
   </head>
-  <body>
+  <body class="dark">
     <!-- Profile Circle -->
     <div
       id="profile-circle"
@@ -236,11 +295,6 @@
             <span class="model-icon">☕</span>
             <div class="model-name">Coffee Table</div>
           </div>
-          <div class="model-item disabled" data-model="desk">
-            <div class="disabled-overlay">SOON</div>
-            <span class="model-icon">💻</span>
-            <div class="model-name">Desk</div>
-          </div>
           <div class="model-item disabled" data-model="side-table">
             <div class="disabled-overlay">SOON</div>
             <span class="model-icon">🪑</span>
@@ -252,10 +306,14 @@
       <div class="model-category">
         <div class="category-title">🪑 Seating</div>
         <div class="model-grid">
-          <div class="model-item disabled" data-model="chair">
-            <div class="disabled-overlay">SOON</div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="chair"
+            onclick="showChairSubcategory()"
+          >
             <span class="model-icon">🪑</span>
-            <div class="model-name">Chair</div>
+            <div class="model-name">Chairs</div>
           </div>
           <div class="model-item disabled" data-model="sofa">
             <div class="disabled-overlay">SOON</div>
@@ -278,10 +336,14 @@
       <div class="model-category">
         <div class="category-title">🛏️ Bedroom</div>
         <div class="model-grid">
-          <div class="model-item disabled" data-model="bed">
-            <div class="disabled-overlay">SOON</div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="bed"
+            onclick="showBedSubcategory()"
+          >
             <span class="model-icon">🛏️</span>
-            <div class="model-name">Bed</div>
+            <div class="model-name">Beds</div>
           </div>
           <div
             class="model-item enabled"
@@ -301,6 +363,70 @@
             <div class="disabled-overlay">SOON</div>
             <span class="model-icon">💡</span>
             <div class="model-name">Nightstand</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">💻 Office</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="desk"
+            onclick="showDeskSubcategory()"
+          >
+            <span class="model-icon">💻</span>
+            <div class="model-name">Desks</div>
+          </div>
+          <div class="model-item disabled" data-model="office-chair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🪑</span>
+            <div class="model-name">Office Chair</div>
+          </div>
+          <div class="model-item disabled" data-model="bookshelf">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">📚</span>
+            <div class="model-name">Bookshelf</div>
+          </div>
+          <div class="model-item disabled" data-model="cabinet">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🗄️</span>
+            <div class="model-name">Cabinet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">🪞 Decor & Storage</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="mirror"
+            onclick="showMirrorSubcategory()"
+          >
+            <span class="model-icon">🪞</span>
+            <div class="model-name">Mirrors</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="shelf"
+            onclick="showShelfSubcategory()"
+          >
+            <span class="model-icon">📦</span>
+            <div class="model-name">Shelves</div>
+          </div>
+          <div class="model-item disabled" data-model="lamp">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">💡</span>
+            <div class="model-name">Lamp</div>
+          </div>
+          <div class="model-item disabled" data-model="plant">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon">🌿</span>
+            <div class="model-name">Plant</div>
           </div>
         </div>
       </div>
