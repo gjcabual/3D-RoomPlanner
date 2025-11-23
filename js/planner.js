@@ -662,75 +662,6 @@ function createRoomWalls(width, length, wallHeight = 3) {
     wallsContainer.appendChild(wallEl);
   });
 
-  // Add wall markers (A, B, C, D) - floating on top of walls
-  // A: Front wall (z = -length/2)
-  // B: Back wall (z = length/2)
-  // C: Left wall (x = -width/2)
-  // D: Right wall (x = width/2)
-  const markerHeight = wallHeight + 0.3; // Position above wall top
-  const markerOffset = 0.05; // Small offset from wall surface
-  const markers = [
-    {
-      label: "A",
-      textPos: `0 ${markerHeight} ${-length / 2 + markerOffset}`,
-      bgPos: `0 ${markerHeight} ${-length / 2 + markerOffset - 0.01}`,
-      rotation: "0 0 0",
-      wallName: "Front",
-    },
-    {
-      label: "B",
-      textPos: `0 ${markerHeight} ${length / 2 - markerOffset}`,
-      bgPos: `0 ${markerHeight} ${length / 2 - markerOffset + 0.01}`,
-      rotation: "0 180 0",
-      wallName: "Back",
-    },
-    {
-      label: "C",
-      textPos: `${-width / 2 + markerOffset} ${markerHeight} 0`,
-      bgPos: `${-width / 2 + markerOffset - 0.01} ${markerHeight} 0`,
-      rotation: "0 90 0",
-      wallName: "Left",
-    },
-    {
-      label: "D",
-      textPos: `${width / 2 - markerOffset} ${markerHeight} 0`,
-      bgPos: `${width / 2 - markerOffset + 0.01} ${markerHeight} 0`,
-      rotation: "0 -90 0",
-      wallName: "Right",
-    },
-  ];
-
-  markers.forEach((marker) => {
-    // Create background plane for better visibility (behind text)
-    const bgEl = document.createElement("a-plane");
-    bgEl.setAttribute("position", marker.bgPos);
-    bgEl.setAttribute("rotation", marker.rotation);
-    bgEl.setAttribute("width", "0.6");
-    bgEl.setAttribute("height", "0.6");
-    bgEl.setAttribute("material", "color: rgba(255, 255, 255, 0.95); side: double");
-    bgEl.setAttribute("class", "wall-marker-bg");
-    bgEl.setAttribute("data-wall-marker-bg", marker.label);
-    bgEl.setAttribute("data-wall-name", marker.wallName);
-    wallsContainer.appendChild(bgEl);
-
-    // Create text entity for marker (in front of background) - floating above wall
-    const textEl = document.createElement("a-text");
-    textEl.setAttribute("value", marker.label);
-    textEl.setAttribute("position", marker.textPos);
-    textEl.setAttribute("rotation", marker.rotation);
-    textEl.setAttribute("align", "center");
-    textEl.setAttribute("baseline", "center");
-    textEl.setAttribute("color", "#FF0000");
-    textEl.setAttribute("font", "roboto");
-    textEl.setAttribute("width", "8");
-    textEl.setAttribute("height", "4");
-    textEl.setAttribute("z-offset", "0.01");
-    textEl.setAttribute("class", "wall-marker");
-    textEl.setAttribute("data-wall-name", marker.wallName);
-    textEl.setAttribute("data-wall-marker", marker.label);
-    wallsContainer.appendChild(textEl);
-  });
-
   // Start wall visibility update loop
   startWallVisibilityUpdater();
 
@@ -775,8 +706,22 @@ function updateWallVisibility() {
     cameraPos.y < roomHeight; // Must be below the roof
 
   if (isInside) {
-    // Show all walls if inside
-    walls.forEach((wall) => wall.setAttribute("material", "opacity", 1.0));
+    // Show all walls if inside, but hide ceiling when inside looking up
+    walls.forEach((wall) => {
+      const wallIndex = wall.getAttribute("data-wall-index");
+      const isRoof = wallIndex === "4"; // Roof/ceiling is at index 4
+      
+      if (isRoof) {
+        // Hide ceiling when inside the room (prevents blocking view when looking up or transitioning from above)
+        wall.setAttribute("material", "transparent", true);
+        wall.setAttribute("material", "opacity", 0.0);
+        const outline = wall.object3D.getObjectByName("outline");
+        if (outline) outline.visible = false;
+      } else {
+        // Show other walls normally
+        wall.setAttribute("material", "opacity", 1.0);
+      }
+    });
     return;
   }
 
@@ -804,10 +749,23 @@ function updateWallVisibility() {
     }
   });
 
+  // Check if camera is above the room (top view)
+  const isAboveRoom = cameraPos.y > roomHeight + 0.5; // Add small margin for top view detection
+  
   // Update opacity
   walls.forEach((wall) => {
     const mesh = wall.getObject3D("mesh");
     const outline = wall.object3D.getObjectByName("outline");
+    const wallIndex = wall.getAttribute("data-wall-index");
+    const isRoof = wallIndex === "4"; // Roof/ceiling is at index 4
+
+    // Always hide ceiling when viewing from above
+    if (isRoof && isAboveRoom) {
+      wall.setAttribute("material", "transparent", true);
+      wall.setAttribute("material", "opacity", 0.0);
+      if (outline) outline.visible = false;
+      return;
+    }
 
     // If this wall's mesh was hit, hide it. Otherwise show it.
     if (mesh && hiddenMeshes.has(mesh)) {
