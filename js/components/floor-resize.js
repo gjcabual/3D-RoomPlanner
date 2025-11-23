@@ -42,36 +42,42 @@ AFRAME.registerComponent('floor-resize', {
   
   updateRoomWalls: function(width, height) {
     // This function updates the room walls when floor is resized
-    const wallsContainer = document.getElementById('room-walls');
-    if (!wallsContainer) return;
-    
-    const wallHeight = 3;
-    const wallThickness = 0.1;
-    
-    // Clear existing walls
-    wallsContainer.innerHTML = '';
-    
-    // Create new walls with updated dimensions
-    const walls = [
-      { pos: `0 ${wallHeight/2} ${-height/2}`, size: `${width} ${wallHeight} ${wallThickness}` },
-      { pos: `0 ${wallHeight/2} ${height/2}`, size: `${width} ${wallHeight} ${wallThickness}` },
-      { pos: `${-width/2} ${wallHeight/2} 0`, size: `${wallThickness} ${wallHeight} ${height}` },
-      { pos: `${width/2} ${wallHeight/2} 0`, size: `${wallThickness} ${wallHeight} ${height}` }
-    ];
-    
-    walls.forEach((wall, i) => {
-      const wallEl = document.createElement('a-box');
-      wallEl.setAttribute('position', wall.pos);
-      const [w, h, d] = wall.size.split(' ');
-      wallEl.setAttribute('width', w);
-      wallEl.setAttribute('height', h);
-      wallEl.setAttribute('depth', d);
-      wallEl.setAttribute('color', '#f5f5f5');
-      wallEl.setAttribute('material', 'roughness: 0.8');
-      wallsContainer.appendChild(wallEl);
-    });
-    
-    console.log('Room walls updated to match floor size:', width, 'x', height);
+    // Call the main createRoomWalls function to ensure markers are also updated
+    if (typeof createRoomWalls === 'function') {
+      createRoomWalls(width, height);
+    } else {
+      // Fallback: update walls manually if createRoomWalls is not available
+      const wallsContainer = document.getElementById('room-walls');
+      if (!wallsContainer) return;
+      
+      const wallHeight = 3;
+      const wallThickness = 0.1;
+      
+      // Clear existing walls
+      wallsContainer.innerHTML = '';
+      
+      // Create new walls with updated dimensions
+      const walls = [
+        { pos: `0 ${wallHeight/2} ${-height/2}`, size: `${width} ${wallHeight} ${wallThickness}` },
+        { pos: `0 ${wallHeight/2} ${height/2}`, size: `${width} ${wallHeight} ${wallThickness}` },
+        { pos: `${-width/2} ${wallHeight/2} 0`, size: `${wallThickness} ${wallHeight} ${height}` },
+        { pos: `${width/2} ${wallHeight/2} 0`, size: `${wallThickness} ${wallHeight} ${height}` }
+      ];
+      
+      walls.forEach((wall, i) => {
+        const wallEl = document.createElement('a-box');
+        wallEl.setAttribute('position', wall.pos);
+        const [w, h, d] = wall.size.split(' ');
+        wallEl.setAttribute('width', w);
+        wallEl.setAttribute('height', h);
+        wallEl.setAttribute('depth', d);
+        wallEl.setAttribute('color', '#f5f5f5');
+        wallEl.setAttribute('material', 'roughness: 0.8');
+        wallsContainer.appendChild(wallEl);
+      });
+      
+      console.log('Room walls updated to match floor size:', width, 'x', height);
+    }
   },
   
   remove: function () {

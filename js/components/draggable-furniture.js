@@ -12,6 +12,7 @@ AFRAME.registerComponent('draggable-furniture', {
     this.isDragging = false;
     this.originalPosition = null;
     this.dragStartPosition = null;
+    this.mouseDownPosition = null; // Track mouse position on mousedown
     this.camera = null;
     this.cameraObj = null;
     this.raycaster = new THREE.Raycaster();
@@ -121,21 +122,53 @@ AFRAME.registerComponent('draggable-furniture', {
   
   onMouseDown: function(e) {
     if (e.detail.intersection) {
-      this.isDragging = true;
+      // Check if item is selected before allowing drag
+      const clickableComponent = this.el.components['clickable-furniture'];
+      if (clickableComponent && !clickableComponent.isSelected) {
+        // Item is not selected - don't allow dragging
+        return;
+      }
+      
+      // Store mouse position to detect if it's a click or drag
+      this.mouseDownPosition = { x: e.clientX || 0, y: e.clientY || 0 };
       this.originalPosition = this.el.object3D.position.clone();
       this.dragStartPosition = e.detail.intersection.point;
       
-      // Visual feedback for drag start (green)
-      this.el.setAttribute('material', 'color', '#4CAF50');
-      this.el.setAttribute('material', 'emissive', '#2E7D32');
-      this.el.setAttribute('material', 'emissiveIntensity', '0.3');
-      
-      console.log('Started dragging table:', this.el.id);
+      // Don't start dragging immediately - wait for mouse movement
+      // This prevents clicks from triggering drags
+      this.isDragging = false;
     }
   },
   
   onMouseMove: function(e) {
+    // Check if this is a selection click (not a drag operation)
+    const clickableComponent = this.el.components['clickable-furniture'];
+    if (clickableComponent && clickableComponent._isSelectionClick) {
+      // Don't process movement during selection clicks
+      return;
+    }
+    
+    // Check if we should start dragging (mouse moved from mousedown position)
+    if (!this.isDragging && this.mouseDownPosition) {
+      const mouseMoved = Math.abs((e.clientX || 0) - this.mouseDownPosition.x) > 3 ||
+                        Math.abs((e.clientY || 0) - this.mouseDownPosition.y) > 3;
+      
+      if (mouseMoved) {
+        // Mouse has moved - start dragging
+        this.isDragging = true;
+        // Visual feedback for drag start (green)
+        this.el.setAttribute('material', 'color', '#4CAF50');
+        this.el.setAttribute('material', 'emissive', '#2E7D32');
+        this.el.setAttribute('material', 'emissiveIntensity', '0.3');
+        console.log('Started dragging table:', this.el.id);
+      } else {
+        // Mouse hasn't moved enough - don't start dragging yet
+        return;
+      }
+    }
+    
     if (!this.isDragging) return;
+    
     if (!this.cameraObj) {
       const camEl = document.querySelector('a-camera');
       if (camEl) this.cameraObj = camEl.getObject3D('camera');
@@ -150,71 +183,252 @@ AFRAME.registerComponent('draggable-furniture', {
     const wallMountedComponent = this.el.components['wall-mounted'];
     const isWallMounted = wallMountedComponent !== undefined;
     
-    // Raycast against an infinite ground plane (y = 0)
+    // Raycast against an infinite ground plane (y = 0) for all items
     this.raycaster.setFromCamera(this.mouse, this.cameraObj);
     const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const intersectionPoint = new THREE.Vector3();
+    
     if (this.raycaster.ray.intersectPlane(groundPlane, intersectionPoint)) {
-      const newPosition = intersectionPoint;
-      
-      let adjustedPosition;
-      
       // Handle wall-mounted items differently
       if (isWallMounted) {
-        // Snap to nearest wall
-        const snapPoint = wallMountedComponent.checkWallSnap(newPosition);
-        adjustedPosition = snapPoint;
+        // Always find the nearest wall from cursor position
+        // This makes items follow the cursor and switch walls when cursor moves to another wall
+        const wallInfo = wallMountedComponent.findNearestWall(intersectionPoint);
+        let currentWall = wallMountedComponent.currentWall;
         
-        // Keep at a reasonable height on wall (not on floor)
-        const wallHeight = 1.5; // Default height for wall-mounted items
-        adjustedPosition.y = wallHeight;
+        if (wallInfo) {
+          // Use snap distance to determine if we should switch walls
+          // Keep snap distance small to prevent premature switching
+          const snapDistance = wallMountedComponent.data.snapDistance || 0.2;
+          
+          if (!currentWall) {
+            // No current wall - use the nearest one
+            currentWall = wallInfo.wall;
+          } else {
+            // Check distance to current wall
+            const currentWallDistance = this.getDistanceToWall(intersectionPoint, currentWall, wallMountedComponent);
+            
+            // Only switch walls if:
+            // 1. Cursor is significantly closer to a different wall (at least 0.5 units closer)
+            // 2. OR cursor is very close to a different wall (within snap distance) AND closer than current
+            if (wallInfo.wall !== currentWall) {
+              const distanceDifference = currentWallDistance - wallInfo.distance;
+              
+              // Only switch if the new wall is significantly closer (prevents premature switching)
+              if (distanceDifference > 0.5 || (wallInfo.distance <= snapDistance && distanceDifference > 0.1)) {
+                // Cursor is clearly on a different wall - switch to follow cursor
+                currentWall = wallInfo.wall;
+              }
+              // Otherwise keep current wall (don't switch just because it's slightly closer)
+            }
+          }
+        } else if (!currentWall) {
+          // Fallback to front wall if nothing found
+          currentWall = 'front';
+        }
+        
+        // Update current wall to match cursor position
+        wallMountedComponent.currentWall = currentWall;
+        
+        // Now raycast against the wall plane to get Y position (vertical movement)
+        const roomWidth = wallMountedComponent.data.roomWidth || 10;
+        const roomLength = wallMountedComponent.data.roomLength || 10;
+        const wallThickness = wallMountedComponent.data.wallThickness || 0.1;
+        const wallHeight = wallMountedComponent.data.wallHeight || 3; // Get wall height from component data
+        const innerX = roomWidth / 2 - wallThickness / 2;
+        const innerZ = roomLength / 2 - wallThickness / 2;
+        const ceilingHeight = wallHeight; // Use wall height as ceiling height
+        
+        // Create wall plane based on current wall for vertical movement
+        let wallNormal = null;
+        let wallPoint = null;
+        
+        switch(currentWall) {
+          case 'front':
+            wallNormal = new THREE.Vector3(0, 0, 1); // Normal pointing into room
+            wallPoint = new THREE.Vector3(0, wallHeight / 2, -innerZ);
+            break;
+          case 'back':
+            wallNormal = new THREE.Vector3(0, 0, -1);
+            wallPoint = new THREE.Vector3(0, wallHeight / 2, innerZ);
+            break;
+          case 'left':
+            wallNormal = new THREE.Vector3(1, 0, 0);
+            wallPoint = new THREE.Vector3(-innerX, wallHeight / 2, 0);
+            break;
+          case 'right':
+            wallNormal = new THREE.Vector3(-1, 0, 0);
+            wallPoint = new THREE.Vector3(innerX, wallHeight / 2, 0);
+            break;
+        }
+        
+        // Raycast against wall plane to get Y position (vertical movement)
+        if (wallNormal && wallPoint) {
+          const wallPlane = new THREE.Plane();
+          wallPlane.setFromNormalAndCoplanarPoint(wallNormal, wallPoint);
+          
+          this.raycaster.setFromCamera(this.mouse, this.cameraObj);
+          const wallIntersection = new THREE.Vector3();
+          
+          if (this.raycaster.ray.intersectPlane(wallPlane, wallIntersection)) {
+            // Use Y position from wall plane intersection (allows vertical movement)
+            // Initial constraint will be refined by constrainToWall which uses object height
+            intersectionPoint.y = wallIntersection.y;
+          } else {
+            // Fallback: keep current Y position or use default
+            intersectionPoint.y = this.el.object3D.position.y || 1.5;
+          }
+        } else {
+          // Fallback: keep current Y position
+          intersectionPoint.y = this.el.object3D.position.y || 1.5;
+        }
+        
+        // Constrain movement along wall with corner detection
+        // This handles wall transitions automatically when reaching corners
+        // constrainToWall will constrain Y position based on object height and wall height
+        const result = wallMountedComponent.constrainToWall(intersectionPoint, currentWall);
+        
+        // Always use the wall determined by cursor position (for direct following)
+        // Corner detection will handle edge cases, but cursor position takes priority
+        // Only update wall if corner detection actually changed it (cursor is at corner)
+        const wallChanged = result.wall !== currentWall;
+        if (wallChanged) {
+          // Corner detection changed wall - this means cursor is at corner
+          currentWall = result.wall;
+        }
+        wallMountedComponent.currentWall = currentWall;
+        
+        // Y position is already constrained by constrainToWall (includes object height calculation)
+        
+        // Apply position - this follows cursor directly while staying on wall
+        this.el.setAttribute('position', `${result.position.x} ${result.position.y} ${result.position.z}`);
+        
+        // Always ensure facing room center when dragging wall-mounted items
+        // If wall changed, update rotation to face room center (0, 0, 0)
+        if (result.rotation !== undefined) {
+          const currentRot = this.el.getAttribute('rotation');
+          const currentX = typeof currentRot === 'object' ? currentRot.x : 
+                          (typeof currentRot === 'string' ? parseFloat(currentRot.split(' ')[0]) : 0);
+          const currentZ = typeof currentRot === 'object' ? currentRot.z : 
+                          (typeof currentRot === 'string' ? parseFloat(currentRot.split(' ')[2]) : 0);
+          
+          // Update Y rotation to face room center, preserve X and Z rotation
+          this.el.setAttribute('rotation', {
+            x: currentX,
+            y: result.rotation, // Face room center based on current wall
+            z: currentZ
+          });
+        }
+        
+        // Wall-mounted items are always green (no red feedback)
+        this.el.setAttribute('material', 'color', '#4CAF50');
+        this.el.setAttribute('material', 'emissive', '#2E7D32');
+        this.el.setAttribute('material', 'emissiveIntensity', '0.3');
       } else {
-        // Regular items - check boundaries and adjust if needed
-        adjustedPosition = this.checkBoundaries(newPosition);
+        // Regular items - check boundaries and adjust position
+        const newPosition = intersectionPoint;
+        const adjustedPosition = this.checkBoundaries(newPosition);
         
         // Keep object on floor height y=0 (or small lift) while dragging
         adjustedPosition.y = 0;
-      }
-      
-      this.el.setAttribute('position', `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`);
-      
-      // Visual feedback for collision
-      if (isWallMounted) {
-        // Wall-mounted items are always green when attached to wall
-        this.el.setAttribute('material', 'color', '#4CAF50');
-        this.el.setAttribute('material', 'emissive', '#2E7D32');
-        this.el.setAttribute('material', 'emissiveIntensity', '0.3');
-      } else if (this.isColliding(adjustedPosition)) {
-        // Red when touching/over boundary
-        this.el.setAttribute('material', 'color', '#FF6B6B');
-        this.el.setAttribute('material', 'emissive', '#8B0000');
-        this.el.setAttribute('material', 'emissiveIntensity', '0.25');
-      } else {
-        // Green while dragging inside bounds
-        this.el.setAttribute('material', 'color', '#4CAF50');
-        this.el.setAttribute('material', 'emissive', '#2E7D32');
-        this.el.setAttribute('material', 'emissiveIntensity', '0.3');
+        
+        this.el.setAttribute('position', `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`);
+        
+        // Check for collisions (walls and ceiling)
+        const hasCollision = this.isColliding(adjustedPosition);
+        
+        // Visual feedback for collision (red when touching walls or ceiling)
+        if (hasCollision) {
+          // Red when touching/over boundary or ceiling
+          this.el.setAttribute('material', 'color', '#FF6B6B');
+          this.el.setAttribute('material', 'emissive', '#8B0000');
+          this.el.setAttribute('material', 'emissiveIntensity', '0.25');
+        } else {
+          // Green while dragging inside bounds and below ceiling
+          this.el.setAttribute('material', 'color', '#4CAF50');
+          this.el.setAttribute('material', 'emissive', '#2E7D32');
+          this.el.setAttribute('material', 'emissiveIntensity', '0.3');
+        }
       }
     }
   },
   
   onMouseUp: function(e) {
+    // Reset mouse down position
+    this.mouseDownPosition = null;
+    
     if (this.isDragging) {
       this.isDragging = false;
       
-      // Final boundary check
-      const finalPosition = this.el.object3D.position;
-      const adjustedPosition = this.checkBoundaries(finalPosition);
+      // Check if this is a wall-mounted item
+      const wallMountedComponent = this.el.components['wall-mounted'];
+      const isWallMounted = wallMountedComponent !== undefined;
       
-      if (!this.positionsEqual(finalPosition, adjustedPosition)) {
-        this.el.setAttribute('position', `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`);
-        console.log('Table position adjusted to stay within bounds');
+      if (isWallMounted) {
+        // For wall-mounted items, ensure they stay on wall with proper constraints
+        const finalPosition = this.el.object3D.position;
+        if (wallMountedComponent.currentWall) {
+          // constrainToWall handles Y position constraint based on object height and wall height
+          const result = wallMountedComponent.constrainToWall(finalPosition, wallMountedComponent.currentWall);
+          wallMountedComponent.currentWall = result.wall;
+          
+          // Y position is already properly constrained by constrainToWall
+          // (includes object height calculation to prevent passing through ceiling/floor)
+          this.el.setAttribute('position', `${result.position.x} ${result.position.y} ${result.position.z}`);
+          
+          // Always ensure facing room center when released on wall
+          if (result.rotation !== undefined) {
+            const currentRot = this.el.getAttribute('rotation');
+            const currentX = typeof currentRot === 'object' ? currentRot.x : 
+                            (typeof currentRot === 'string' ? parseFloat(currentRot.split(' ')[0]) : 0);
+            const currentZ = typeof currentRot === 'object' ? currentRot.z : 
+                            (typeof currentRot === 'string' ? parseFloat(currentRot.split(' ')[2]) : 0);
+            
+            // Update Y rotation to face room center, preserve X and Z rotation
+            this.el.setAttribute('rotation', {
+              x: currentX,
+              y: result.rotation, // Face room center based on current wall
+              z: currentZ
+            });
+          }
+        }
+      } else {
+        // Regular items - final boundary check
+        const finalPosition = this.el.object3D.position;
+        const adjustedPosition = this.checkBoundaries(finalPosition);
+        
+        if (!this.positionsEqual(finalPosition, adjustedPosition)) {
+          this.el.setAttribute('position', `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`);
+          console.log('Table position adjusted to stay within bounds');
+        }
       }
       
       // Don't reset color here - let tick() handle it based on collision state
-      // This allows the object to stay red if it's near walls
+      // This allows the object to stay red if it's near walls (but not for wall-mounted items)
       
-      console.log('Stopped dragging table:', this.el.id);
+      console.log('Stopped dragging:', this.el.id);
+    }
+  },
+  
+  getDistanceToWall: function(position, wall, wallMountedComponent) {
+    // Helper function to calculate distance from position to a specific wall
+    const roomWidth = wallMountedComponent.data.roomWidth || 10;
+    const roomLength = wallMountedComponent.data.roomLength || 10;
+    const wallThickness = wallMountedComponent.data.wallThickness || 0.1;
+    const innerX = roomWidth / 2 - wallThickness / 2;
+    const innerZ = roomLength / 2 - wallThickness / 2;
+    
+    switch(wall) {
+      case 'front':
+        return Math.abs(position.z - (-innerZ));
+      case 'back':
+        return Math.abs(position.z - innerZ);
+      case 'left':
+        return Math.abs(position.x - (-innerX));
+      case 'right':
+        return Math.abs(position.x - innerX);
+      default:
+        return Infinity;
     }
   },
   
@@ -242,7 +456,16 @@ AFRAME.registerComponent('draggable-furniture', {
     // If selected, keep it green (selection takes priority)
     if (isSelected) return;
     
-    // Check current position for wall proximity
+    // Check if this is a wall-mounted item - don't show red color for fixtures
+    const wallMountedComponent = this.el.components['wall-mounted'];
+    const isWallMounted = wallMountedComponent !== undefined;
+    
+    // Skip color feedback for wall-mounted items (they stay green)
+    if (isWallMounted) {
+      return;
+    }
+    
+    // Check current position for wall proximity (only for regular items)
     const currentPosition = this.el.object3D.position;
     const isNearWall = this.isColliding(currentPosition);
     
@@ -331,9 +554,53 @@ AFRAME.registerComponent('draggable-furniture', {
       rightTouch = boardTouchX; // prefer board proximity for visual feedback
     }
     
-    // Only consider colliding when actually very close to or crossing boundaries
-    return (position.x <= safeXMin + epsilon || rightTouch || 
-            position.z <= safeZMin + epsilon || position.z >= safeZMax - epsilon);
+    // Check wall collisions
+    const wallCollision = (
+      position.x <= safeXMin + epsilon ||
+      rightTouch ||
+      position.z <= safeZMin + epsilon ||
+      position.z >= safeZMax - epsilon
+    );
+    
+    // Check ceiling collision
+    // Get ceiling height from localStorage or use default
+    const savedHeight = localStorage.getItem("roomHeight");
+    const ceilingHeight = savedHeight ? parseFloat(savedHeight) : 3;
+    
+    // Calculate object height
+    let objectHeight = 0.5; // Default height
+    if (this.el && this.el.object3D) {
+      const box = new THREE.Box3();
+      this.el.object3D.updateMatrixWorld(true);
+      let hasGeometry = false;
+      
+      this.el.object3D.traverse(function(child) {
+        if (child.isMesh && child.geometry) {
+          const worldBox = new THREE.Box3();
+          worldBox.setFromObject(child);
+          if (!hasGeometry) {
+            box.copy(worldBox);
+            hasGeometry = true;
+          } else {
+            box.union(worldBox);
+          }
+        }
+      });
+      
+      if (hasGeometry && box.min && box.max) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        objectHeight = size.y;
+      }
+    }
+    
+    // Check if item is touching or above ceiling
+    // Item center Y + half object height >= ceiling height - epsilon
+    const itemTop = position.y + objectHeight / 2;
+    const ceilingCollision = itemTop >= ceilingHeight - epsilon;
+    
+    // Return true if colliding with walls OR ceiling
+    return wallCollision || ceilingCollision;
   },
   
   positionsEqual: function(pos1, pos2) {

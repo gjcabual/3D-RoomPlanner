@@ -11,12 +11,26 @@ AFRAME.registerComponent('clickable-furniture', {
       console.log('Furniture clicked:', el.id);
       
       // Only handle selection if not dragging
-      if (!this.el.components['draggable-furniture'] || !this.el.components['draggable-furniture'].isDragging) {
-        // Deselect all other furniture first
-        this.deselectAllOtherFurniture();
+      const draggableComponent = this.el.components['draggable-furniture'];
+      if (!draggableComponent || !draggableComponent.isDragging) {
+        // Set flag to indicate this is a selection click, not a drag
+        // This prevents draggable-furniture from processing movement
+        this._isSelectionClick = true;
         
-        // Toggle selection
-        this.toggleSelection();
+        // If already selected, deselect it (turn back to original color)
+        if (this.isSelected) {
+          this.deselect();
+        } else {
+          // Deselect all other furniture first
+          this.deselectAllOtherFurniture();
+          // Then select this one
+          this.select();
+        }
+        
+        // Reset flag after a short delay to allow click to complete
+        setTimeout(() => {
+          this._isSelectionClick = false;
+        }, 100);
       }
     }.bind(this));
     
@@ -68,33 +82,20 @@ AFRAME.registerComponent('clickable-furniture', {
   deselect: function() {
     this.isSelected = false;
     
-    // Check if object is near walls - if so, let draggable-furniture component handle the color
-    const draggableComponent = this.el.components['draggable-furniture'];
-    if (draggableComponent) {
-      const currentPosition = this.el.object3D.position;
-      const isNearWall = draggableComponent.isColliding(currentPosition);
-      
-      if (isNearWall) {
-        // Near wall - turn red (draggable-furniture tick will maintain this)
-        this.el.setAttribute('material', 'color', '#FF6B6B');
-        this.el.setAttribute('material', 'emissive', '#8B0000');
-        this.el.setAttribute('material', 'emissiveIntensity', '0.25');
-      } else {
-        // Away from walls - return to original color
-        this.el.setAttribute('material', 'color', this.originalColor);
-        this.el.setAttribute('material', 'emissive', '#000000');
-        this.el.setAttribute('material', 'emissiveIntensity', '0');
-      }
-    } else {
-      // No draggable component - just use original color
-      this.el.setAttribute('material', 'color', this.originalColor);
-      this.el.setAttribute('material', 'emissive', '#000000');
-      this.el.setAttribute('material', 'emissiveIntensity', '0');
-    }
+    // Always return to original color when deselected
+    // (clicking item again or clicking x on control panel)
+    this.el.setAttribute('material', 'color', this.originalColor);
+    this.el.setAttribute('material', 'emissive', '#000000');
+    this.el.setAttribute('material', 'emissiveIntensity', '0');
     
-    // Hide control panel when deselecting
-    if (typeof closeControlPanel === 'function') {
+    // Hide control panel when deselecting (but don't call closeControlPanel if already being closed)
+    // The closeControlPanel function will handle deselecting, so we avoid recursion
+    // Only hide panel if deselect was called directly (e.g., clicking item again)
+    if (typeof closeControlPanel === 'function' && !this._isClosingPanel) {
+      // Set flag to prevent recursion
+      this._isClosingPanel = true;
       closeControlPanel();
+      this._isClosingPanel = false;
     }
     
     console.log('Furniture deselected:', this.el.id);

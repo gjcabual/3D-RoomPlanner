@@ -137,15 +137,23 @@
 #auth-error {
   color: #d32f2f;
   margin-top: 10px;
-  font-size: 14px;
+  font-size: 13px;
   min-height: 20px;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 #auth-success {
-  color: #388e3c;
+  color: #4CAF50;
   margin-top: 10px;
-  font-size: 14px;
+  font-size: 13px;
   min-height: 20px;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 /* User Info */

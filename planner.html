@@ -631,6 +631,7 @@
           </svg>
         </button>
         <button
+          id="rotate-left-btn"
           class="control-btn rotate-left"
           onclick="rotateFurnitureLeft()"
           title="Rotate Left"
@@ -643,26 +644,30 @@
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12Z"
+              d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z"
               stroke="currentColor"
               stroke-width="2"
+              fill="none"
             />
             <path
-              d="M9 12L7 10L5 12"
+              d="M8.5 8.5C8.5 8.5 10 7 12 8.5C14 10 15.5 11.5 15.5 11.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              fill="none"
+            />
+            <path
+              d="M7.5 9L9 7.5L10.5 9"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            />
-            <path
-              d="M5 12H19"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
+              fill="none"
             />
           </svg>
         </button>
         <button
+          id="rotate-right-btn"
           class="control-btn rotate-right"
           onclick="rotateFurnitureRight()"
           title="Rotate Right"
@@ -675,22 +680,25 @@
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12Z"
+              d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z"
               stroke="currentColor"
               stroke-width="2"
+              fill="none"
             />
             <path
-              d="M15 12L17 14L19 12"
+              d="M15.5 8.5C15.5 8.5 14 7 12 8.5C10 10 8.5 11.5 8.5 11.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              fill="none"
+            />
+            <path
+              d="M16.5 9L15 7.5L13.5 9"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-            />
-            <path
-              d="M19 12H5"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
+              fill="none"
             />
           </svg>
         </button>
@@ -816,9 +824,21 @@
           />
         </div>
 
-        <button id="auth-submit-btn" onclick="handleAuthSubmit()">
-          Sign In
-        </button>
+        <div
+          class="auth-form-group"
+          id="auth-confirm-password-group"
+          style="display: none"
+        >
+          <label for="auth-confirm-password">Confirm Password</label>
+          <input
+            type="password"
+            id="auth-confirm-password"
+            placeholder="Confirm your password"
+            required
+          />
+        </div>
+
+        <button type="button" id="auth-submit-btn">Sign In</button>
         <div id="auth-error"></div>
         <div id="auth-success"></div>
         <div id="auth-switch">

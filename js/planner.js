@@ -662,6 +662,75 @@ function createRoomWalls(width, length, wallHeight = 3) {
     wallsContainer.appendChild(wallEl);
   });
 
+  // Add wall markers (A, B, C, D) - floating on top of walls
+  // A: Front wall (z = -length/2)
+  // B: Back wall (z = length/2)
+  // C: Left wall (x = -width/2)
+  // D: Right wall (x = width/2)
+  const markerHeight = wallHeight + 0.3; // Position above wall top
+  const markerOffset = 0.05; // Small offset from wall surface
+  const markers = [
+    {
+      label: "A",
+      textPos: `0 ${markerHeight} ${-length / 2 + markerOffset}`,
+      bgPos: `0 ${markerHeight} ${-length / 2 + markerOffset - 0.01}`,
+      rotation: "0 0 0",
+      wallName: "Front",
+    },
+    {
+      label: "B",
+      textPos: `0 ${markerHeight} ${length / 2 - markerOffset}`,
+      bgPos: `0 ${markerHeight} ${length / 2 - markerOffset + 0.01}`,
+      rotation: "0 180 0",
+      wallName: "Back",
+    },
+    {
+      label: "C",
+      textPos: `${-width / 2 + markerOffset} ${markerHeight} 0`,
+      bgPos: `${-width / 2 + markerOffset - 0.01} ${markerHeight} 0`,
+      rotation: "0 90 0",
+      wallName: "Left",
+    },
+    {
+      label: "D",
+      textPos: `${width / 2 - markerOffset} ${markerHeight} 0`,
+      bgPos: `${width / 2 - markerOffset + 0.01} ${markerHeight} 0`,
+      rotation: "0 -90 0",
+      wallName: "Right",
+    },
+  ];
+
+  markers.forEach((marker) => {
+    // Create background plane for better visibility (behind text)
+    const bgEl = document.createElement("a-plane");
+    bgEl.setAttribute("position", marker.bgPos);
+    bgEl.setAttribute("rotation", marker.rotation);
+    bgEl.setAttribute("width", "0.6");
+    bgEl.setAttribute("height", "0.6");
+    bgEl.setAttribute("material", "color: rgba(255, 255, 255, 0.95); side: double");
+    bgEl.setAttribute("class", "wall-marker-bg");
+    bgEl.setAttribute("data-wall-marker-bg", marker.label);
+    bgEl.setAttribute("data-wall-name", marker.wallName);
+    wallsContainer.appendChild(bgEl);
+
+    // Create text entity for marker (in front of background) - floating above wall
+    const textEl = document.createElement("a-text");
+    textEl.setAttribute("value", marker.label);
+    textEl.setAttribute("position", marker.textPos);
+    textEl.setAttribute("rotation", marker.rotation);
+    textEl.setAttribute("align", "center");
+    textEl.setAttribute("baseline", "center");
+    textEl.setAttribute("color", "#FF0000");
+    textEl.setAttribute("font", "roboto");
+    textEl.setAttribute("width", "8");
+    textEl.setAttribute("height", "4");
+    textEl.setAttribute("z-offset", "0.01");
+    textEl.setAttribute("class", "wall-marker");
+    textEl.setAttribute("data-wall-name", marker.wallName);
+    textEl.setAttribute("data-wall-marker", marker.label);
+    wallsContainer.appendChild(textEl);
+  });
+
   // Start wall visibility update loop
   startWallVisibilityUpdater();
 
@@ -1149,10 +1218,42 @@ function handleDrop(e) {
   // Check if item should be wall-mounted (mirrors and shelves)
   const isWallMounted = draggedItem.model.startsWith('mirror') || draggedItem.model.startsWith('shelf');
   if (isWallMounted) {
+    // Get wall height from localStorage or use default
+    const savedHeight = localStorage.getItem("roomHeight");
+    const roomWallHeight = savedHeight ? parseFloat(savedHeight) : 3;
+    const initialHeight = 1.5; // Initial placement height on wall
+    
+    const innerZ = roomLength / 2 - 0.1 / 2;
+    const snapZ = -innerZ + 0.05;
+    
+    // Add slight offset to prevent all items stacking at same position
+    const existingItems = document.querySelectorAll('[wall-mounted]');
+    const offsetX = existingItems.length * 0.5; // Offset each item by 0.5 units
+    
+    // Position on front wall with offset
+    furnitureEl.setAttribute('position', {
+      x: Math.max(-roomWidth/2 + 1, Math.min(roomWidth/2 - 1, offsetX)),
+      y: initialHeight,
+      z: snapZ
+    });
+    
+    // Add wall-mounted component with wallHeight parameter
     furnitureEl.setAttribute(
       "wall-mounted",
-      `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; snapDistance: 0.2`
+      `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; wallHeight: ${roomWallHeight}; snapDistance: 0.2`
     );
+    
+    // Initialize wall-mounted component's current wall after component is added
+    setTimeout(() => {
+      const wallMountedComp = furnitureEl.components['wall-mounted'];
+      if (wallMountedComp) {
+        wallMountedComp.currentWall = 'front';
+        // Ensure position is properly constrained (including Y based on object height)
+        const currentPos = furnitureEl.object3D.position;
+        const result = wallMountedComp.constrainToWall(currentPos, 'front');
+        furnitureEl.setAttribute('position', result.position);
+      }
+    }, 150);
   }
   
   furnitureEl.setAttribute("clickable-furniture", "");
@@ -1431,6 +1532,9 @@ function showCenterTableSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const table1Name = getItemName("center_table1");
   const table2Name = getItemName("center_table2");
@@ -1472,6 +1576,10 @@ function showCenterTableSubcategory() {
 
 function showWardrobeSubcategory() {
   const sidePanel = document.getElementById("side-panel");
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
+  
   const mainContent =
     sidePanel.querySelector(".panel-header").nextElementSibling;
 
@@ -1540,6 +1648,9 @@ function showBedSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const bed1Name = getItemName("bed1");
   const bed2Name = getItemName("bed2");
@@ -1586,6 +1697,9 @@ function showChairSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const chair1Name = getItemName("chair1");
   const chair2Name = getItemName("chair2");
@@ -1632,6 +1746,9 @@ function showDeskSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const desk1Name = getItemName("desk1");
   const desk2Name = getItemName("desk2");
@@ -1678,6 +1795,9 @@ function showMirrorSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const mirror1Name = getItemName("mirror1");
   const mirror2Name = getItemName("mirror2");
@@ -1724,6 +1844,9 @@ function showShelfSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const shelf1Name = getItemName("shelf1");
   const shelf2Name = getItemName("shelf2");
@@ -1776,7 +1899,19 @@ function goBackToMainPanel() {
   if (sidePanel) {
     sidePanel.classList.add("open");
     if (sidePanel.dataset.originalContent) {
+      // Restore the saved scroll position before restoring content
+      const savedScrollPosition = sidePanel.dataset.scrollPosition 
+        ? parseFloat(sidePanel.dataset.scrollPosition) 
+        : 0;
+      
       sidePanel.innerHTML = sidePanel.dataset.originalContent;
+      
+      // Restore scroll position after content is restored
+      // Use setTimeout to ensure DOM is updated before scrolling
+      setTimeout(() => {
+        sidePanel.scrollTop = savedScrollPosition;
+      }, 0);
+      
       // Re-initialize drag and drop
       initializeDragAndDrop();
       updateSubcategoryUI();
@@ -1790,23 +1925,53 @@ function showControlPanel(furnitureId) {
   const panel = document.getElementById("furniture-control-panel");
   const title = document.getElementById("control-panel-title");
   const furniture = document.getElementById(furnitureId);
+  const rotateLeftBtn = document.getElementById("rotate-left-btn");
+  const rotateRightBtn = document.getElementById("rotate-right-btn");
 
   // Get item name from furniture element
   let itemName = furnitureId;
+  let isWallMounted = false;
   if (furniture) {
     const modelKey = furniture.getAttribute("data-model-key");
     if (modelKey) {
       itemName = getItemName(modelKey);
+      // Check if the item is wall-mounted
+      isWallMounted = furniture.components['wall-mounted'] !== undefined;
     }
   }
 
   title.textContent = itemName;
   panel.style.display = "block";
+
+  // Show/hide rotation buttons based on item type
+  if (isWallMounted) {
+    if (rotateLeftBtn) rotateLeftBtn.style.display = "none";
+    if (rotateRightBtn) rotateRightBtn.style.display = "none";
+  } else {
+    if (rotateLeftBtn) rotateLeftBtn.style.display = "flex";
+    if (rotateRightBtn) rotateRightBtn.style.display = "flex";
+  }
 }
 
 function closeControlPanel() {
   const panel = document.getElementById("furniture-control-panel");
   panel.style.display = "none";
+  
+  // Deselect the currently selected item when closing panel
+  if (selectedFurniture) {
+    const furniture = document.getElementById(selectedFurniture);
+    if (furniture) {
+      const clickableComponent = furniture.components['clickable-furniture'];
+      if (clickableComponent && clickableComponent.isSelected) {
+        // Set flag to prevent recursion when deselect calls closeControlPanel
+        clickableComponent._isClosingPanel = true;
+        // Deselect the item, which will restore its original color
+        clickableComponent.deselect();
+        clickableComponent._isClosingPanel = false;
+      }
+    }
+  }
+  
   selectedFurniture = null;
 }
 
@@ -1831,25 +1996,26 @@ function showItemDetails() {
   // Get dimensions from draggable component if available
   const draggableComponent = furniture.components["draggable-furniture"];
   let dimensions = "Calculating...";
+  let width = 0.5;
+  let length = 0.5;
+  let height = 0.5;
   
   if (draggableComponent && draggableComponent.dimensionsCalculated) {
-    const width = (draggableComponent.actualWidth || draggableComponent.data.objectWidth).toFixed(2);
-    const length = (draggableComponent.actualLength || draggableComponent.data.objectLength).toFixed(2);
+    // Use calculated dimensions from model (read-only, actual dimensions)
+    width = parseFloat(draggableComponent.actualWidth || draggableComponent.data.objectWidth);
+    length = parseFloat(draggableComponent.actualLength || draggableComponent.data.objectLength);
     // Try to get height from bounding box
     const object3D = furniture.object3D;
-    let height = "N/A";
-    
     if (object3D) {
       const box = new THREE.Box3();
       box.setFromObject(object3D);
       if (box.min && box.max) {
         const size = new THREE.Vector3();
         box.getSize(size);
-        height = Math.abs(size.y).toFixed(2);
+        height = Math.abs(size.y);
       }
     }
-    
-    dimensions = `W: ${width}m × L: ${length}m × H: ${height}m`;
+    dimensions = `W: ${width.toFixed(2)}m × L: ${length.toFixed(2)}m × H: ${height.toFixed(2)}m`;
   }
   
   // Get category
@@ -1862,11 +2028,11 @@ function showItemDetails() {
   else if (modelKey.includes("mirror")) category = "Mirror";
   else if (modelKey.includes("shelf")) category = "Shelf";
   
-  // Check if wall-mounted
+  // Check if wall-mounted (read-only, actual type)
   const isWallMounted = furniture.components["wall-mounted"] !== undefined;
   const mountType = isWallMounted ? "Wall-mounted" : "Floor-standing";
   
-  // Build details content
+  // Build details content (read-only display of actual dimensions and type)
   const detailsContent = `
     <div class="item-details-content">
       <h4 class="item-details-title">${itemName}</h4>
@@ -1881,7 +2047,7 @@ function showItemDetails() {
         </div>
         <div class="item-details-row">
           <span class="item-details-label">Dimensions:</span>
-          <span class="item-details-value">${dimensions}</span>
+          <span class="item-details-value">W: ${width.toFixed(2)}m × L: ${length.toFixed(2)}m × H: ${height.toFixed(2)}m</span>
         </div>
         <div class="item-details-row">
           <span class="item-details-label">Estimated Price:</span>
@@ -1895,7 +2061,7 @@ function showItemDetails() {
     </div>
   `;
   
-  // Show in dialog or expandable panel
+  // Show in dialog (read-only display)
   showDialog(detailsContent, "Item Details");
 }
 
@@ -2189,10 +2355,37 @@ function restoreRoom(roomData) {
       // Check if item should be wall-mounted (mirrors and shelves)
       const isWallMounted = itemData.model_key.startsWith('mirror') || itemData.model_key.startsWith('shelf');
       if (isWallMounted) {
+        // Get wall height from localStorage or use default
+        const savedHeight = localStorage.getItem("roomHeight");
+        const roomWallHeight = savedHeight ? parseFloat(savedHeight) : 3;
+        
         furnitureEl.setAttribute(
           "wall-mounted",
-          `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; snapDistance: 0.2`
+          `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; wallHeight: ${roomWallHeight}; snapDistance: 0.2`
         );
+        
+        // Ensure restored wall-mounted items snap to nearest wall
+        setTimeout(() => {
+          const wallMountedComp = furnitureEl.components['wall-mounted'];
+          if (wallMountedComp) {
+            const currentPos = furnitureEl.object3D.position;
+            const wallInfo = wallMountedComp.findNearestWall(currentPos);
+            if (wallInfo) {
+              wallMountedComp.currentWall = wallInfo.wall;
+              const result = wallMountedComp.constrainToWall(currentPos, wallInfo.wall);
+              wallMountedComp.currentWall = result.wall;
+              
+              // Position is already constrained by constrainToWall (including Y based on object height)
+              furnitureEl.setAttribute('position', result.position);
+            } else {
+              // Fallback to front wall
+              wallMountedComp.currentWall = 'front';
+              const innerZ = roomLength / 2 - 0.1 / 2;
+              const result = wallMountedComp.constrainToWall(currentPos, 'front');
+              furnitureEl.setAttribute('position', result.position);
+            }
+          }
+        }, 200);
       }
       
       furnitureEl.setAttribute("clickable-furniture", "");
