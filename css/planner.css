@@ -268,15 +268,17 @@ body {
   max-height: 90vh; /* Ensure transition works */
   background: rgba(15, 15, 15, 0.96);
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Combined transitions for smooth state changes and hover exit */
+  transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.1s ease-out, box-shadow 0.1s ease-out;
 }
 
 #cost-panel.collapsed {
@@ -288,10 +290,14 @@ body {
 
 #cost-panel.collapsed .cost-header {
   padding: 0;
-  justify-content: center;
   height: 50px;
-  min-width: 0; /* Allow header to shrink to fit the circle */
+  min-width: 0;
   width: 100%;
+}
+
+#cost-panel:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .cost-header {
@@ -305,19 +311,44 @@ body {
   cursor: pointer;
   user-select: none;
   border-radius: 12px 12px 0 0;
-  transition: padding 0.3s ease;
+  transition: padding 0.4s ease;
   white-space: nowrap;
-  min-width: 320px; /* Prevent text reflow during collapse */
+  min-width: 320px;
+  position: relative; /* For absolute icon positioning */
 }
 
-#cost-panel.collapsed .cost-header h3 {
-  display: none;
-}
-
-/* Show icon when collapsed */
-#cost-panel.collapsed .cost-header::after {
+/* Icon for collapsed state - Absolutely positioned for smooth transition */
+.cost-header::after {
   content: "💰";
   font-size: 24px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+  transition: opacity 0.5s ease,
+    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+}
+
+#cost-panel.collapsed .cost-header::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition-delay: 0.1s; /* Wait for text to fade out slightly */
+}
+
+.cost-header h3,
+.cost-toggle-btn {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  opacity: 1;
+  transform: scale(1);
+}
+
+#cost-panel.collapsed .cost-header h3,
+#cost-panel.collapsed .cost-toggle-btn {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
 }
 
 .cost-header h3 {
@@ -334,11 +365,6 @@ body {
   font-size: 0.8em;
   cursor: pointer;
   padding: 4px 8px;
-  transition: transform 0.3s ease;
-}
-
-#cost-panel.collapsed .cost-toggle-btn {
-  display: none;
 }
 
 #cost-panel.collapsed .cost-body,
@@ -366,9 +392,8 @@ body {
   box-sizing: border-box;
 
   /* Transition for collapse */
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.2s ease-out, padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   max-height: 60vh;
   opacity: 1;
 }
@@ -378,9 +403,8 @@ body {
   box-sizing: border-box;
 
   /* Transition for collapse */
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.2s ease-out, padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   max-height: 150px;
   opacity: 1;
   overflow: hidden;
