@@ -132,25 +132,23 @@ const DUMMY_PRICES = {
   // Tables
   table1: {
     estimatedPrice: 8500,
-    sources: [
-      { store: "Default Store", price: 8500 }
-    ]
+    sources: [{ store: "Default Store", price: 8500 }],
   },
   center_table1: {
     estimatedPrice: 12000,
     sources: [
       { store: "All-Home", price: 11500 },
       { store: "Wilcon Depot", price: 12500 },
-      { store: "Gaisano", price: 12000 }
-    ]
+      { store: "Gaisano", price: 12000 },
+    ],
   },
   center_table2: {
     estimatedPrice: 15000,
     sources: [
       { store: "All-Home", price: 14500 },
       { store: "Wilcon Depot", price: 15500 },
-      { store: "Gaisano", price: 15000 }
-    ]
+      { store: "Gaisano", price: 15000 },
+    ],
   },
   // Wardrobes
   wardrobe1: {
@@ -159,8 +157,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 11500 },
       { store: "Wilcon Depot", price: 12500 },
       { store: "Gaisano", price: 12000 },
-      { store: "Local suppliers", price: 11800 }
-    ]
+      { store: "Local suppliers", price: 11800 },
+    ],
   },
   wardrobe2: {
     estimatedPrice: 14950,
@@ -168,8 +166,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 14500 },
       { store: "Wilcon Depot", price: 15500 },
       { store: "Gaisano", price: 15000 },
-      { store: "Local suppliers", price: 14800 }
-    ]
+      { store: "Local suppliers", price: 14800 },
+    ],
   },
   wardrobe3: {
     estimatedPrice: 17950,
@@ -177,8 +175,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 17500 },
       { store: "Wilcon Depot", price: 18500 },
       { store: "Gaisano", price: 18000 },
-      { store: "Local suppliers", price: 17800 }
-    ]
+      { store: "Local suppliers", price: 17800 },
+    ],
   },
   // Beds
   bed1: {
@@ -186,16 +184,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 24000 },
       { store: "Wilcon Depot", price: 26000 },
-      { store: "Gaisano", price: 25000 }
-    ]
+      { store: "Gaisano", price: 25000 },
+    ],
   },
   bed2: {
     estimatedPrice: 30000,
     sources: [
       { store: "All-Home", price: 29000 },
       { store: "Wilcon Depot", price: 31000 },
-      { store: "Gaisano", price: 30000 }
-    ]
+      { store: "Gaisano", price: 30000 },
+    ],
   },
   // Chairs
   chair1: {
@@ -203,16 +201,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 3400 },
       { store: "Wilcon Depot", price: 3600 },
-      { store: "Gaisano", price: 3500 }
-    ]
+      { store: "Gaisano", price: 3500 },
+    ],
   },
   chair2: {
     estimatedPrice: 4500,
     sources: [
       { store: "All-Home", price: 4400 },
       { store: "Wilcon Depot", price: 4600 },
-      { store: "Gaisano", price: 4500 }
-    ]
+      { store: "Gaisano", price: 4500 },
+    ],
   },
   // Desks
   desk1: {
@@ -220,16 +218,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 17500 },
       { store: "Wilcon Depot", price: 18500 },
-      { store: "Gaisano", price: 18000 }
-    ]
+      { store: "Gaisano", price: 18000 },
+    ],
   },
   desk2: {
     estimatedPrice: 22000,
     sources: [
       { store: "All-Home", price: 21500 },
       { store: "Wilcon Depot", price: 22500 },
-      { store: "Gaisano", price: 22000 }
-    ]
+      { store: "Gaisano", price: 22000 },
+    ],
   },
   // Mirrors
   mirror1: {
@@ -237,16 +235,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 5400 },
       { store: "Wilcon Depot", price: 5600 },
-      { store: "Gaisano", price: 5500 }
-    ]
+      { store: "Gaisano", price: 5500 },
+    ],
   },
   mirror2: {
     estimatedPrice: 7500,
     sources: [
       { store: "All-Home", price: 7400 },
       { store: "Wilcon Depot", price: 7600 },
-      { store: "Gaisano", price: 7500 }
-    ]
+      { store: "Gaisano", price: 7500 },
+    ],
   },
   // Shelves
   shelf1: {
@@ -254,16 +252,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 7800 },
       { store: "Wilcon Depot", price: 8200 },
-      { store: "Gaisano", price: 8000 }
-    ]
+      { store: "Gaisano", price: 8000 },
+    ],
   },
   shelf2: {
     estimatedPrice: 10000,
     sources: [
       { store: "All-Home", price: 9800 },
       { store: "Wilcon Depot", price: 10200 },
-      { store: "Gaisano", price: 10000 }
-    ]
+      { store: "Gaisano", price: 10000 },
+    ],
   },
 };
 
@@ -274,7 +272,10 @@ const DUMMY_PRICES = {
  */
 function createTimeout(ms) {
   return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+    setTimeout(
+      () => reject(new Error(`Operation timed out after ${ms}ms`)),
+      ms
+    );
   });
 }
 
@@ -304,7 +305,7 @@ function calculateEstimatedPrice(prices) {
  */
 async function loadItemsAndPrices() {
   let useFallbacks = false;
-  
+
   try {
     ITEMS_DATA = {};
     PRICE_LIST = {};
@@ -314,7 +315,7 @@ async function loadItemsAndPrices() {
     // Fetch all items with timeout
     let items = [];
     let itemsError = null;
-    
+
     try {
       const itemsPromise = supabase.from("items").select("*");
       const result = await withTimeout(itemsPromise, SUPABASE_TIMEOUT);
@@ -327,7 +328,10 @@ async function loadItemsAndPrices() {
     }
 
     if (itemsError || !items || items.length === 0) {
-      console.warn("Error fetching items or no items found, using fallbacks:", itemsError);
+      console.warn(
+        "Error fetching items or no items found, using fallbacks:",
+        itemsError
+      );
       useFallbacks = true;
     } else {
       // Store items by model_key
@@ -359,9 +363,11 @@ async function loadItemsAndPrices() {
     // Fetch all prices with timeout
     let prices = [];
     let pricesError = null;
-    
+
     try {
-      const pricesPromise = supabase.from("item_prices").select("*, items(model_key)");
+      const pricesPromise = supabase
+        .from("item_prices")
+        .select("*, items(model_key)");
       const result = await withTimeout(pricesPromise, SUPABASE_TIMEOUT);
       prices = result.data || [];
       pricesError = result.error;
@@ -407,12 +413,19 @@ async function loadItemsAndPrices() {
 
     // Apply dummy prices for items without prices or if using fallbacks
     Object.keys(ITEM_METADATA).forEach((key) => {
-      if (typeof PRICE_LIST[key] === "undefined" || PRICE_LIST[key] === 0 || useFallbacks) {
+      if (
+        typeof PRICE_LIST[key] === "undefined" ||
+        PRICE_LIST[key] === 0 ||
+        useFallbacks
+      ) {
         // Use dummy price if available, otherwise default to 0
         if (DUMMY_PRICES[key]) {
           PRICE_LIST[key] = DUMMY_PRICES[key].estimatedPrice;
           // Only set sources if we don't have any from database
-          if (!ITEM_PRICE_SOURCES[key] || ITEM_PRICE_SOURCES[key].length === 0) {
+          if (
+            !ITEM_PRICE_SOURCES[key] ||
+            ITEM_PRICE_SOURCES[key].length === 0
+          ) {
             ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
           }
         } else {
@@ -426,7 +439,9 @@ async function loadItemsAndPrices() {
     });
 
     if (useFallbacks) {
-      console.info("Using fallback data (dummy prices and metadata) due to Supabase issues");
+      console.info(
+        "Using fallback data (dummy prices and metadata) due to Supabase issues"
+      );
     }
   } catch (error) {
     console.error("Error loading items and prices, using fallbacks:", error);
@@ -463,7 +478,7 @@ function getModelUrl(modelKey) {
 
   if (!filePath) {
     // Try to get from model analyzer if available
-    if (typeof getLocalModelPath === 'function') {
+    if (typeof getLocalModelPath === "function") {
       return getLocalModelPath(modelKey);
     }
     // Final fallback
@@ -481,7 +496,10 @@ function getModelUrl(modelKey) {
         return data.publicUrl;
       }
     } catch (error) {
-      console.warn(`Failed to get Supabase Storage URL for ${filePath}, using local fallback:`, error);
+      console.warn(
+        `Failed to get Supabase Storage URL for ${filePath}, using local fallback:`,
+        error
+      );
     }
   }
 
@@ -1120,7 +1138,7 @@ function handleDrop(e) {
     if (modelLoaded) return; // Prevent duplicate calls
     modelLoaded = true;
     clearTimeout(modelLoadTimeout);
-    
+
     const placeholder = furnitureEl.querySelector(
       `#${furnitureEl.id}-placeholder`
     );
@@ -1134,7 +1152,9 @@ function handleDrop(e) {
   // Set timeout for model loading
   modelLoadTimeout = setTimeout(() => {
     if (!modelLoaded) {
-      console.warn(`Model load timeout for ${draggedItem.model} at ${modelUrl}`);
+      console.warn(
+        `Model load timeout for ${draggedItem.model} at ${modelUrl}`
+      );
       // Keep placeholder visible but make it semi-transparent to indicate loading issue
       const placeholder = furnitureEl.querySelector(
         `#${furnitureEl.id}-placeholder`
@@ -1143,7 +1163,9 @@ function handleDrop(e) {
         placeholder.setAttribute("opacity", "0.5");
         placeholder.setAttribute("color", "#888888");
         // Optionally show error message
-        console.warn(`Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`);
+        console.warn(
+          `Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`
+        );
       }
     }
   }, MODEL_LOAD_TIMEOUT);
@@ -2054,7 +2076,7 @@ function restoreRoom(roomData) {
         if (modelLoaded) return;
         modelLoaded = true;
         clearTimeout(modelLoadTimeout);
-        
+
         const placeholder = furnitureEl.querySelector(
           `#${furnitureEl.id}-placeholder`
         );
@@ -2063,12 +2085,16 @@ function restoreRoom(roomData) {
         }
       };
 
-      furnitureEl.addEventListener("model-loaded", onModelLoaded, { once: true });
+      furnitureEl.addEventListener("model-loaded", onModelLoaded, {
+        once: true,
+      });
 
       // Set timeout for model loading
       modelLoadTimeout = setTimeout(() => {
         if (!modelLoaded) {
-          console.warn(`Model load timeout for ${itemData.model_key} at ${modelUrl}`);
+          console.warn(
+            `Model load timeout for ${itemData.model_key} at ${modelUrl}`
+          );
           const placeholder = furnitureEl.querySelector(
             `#${furnitureEl.id}-placeholder`
           );
@@ -2080,17 +2106,24 @@ function restoreRoom(roomData) {
       }, MODEL_LOAD_TIMEOUT);
 
       // Listen for model error
-      furnitureEl.addEventListener("model-error", function (e) {
-        clearTimeout(modelLoadTimeout);
-        console.error(`Model load error for ${itemData.model_key}:`, e.detail);
-        const placeholder = furnitureEl.querySelector(
-          `#${furnitureEl.id}-placeholder`
-        );
-        if (placeholder) {
-          placeholder.setAttribute("opacity", "0.5");
-          placeholder.setAttribute("color", "#FF6B6B");
-        }
-      }, { once: true });
+      furnitureEl.addEventListener(
+        "model-error",
+        function (e) {
+          clearTimeout(modelLoadTimeout);
+          console.error(
+            `Model load error for ${itemData.model_key}:`,
+            e.detail
+          );
+          const placeholder = furnitureEl.querySelector(
+            `#${furnitureEl.id}-placeholder`
+          );
+          if (placeholder) {
+            placeholder.setAttribute("opacity", "0.5");
+            placeholder.setAttribute("color", "#FF6B6B");
+          }
+        },
+        { once: true }
+      );
     }
 
     // Restore cost state
@@ -2310,6 +2343,11 @@ function showWelcomeDialog() {
 
 // Initialize room when page loads
 window.addEventListener("load", async function () {
+  // Wait for HTML components to load
+  if (window.htmlLoader) {
+    await window.htmlLoader.ready;
+  }
+
   // Load items and prices from Supabase first
   await loadItemsAndPrices();
 
