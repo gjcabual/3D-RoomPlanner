@@ -802,7 +802,7 @@ body {
   position: fixed;
   pointer-events: none;
   background: rgba(102, 126, 234, 0.3);
-  border: 2px dashed #667eea;
+  border: 2px dashed #abacb0;
   border-radius: 10px;
   display: none;
   z-index: 2500;
@@ -814,7 +814,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #667eea;
+  color: #fafafa;
   font-weight: bold;
   font-size: 1.1em;
   transition: all 0.3s ease;
@@ -825,13 +825,15 @@ body {
   display: flex;
   pointer-events: auto !important;
   cursor: pointer;
-  background: rgba(102, 126, 234, 0.5);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .drop-indicator.show:hover {
-  background: rgba(102, 126, 234, 0.7);
+  background: rgba(255, 255, 255, 0.811);
+  color: #181818;
+  border: 2px dashed #202021;
   transform: translate(-50%, -50%) scale(1.05);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4);
 }
 
 /* Furniture Control Panel - Modern Dark Theme */
