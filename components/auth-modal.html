@@ -1,0 +1,33 @@
+<!-- Authentication Modal -->
+<div id="auth-modal" data-mode="signin">
+  <div id="auth-modal-content">
+    <button id="auth-modal-close" onclick="hideAuthModal()">×</button>
+    <h2 id="auth-modal-title">Sign In</h2>
+    <div class="auth-form-group">
+      <label for="auth-email">Email</label>
+      <input
+        type="email"
+        id="auth-email"
+        placeholder="your.email@example.com"
+        required
+      />
+    </div>
+    <div class="auth-form-group">
+      <label for="auth-password">Password</label>
+      <input
+        type="password"
+        id="auth-password"
+        placeholder="Enter your password"
+        required
+      />
+    </div>
+
+    <button id="auth-submit-btn" onclick="handleAuthSubmit()">Sign In</button>
+    <div id="auth-error"></div>
+    <div id="auth-success"></div>
+    <div id="auth-switch">
+      <span id="auth-switch-text">Don't have an account?</span>
+      <button id="auth-switch-btn" onclick="switchAuthMode()">Sign Up</button>
+    </div>
+  </div>
+</div>

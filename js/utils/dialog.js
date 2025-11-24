@@ -22,7 +22,12 @@ function showDialog(message, title = 'Alert') {
     }
     
     titleEl.textContent = title;
-    messageEl.textContent = message;
+    // Support both plain text and HTML content
+    if (message.includes('<') && message.includes('>')) {
+      messageEl.innerHTML = message;
+    } else {
+      messageEl.textContent = message;
+    }
     
     // Clear previous buttons and add OK button
     buttonsEl.innerHTML = '<button id="dialog-ok-btn" class="dialog-btn dialog-btn-primary">OK</button>';

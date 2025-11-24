@@ -34,11 +34,9 @@ AFRAME.registerComponent('custom-movement', {
    */
   isMovementDisabled: function() {
     const authModal = document.getElementById('auth-modal');
-    const furnitureControlPanel = document.getElementById('furniture-control-panel');
     
-    // Disable if auth modal is open or control panel is visible
+    // Disable if auth modal is open (but allow movement when control panel is open)
     const modalOpen = authModal && authModal.style.display === 'flex';
-    const panelOpen = furnitureControlPanel && furnitureControlPanel.style.display === 'block';
     
     // Also check if any input/textarea is focused
     const activeElement = document.activeElement;
@@ -48,7 +46,7 @@ AFRAME.registerComponent('custom-movement', {
       activeElement.isContentEditable
     );
     
-    return !this.enabled || modalOpen || panelOpen || isInputFocused;
+    return !this.enabled || modalOpen || isInputFocused;
   },
   
   onKeyDown: function(e) {

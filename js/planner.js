@@ -49,6 +49,41 @@ const STORAGE_MODEL_FILES = {
   shelf2: "shelf2.obj",
 };
 
+/**
+ * Get thumbnail image path for a model key
+ * @param {string} modelKey - Model key
+ * @returns {string} - Image path
+ */
+function getThumbnailPath(modelKey) {
+  const thumbnailMap = {
+    center_table1: "asset/images/thumbnails/center_table1.jpg",
+    center_table2: "asset/images/thumbnails/center_table2.jpg",
+    wardrobe1: "asset/images/thumbnails/wardrobe1.jpg",
+    wardrobe2: "asset/images/thumbnails/wardrobe2.jpg",
+    wardrobe3: "asset/images/thumbnails/wardrobe3.jpg",
+    bed1: "asset/images/thumbnails/bed1.jpg",
+    bed2: "asset/images/thumbnails/bed2.jpg",
+    chair1: "asset/images/thumbnails/chair1.jpg",
+    chair2: "asset/images/thumbnails/chair2.jpg",
+    desk1: "asset/images/thumbnails/desk1.jpg",
+    desk2: "asset/images/thumbnails/desk2.jpg",
+    mirror1: "asset/images/thumbnails/mirror1.jpg",
+    mirror2: "asset/images/thumbnails/mirror2.jpg",
+    shelf1: "asset/images/thumbnails/shelf1.jpg",
+    shelf2: "asset/images/thumbnails/shelf2.jpg",
+    // Category fallbacks
+    "center-table": "asset/images/thumbnails/center_table1.jpg",
+    "chair": "asset/images/thumbnails/chair1.jpg",
+    "bed": "asset/images/thumbnails/bed1.jpg",
+    "wardrobe": "asset/images/thumbnails/wardrobe1.jpg",
+    "desk": "asset/images/thumbnails/desk1.jpg",
+    "mirror": "asset/images/thumbnails/mirror1.jpg",
+    "shelf": "asset/images/thumbnails/shelf1.jpg",
+  };
+  
+  return thumbnailMap[modelKey] || "asset/images/thumbnails/default.jpg";
+}
+
 const STORAGE_BUCKET_FILES = new Set([
   "wardrobe_modern.obj",
   "wardrobe_traditional.obj",
@@ -132,25 +167,23 @@ const DUMMY_PRICES = {
   // Tables
   table1: {
     estimatedPrice: 8500,
-    sources: [
-      { store: "Default Store", price: 8500 }
-    ]
+    sources: [{ store: "Default Store", price: 8500 }],
   },
   center_table1: {
     estimatedPrice: 12000,
     sources: [
       { store: "All-Home", price: 11500 },
       { store: "Wilcon Depot", price: 12500 },
-      { store: "Gaisano", price: 12000 }
-    ]
+      { store: "Gaisano", price: 12000 },
+    ],
   },
   center_table2: {
     estimatedPrice: 15000,
     sources: [
       { store: "All-Home", price: 14500 },
       { store: "Wilcon Depot", price: 15500 },
-      { store: "Gaisano", price: 15000 }
-    ]
+      { store: "Gaisano", price: 15000 },
+    ],
   },
   // Wardrobes
   wardrobe1: {
@@ -159,8 +192,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 11500 },
       { store: "Wilcon Depot", price: 12500 },
       { store: "Gaisano", price: 12000 },
-      { store: "Local suppliers", price: 11800 }
-    ]
+      { store: "Local suppliers", price: 11800 },
+    ],
   },
   wardrobe2: {
     estimatedPrice: 14950,
@@ -168,8 +201,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 14500 },
       { store: "Wilcon Depot", price: 15500 },
       { store: "Gaisano", price: 15000 },
-      { store: "Local suppliers", price: 14800 }
-    ]
+      { store: "Local suppliers", price: 14800 },
+    ],
   },
   wardrobe3: {
     estimatedPrice: 17950,
@@ -177,8 +210,8 @@ const DUMMY_PRICES = {
       { store: "All-Home", price: 17500 },
       { store: "Wilcon Depot", price: 18500 },
       { store: "Gaisano", price: 18000 },
-      { store: "Local suppliers", price: 17800 }
-    ]
+      { store: "Local suppliers", price: 17800 },
+    ],
   },
   // Beds
   bed1: {
@@ -186,16 +219,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 24000 },
       { store: "Wilcon Depot", price: 26000 },
-      { store: "Gaisano", price: 25000 }
-    ]
+      { store: "Gaisano", price: 25000 },
+    ],
   },
   bed2: {
     estimatedPrice: 30000,
     sources: [
       { store: "All-Home", price: 29000 },
       { store: "Wilcon Depot", price: 31000 },
-      { store: "Gaisano", price: 30000 }
-    ]
+      { store: "Gaisano", price: 30000 },
+    ],
   },
   // Chairs
   chair1: {
@@ -203,16 +236,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 3400 },
       { store: "Wilcon Depot", price: 3600 },
-      { store: "Gaisano", price: 3500 }
-    ]
+      { store: "Gaisano", price: 3500 },
+    ],
   },
   chair2: {
     estimatedPrice: 4500,
     sources: [
       { store: "All-Home", price: 4400 },
       { store: "Wilcon Depot", price: 4600 },
-      { store: "Gaisano", price: 4500 }
-    ]
+      { store: "Gaisano", price: 4500 },
+    ],
   },
   // Desks
   desk1: {
@@ -220,16 +253,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 17500 },
       { store: "Wilcon Depot", price: 18500 },
-      { store: "Gaisano", price: 18000 }
-    ]
+      { store: "Gaisano", price: 18000 },
+    ],
   },
   desk2: {
     estimatedPrice: 22000,
     sources: [
       { store: "All-Home", price: 21500 },
       { store: "Wilcon Depot", price: 22500 },
-      { store: "Gaisano", price: 22000 }
-    ]
+      { store: "Gaisano", price: 22000 },
+    ],
   },
   // Mirrors
   mirror1: {
@@ -237,16 +270,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 5400 },
       { store: "Wilcon Depot", price: 5600 },
-      { store: "Gaisano", price: 5500 }
-    ]
+      { store: "Gaisano", price: 5500 },
+    ],
   },
   mirror2: {
     estimatedPrice: 7500,
     sources: [
       { store: "All-Home", price: 7400 },
       { store: "Wilcon Depot", price: 7600 },
-      { store: "Gaisano", price: 7500 }
-    ]
+      { store: "Gaisano", price: 7500 },
+    ],
   },
   // Shelves
   shelf1: {
@@ -254,16 +287,16 @@ const DUMMY_PRICES = {
     sources: [
       { store: "All-Home", price: 7800 },
       { store: "Wilcon Depot", price: 8200 },
-      { store: "Gaisano", price: 8000 }
-    ]
+      { store: "Gaisano", price: 8000 },
+    ],
   },
   shelf2: {
     estimatedPrice: 10000,
     sources: [
       { store: "All-Home", price: 9800 },
       { store: "Wilcon Depot", price: 10200 },
-      { store: "Gaisano", price: 10000 }
-    ]
+      { store: "Gaisano", price: 10000 },
+    ],
   },
 };
 
@@ -274,7 +307,10 @@ const DUMMY_PRICES = {
  */
 function createTimeout(ms) {
   return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+    setTimeout(
+      () => reject(new Error(`Operation timed out after ${ms}ms`)),
+      ms
+    );
   });
 }
 
@@ -304,7 +340,7 @@ function calculateEstimatedPrice(prices) {
  */
 async function loadItemsAndPrices() {
   let useFallbacks = false;
-  
+
   try {
     ITEMS_DATA = {};
     PRICE_LIST = {};
@@ -314,7 +350,7 @@ async function loadItemsAndPrices() {
     // Fetch all items with timeout
     let items = [];
     let itemsError = null;
-    
+
     try {
       const itemsPromise = supabase.from("items").select("*");
       const result = await withTimeout(itemsPromise, SUPABASE_TIMEOUT);
@@ -327,7 +363,10 @@ async function loadItemsAndPrices() {
     }
 
     if (itemsError || !items || items.length === 0) {
-      console.warn("Error fetching items or no items found, using fallbacks:", itemsError);
+      console.warn(
+        "Error fetching items or no items found, using fallbacks:",
+        itemsError
+      );
       useFallbacks = true;
     } else {
       // Store items by model_key
@@ -359,9 +398,11 @@ async function loadItemsAndPrices() {
     // Fetch all prices with timeout
     let prices = [];
     let pricesError = null;
-    
+
     try {
-      const pricesPromise = supabase.from("item_prices").select("*, items(model_key)");
+      const pricesPromise = supabase
+        .from("item_prices")
+        .select("*, items(model_key)");
       const result = await withTimeout(pricesPromise, SUPABASE_TIMEOUT);
       prices = result.data || [];
       pricesError = result.error;
@@ -407,12 +448,19 @@ async function loadItemsAndPrices() {
 
     // Apply dummy prices for items without prices or if using fallbacks
     Object.keys(ITEM_METADATA).forEach((key) => {
-      if (typeof PRICE_LIST[key] === "undefined" || PRICE_LIST[key] === 0 || useFallbacks) {
+      if (
+        typeof PRICE_LIST[key] === "undefined" ||
+        PRICE_LIST[key] === 0 ||
+        useFallbacks
+      ) {
         // Use dummy price if available, otherwise default to 0
         if (DUMMY_PRICES[key]) {
           PRICE_LIST[key] = DUMMY_PRICES[key].estimatedPrice;
           // Only set sources if we don't have any from database
-          if (!ITEM_PRICE_SOURCES[key] || ITEM_PRICE_SOURCES[key].length === 0) {
+          if (
+            !ITEM_PRICE_SOURCES[key] ||
+            ITEM_PRICE_SOURCES[key].length === 0
+          ) {
             ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
           }
         } else {
@@ -426,7 +474,9 @@ async function loadItemsAndPrices() {
     });
 
     if (useFallbacks) {
-      console.info("Using fallback data (dummy prices and metadata) due to Supabase issues");
+      console.info(
+        "Using fallback data (dummy prices and metadata) due to Supabase issues"
+      );
     }
   } catch (error) {
     console.error("Error loading items and prices, using fallbacks:", error);
@@ -463,7 +513,7 @@ function getModelUrl(modelKey) {
 
   if (!filePath) {
     // Try to get from model analyzer if available
-    if (typeof getLocalModelPath === 'function') {
+    if (typeof getLocalModelPath === "function") {
       return getLocalModelPath(modelKey);
     }
     // Final fallback
@@ -481,7 +531,10 @@ function getModelUrl(modelKey) {
         return data.publicUrl;
       }
     } catch (error) {
-      console.warn(`Failed to get Supabase Storage URL for ${filePath}, using local fallback:`, error);
+      console.warn(
+        `Failed to get Supabase Storage URL for ${filePath}, using local fallback:`,
+        error
+      );
     }
   }
 
@@ -671,8 +724,22 @@ function updateWallVisibility() {
     cameraPos.y < roomHeight; // Must be below the roof
 
   if (isInside) {
-    // Show all walls if inside
-    walls.forEach((wall) => wall.setAttribute("material", "opacity", 1.0));
+    // Show all walls if inside, but hide ceiling when inside looking up
+    walls.forEach((wall) => {
+      const wallIndex = wall.getAttribute("data-wall-index");
+      const isRoof = wallIndex === "4"; // Roof/ceiling is at index 4
+      
+      if (isRoof) {
+        // Hide ceiling when inside the room (prevents blocking view when looking up or transitioning from above)
+        wall.setAttribute("material", "transparent", true);
+        wall.setAttribute("material", "opacity", 0.0);
+        const outline = wall.object3D.getObjectByName("outline");
+        if (outline) outline.visible = false;
+      } else {
+        // Show other walls normally
+        wall.setAttribute("material", "opacity", 1.0);
+      }
+    });
     return;
   }
 
@@ -700,10 +767,23 @@ function updateWallVisibility() {
     }
   });
 
+  // Check if camera is above the room (top view)
+  const isAboveRoom = cameraPos.y > roomHeight + 0.5; // Add small margin for top view detection
+  
   // Update opacity
   walls.forEach((wall) => {
     const mesh = wall.getObject3D("mesh");
     const outline = wall.object3D.getObjectByName("outline");
+    const wallIndex = wall.getAttribute("data-wall-index");
+    const isRoof = wallIndex === "4"; // Roof/ceiling is at index 4
+
+    // Always hide ceiling when viewing from above
+    if (isRoof && isAboveRoom) {
+      wall.setAttribute("material", "transparent", true);
+      wall.setAttribute("material", "opacity", 0.0);
+      if (outline) outline.visible = false;
+      return;
+    }
 
     // If this wall's mesh was hit, hide it. Otherwise show it.
     if (mesh && hiddenMeshes.has(mesh)) {
@@ -1085,6 +1165,7 @@ function handleDrop(e) {
   placeholderEl.setAttribute("depth", "1.5");
   placeholderEl.setAttribute("color", "#FF8C00");
   placeholderEl.setAttribute("opacity", "0.7");
+  placeholderEl.setAttribute("visible", "true");
   placeholderEl.id = `${furnitureEl.id}-placeholder`;
   furnitureEl.appendChild(placeholderEl);
 
@@ -1096,6 +1177,9 @@ function handleDrop(e) {
   if (furnitureEl.flushToDOM) {
     furnitureEl.flushToDOM();
   }
+  
+  // Ensure placeholder is visible regardless of camera position
+  furnitureEl.setAttribute("visible", "true");
 
   // Now set remaining attributes after entity is in the scene
   // Get model URL from Supabase Storage or local path
@@ -1106,6 +1190,48 @@ function handleDrop(e) {
     "draggable-furniture",
     `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
   );
+  
+  // Check if item should be wall-mounted (mirrors and shelves)
+  const isWallMounted = draggedItem.model.startsWith('mirror') || draggedItem.model.startsWith('shelf');
+  if (isWallMounted) {
+    // Get wall height from localStorage or use default
+    const savedHeight = localStorage.getItem("roomHeight");
+    const roomWallHeight = savedHeight ? parseFloat(savedHeight) : 3;
+    const initialHeight = 1.5; // Initial placement height on wall
+    
+    const innerZ = roomLength / 2 - 0.1 / 2;
+    const snapZ = -innerZ + 0.05;
+    
+    // Add slight offset to prevent all items stacking at same position
+    const existingItems = document.querySelectorAll('[wall-mounted]');
+    const offsetX = existingItems.length * 0.5; // Offset each item by 0.5 units
+    
+    // Position on front wall with offset
+    furnitureEl.setAttribute('position', {
+      x: Math.max(-roomWidth/2 + 1, Math.min(roomWidth/2 - 1, offsetX)),
+      y: initialHeight,
+      z: snapZ
+    });
+    
+    // Add wall-mounted component with wallHeight parameter
+    furnitureEl.setAttribute(
+      "wall-mounted",
+      `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; wallHeight: ${roomWallHeight}; snapDistance: 0.2`
+    );
+    
+    // Initialize wall-mounted component's current wall after component is added
+    setTimeout(() => {
+      const wallMountedComp = furnitureEl.components['wall-mounted'];
+      if (wallMountedComp) {
+        wallMountedComp.currentWall = 'front';
+        // Ensure position is properly constrained (including Y based on object height)
+        const currentPos = furnitureEl.object3D.position;
+        const result = wallMountedComp.constrainToWall(currentPos, 'front');
+        furnitureEl.setAttribute('position', result.position);
+      }
+    }, 150);
+  }
+  
   furnitureEl.setAttribute("clickable-furniture", "");
   furnitureEl.setAttribute("material", "color: #FF8C00"); // Orange color for table
   // Store model key as data attribute for easy retrieval during deletion
@@ -1120,7 +1246,7 @@ function handleDrop(e) {
     if (modelLoaded) return; // Prevent duplicate calls
     modelLoaded = true;
     clearTimeout(modelLoadTimeout);
-    
+
     const placeholder = furnitureEl.querySelector(
       `#${furnitureEl.id}-placeholder`
     );
@@ -1134,7 +1260,9 @@ function handleDrop(e) {
   // Set timeout for model loading
   modelLoadTimeout = setTimeout(() => {
     if (!modelLoaded) {
-      console.warn(`Model load timeout for ${draggedItem.model} at ${modelUrl}`);
+      console.warn(
+        `Model load timeout for ${draggedItem.model} at ${modelUrl}`
+      );
       // Keep placeholder visible but make it semi-transparent to indicate loading issue
       const placeholder = furnitureEl.querySelector(
         `#${furnitureEl.id}-placeholder`
@@ -1143,7 +1271,9 @@ function handleDrop(e) {
         placeholder.setAttribute("opacity", "0.5");
         placeholder.setAttribute("color", "#888888");
         // Optionally show error message
-        console.warn(`Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`);
+        console.warn(
+          `Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`
+        );
       }
     }
   }, MODEL_LOAD_TIMEOUT);
@@ -1382,6 +1512,9 @@ function showCenterTableSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const table1Name = getItemName("center_table1");
   const table2Name = getItemName("center_table2");
@@ -1400,7 +1533,7 @@ function showCenterTableSubcategory() {
           data-model="center_table1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('center_table1')}" alt="${table1Name}" onerror="this.parentElement.innerHTML='🍽️';"></span>
           <div class="model-name">${table1Name}</div>
         </div>
         <div
@@ -1409,7 +1542,7 @@ function showCenterTableSubcategory() {
           data-model="center_table2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('center_table2')}" alt="${table2Name}" onerror="this.parentElement.innerHTML='🍽️';"></span>
           <div class="model-name">${table2Name}</div>
         </div>
       </div>
@@ -1423,6 +1556,10 @@ function showCenterTableSubcategory() {
 
 function showWardrobeSubcategory() {
   const sidePanel = document.getElementById("side-panel");
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
+  
   const mainContent =
     sidePanel.querySelector(".panel-header").nextElementSibling;
 
@@ -1491,6 +1628,9 @@ function showBedSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const bed1Name = getItemName("bed1");
   const bed2Name = getItemName("bed2");
@@ -1509,7 +1649,7 @@ function showBedSubcategory() {
           data-model="bed1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('bed1')}" alt="${bed1Name}" onerror="this.parentElement.innerHTML='🛏️';"></span>
           <div class="model-name">${bed1Name}</div>
         </div>
         <div
@@ -1518,7 +1658,7 @@ function showBedSubcategory() {
           data-model="bed2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon"><img src="${getThumbnailPath('bed2')}" alt="${bed2Name}" onerror="this.parentElement.innerHTML='🛏️';"></span>
           <div class="model-name">${bed2Name}</div>
         </div>
       </div>
@@ -1537,6 +1677,9 @@ function showChairSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const chair1Name = getItemName("chair1");
   const chair2Name = getItemName("chair2");
@@ -1555,7 +1698,7 @@ function showChairSubcategory() {
           data-model="chair1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon"><img src="${getThumbnailPath('chair1')}" alt="${chair1Name}" onerror="this.parentElement.innerHTML='🪑';"></span>
           <div class="model-name">${chair1Name}</div>
         </div>
         <div
@@ -1564,7 +1707,7 @@ function showChairSubcategory() {
           data-model="chair2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon"><img src="${getThumbnailPath('chair2')}" alt="${chair2Name}" onerror="this.parentElement.innerHTML='🪑';"></span>
           <div class="model-name">${chair2Name}</div>
         </div>
       </div>
@@ -1583,6 +1726,9 @@ function showDeskSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const desk1Name = getItemName("desk1");
   const desk2Name = getItemName("desk2");
@@ -1601,7 +1747,7 @@ function showDeskSubcategory() {
           data-model="desk1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon"><img src="${getThumbnailPath('desk1')}" alt="${desk1Name}" onerror="this.parentElement.innerHTML='💻';"></span>
           <div class="model-name">${desk1Name}</div>
         </div>
         <div
@@ -1610,7 +1756,7 @@ function showDeskSubcategory() {
           data-model="desk2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon"><img src="${getThumbnailPath('desk2')}" alt="${desk2Name}" onerror="this.parentElement.innerHTML='💻';"></span>
           <div class="model-name">${desk2Name}</div>
         </div>
       </div>
@@ -1629,6 +1775,9 @@ function showMirrorSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const mirror1Name = getItemName("mirror1");
   const mirror2Name = getItemName("mirror2");
@@ -1647,7 +1796,7 @@ function showMirrorSubcategory() {
           data-model="mirror1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon"><img src="${getThumbnailPath('mirror1')}" alt="${mirror1Name}" onerror="this.parentElement.innerHTML='🪞';"></span>
           <div class="model-name">${mirror1Name}</div>
         </div>
         <div
@@ -1656,7 +1805,7 @@ function showMirrorSubcategory() {
           data-model="mirror2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon"><img src="${getThumbnailPath('mirror2')}" alt="${mirror2Name}" onerror="this.parentElement.innerHTML='🪞';"></span>
           <div class="model-name">${mirror2Name}</div>
         </div>
       </div>
@@ -1675,6 +1824,9 @@ function showShelfSubcategory() {
   if (!sidePanel.dataset.originalContent) {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
+  
+  // Save current scroll position before navigating to subcategory
+  sidePanel.dataset.scrollPosition = sidePanel.scrollTop.toString();
 
   const shelf1Name = getItemName("shelf1");
   const shelf2Name = getItemName("shelf2");
@@ -1693,7 +1845,7 @@ function showShelfSubcategory() {
           data-model="shelf1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon"><img src="${getThumbnailPath('shelf1')}" alt="${shelf1Name}" onerror="this.parentElement.innerHTML='📦';"></span>
           <div class="model-name">${shelf1Name}</div>
         </div>
         <div
@@ -1702,7 +1854,7 @@ function showShelfSubcategory() {
           data-model="shelf2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon"><img src="${getThumbnailPath('shelf2')}" alt="${shelf2Name}" onerror="this.parentElement.innerHTML='📦';"></span>
           <div class="model-name">${shelf2Name}</div>
         </div>
       </div>
@@ -1727,7 +1879,19 @@ function goBackToMainPanel() {
   if (sidePanel) {
     sidePanel.classList.add("open");
     if (sidePanel.dataset.originalContent) {
+      // Restore the saved scroll position before restoring content
+      const savedScrollPosition = sidePanel.dataset.scrollPosition 
+        ? parseFloat(sidePanel.dataset.scrollPosition) 
+        : 0;
+      
       sidePanel.innerHTML = sidePanel.dataset.originalContent;
+      
+      // Restore scroll position after content is restored
+      // Use setTimeout to ensure DOM is updated before scrolling
+      setTimeout(() => {
+        sidePanel.scrollTop = savedScrollPosition;
+      }, 0);
+      
       // Re-initialize drag and drop
       initializeDragAndDrop();
       updateSubcategoryUI();
@@ -1741,24 +1905,144 @@ function showControlPanel(furnitureId) {
   const panel = document.getElementById("furniture-control-panel");
   const title = document.getElementById("control-panel-title");
   const furniture = document.getElementById(furnitureId);
+  const rotateLeftBtn = document.getElementById("rotate-left-btn");
+  const rotateRightBtn = document.getElementById("rotate-right-btn");
 
   // Get item name from furniture element
   let itemName = furnitureId;
+  let isWallMounted = false;
   if (furniture) {
     const modelKey = furniture.getAttribute("data-model-key");
     if (modelKey) {
       itemName = getItemName(modelKey);
+      // Check if the item is wall-mounted
+      isWallMounted = furniture.components['wall-mounted'] !== undefined;
     }
   }
 
   title.textContent = itemName;
   panel.style.display = "block";
+
+  // Show/hide rotation buttons based on item type
+  if (isWallMounted) {
+    if (rotateLeftBtn) rotateLeftBtn.style.display = "none";
+    if (rotateRightBtn) rotateRightBtn.style.display = "none";
+  } else {
+    if (rotateLeftBtn) rotateLeftBtn.style.display = "flex";
+    if (rotateRightBtn) rotateRightBtn.style.display = "flex";
+  }
 }
 
 function closeControlPanel() {
   const panel = document.getElementById("furniture-control-panel");
   panel.style.display = "none";
+  
+  // Deselect the currently selected item when closing panel
+  if (selectedFurniture) {
+    const furniture = document.getElementById(selectedFurniture);
+    if (furniture) {
+      const clickableComponent = furniture.components['clickable-furniture'];
+      if (clickableComponent && clickableComponent.isSelected) {
+        // Set flag to prevent recursion when deselect calls closeControlPanel
+        clickableComponent._isClosingPanel = true;
+        // Deselect the item, which will restore its original color
+        clickableComponent.deselect();
+        clickableComponent._isClosingPanel = false;
+      }
+    }
+  }
+  
   selectedFurniture = null;
+}
+
+/**
+ * Show item details (dimensions, type, price, etc.)
+ */
+function showItemDetails() {
+  if (!selectedFurniture) return;
+  
+  const furniture = document.getElementById(selectedFurniture);
+  if (!furniture) return;
+  
+  const modelKey = furniture.getAttribute("data-model-key");
+  if (!modelKey) return;
+  
+  // Get item name
+  const itemName = getItemName(modelKey);
+  
+  // Get price
+  const price = PRICE_LIST[modelKey] || 0;
+  
+  // Get dimensions from draggable component if available
+  const draggableComponent = furniture.components["draggable-furniture"];
+  let dimensions = "Calculating...";
+  let width = 0.5;
+  let length = 0.5;
+  let height = 0.5;
+  
+  if (draggableComponent && draggableComponent.dimensionsCalculated) {
+    // Use calculated dimensions from model (read-only, actual dimensions)
+    width = parseFloat(draggableComponent.actualWidth || draggableComponent.data.objectWidth);
+    length = parseFloat(draggableComponent.actualLength || draggableComponent.data.objectLength);
+    // Try to get height from bounding box
+    const object3D = furniture.object3D;
+    if (object3D) {
+      const box = new THREE.Box3();
+      box.setFromObject(object3D);
+      if (box.min && box.max) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        height = Math.abs(size.y);
+      }
+    }
+    dimensions = `W: ${width.toFixed(2)}m × L: ${length.toFixed(2)}m × H: ${height.toFixed(2)}m`;
+  }
+  
+  // Get category
+  let category = "Furniture";
+  if (modelKey.includes("table")) category = "Table";
+  else if (modelKey.includes("bed")) category = "Bed";
+  else if (modelKey.includes("chair")) category = "Seating";
+  else if (modelKey.includes("desk")) category = "Desk";
+  else if (modelKey.includes("wardrobe")) category = "Storage";
+  else if (modelKey.includes("mirror")) category = "Mirror";
+  else if (modelKey.includes("shelf")) category = "Shelf";
+  
+  // Check if wall-mounted (read-only, actual type)
+  const isWallMounted = furniture.components["wall-mounted"] !== undefined;
+  const mountType = isWallMounted ? "Wall-mounted" : "Floor-standing";
+  
+  // Build details content (read-only display of actual dimensions and type)
+  const detailsContent = `
+    <div class="item-details-content">
+      <h4 class="item-details-title">${itemName}</h4>
+      <div class="item-details-section">
+        <div class="item-details-row">
+          <span class="item-details-label">Category:</span>
+          <span class="item-details-value">${category}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Type:</span>
+          <span class="item-details-value">${mountType}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Dimensions:</span>
+          <span class="item-details-value">W: ${width.toFixed(2)}m × L: ${length.toFixed(2)}m × H: ${height.toFixed(2)}m</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Estimated Price:</span>
+          <span class="item-details-value">${peso(price)}</span>
+        </div>
+        <div class="item-details-row">
+          <span class="item-details-label">Model Key:</span>
+          <span class="item-details-value">${modelKey}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Show in dialog (read-only display)
+  showDialog(detailsContent, "Item Details");
 }
 
 function rotateFurnitureLeft() {
@@ -2027,10 +2311,14 @@ function restoreRoom(roomData) {
       placeholderEl.setAttribute("depth", "1.5");
       placeholderEl.setAttribute("color", "#FF8C00");
       placeholderEl.setAttribute("opacity", "0.7");
+      placeholderEl.setAttribute("visible", "true");
       placeholderEl.id = `${furnitureEl.id}-placeholder`;
       furnitureEl.appendChild(placeholderEl);
 
       furnitureContainer.appendChild(furnitureEl);
+      
+      // Ensure furniture is visible regardless of camera position
+      furnitureEl.setAttribute("visible", "true");
 
       if (furnitureEl.flushToDOM) {
         furnitureEl.flushToDOM();
@@ -2043,6 +2331,43 @@ function restoreRoom(roomData) {
         "draggable-furniture",
         `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
       );
+      
+      // Check if item should be wall-mounted (mirrors and shelves)
+      const isWallMounted = itemData.model_key.startsWith('mirror') || itemData.model_key.startsWith('shelf');
+      if (isWallMounted) {
+        // Get wall height from localStorage or use default
+        const savedHeight = localStorage.getItem("roomHeight");
+        const roomWallHeight = savedHeight ? parseFloat(savedHeight) : 3;
+        
+        furnitureEl.setAttribute(
+          "wall-mounted",
+          `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallThickness: 0.1; wallHeight: ${roomWallHeight}; snapDistance: 0.2`
+        );
+        
+        // Ensure restored wall-mounted items snap to nearest wall
+        setTimeout(() => {
+          const wallMountedComp = furnitureEl.components['wall-mounted'];
+          if (wallMountedComp) {
+            const currentPos = furnitureEl.object3D.position;
+            const wallInfo = wallMountedComp.findNearestWall(currentPos);
+            if (wallInfo) {
+              wallMountedComp.currentWall = wallInfo.wall;
+              const result = wallMountedComp.constrainToWall(currentPos, wallInfo.wall);
+              wallMountedComp.currentWall = result.wall;
+              
+              // Position is already constrained by constrainToWall (including Y based on object height)
+              furnitureEl.setAttribute('position', result.position);
+            } else {
+              // Fallback to front wall
+              wallMountedComp.currentWall = 'front';
+              const innerZ = roomLength / 2 - 0.1 / 2;
+              const result = wallMountedComp.constrainToWall(currentPos, 'front');
+              furnitureEl.setAttribute('position', result.position);
+            }
+          }
+        }, 200);
+      }
+      
       furnitureEl.setAttribute("clickable-furniture", "");
       furnitureEl.setAttribute("material", "color: #FF8C00");
 
@@ -2054,7 +2379,7 @@ function restoreRoom(roomData) {
         if (modelLoaded) return;
         modelLoaded = true;
         clearTimeout(modelLoadTimeout);
-        
+
         const placeholder = furnitureEl.querySelector(
           `#${furnitureEl.id}-placeholder`
         );
@@ -2063,12 +2388,16 @@ function restoreRoom(roomData) {
         }
       };
 
-      furnitureEl.addEventListener("model-loaded", onModelLoaded, { once: true });
+      furnitureEl.addEventListener("model-loaded", onModelLoaded, {
+        once: true,
+      });
 
       // Set timeout for model loading
       modelLoadTimeout = setTimeout(() => {
         if (!modelLoaded) {
-          console.warn(`Model load timeout for ${itemData.model_key} at ${modelUrl}`);
+          console.warn(
+            `Model load timeout for ${itemData.model_key} at ${modelUrl}`
+          );
           const placeholder = furnitureEl.querySelector(
             `#${furnitureEl.id}-placeholder`
           );
@@ -2080,17 +2409,24 @@ function restoreRoom(roomData) {
       }, MODEL_LOAD_TIMEOUT);
 
       // Listen for model error
-      furnitureEl.addEventListener("model-error", function (e) {
-        clearTimeout(modelLoadTimeout);
-        console.error(`Model load error for ${itemData.model_key}:`, e.detail);
-        const placeholder = furnitureEl.querySelector(
-          `#${furnitureEl.id}-placeholder`
-        );
-        if (placeholder) {
-          placeholder.setAttribute("opacity", "0.5");
-          placeholder.setAttribute("color", "#FF6B6B");
-        }
-      }, { once: true });
+      furnitureEl.addEventListener(
+        "model-error",
+        function (e) {
+          clearTimeout(modelLoadTimeout);
+          console.error(
+            `Model load error for ${itemData.model_key}:`,
+            e.detail
+          );
+          const placeholder = furnitureEl.querySelector(
+            `#${furnitureEl.id}-placeholder`
+          );
+          if (placeholder) {
+            placeholder.setAttribute("opacity", "0.5");
+            placeholder.setAttribute("color", "#FF6B6B");
+          }
+        },
+        { once: true }
+      );
     }
 
     // Restore cost state
@@ -2310,6 +2646,11 @@ function showWelcomeDialog() {
 
 // Initialize room when page loads
 window.addEventListener("load", async function () {
+  // Wait for HTML components to load
+  if (window.htmlLoader) {
+    await window.htmlLoader.ready;
+  }
+
   // Load items and prices from Supabase first
   await loadItemsAndPrices();
 
@@ -2482,30 +2823,54 @@ async function handleSaveEstimation() {
   }
 
   try {
+    // Show warning dialog first
+    const proceed = await showConfirm(
+      "⚠️ Reminder: The saved cost estimation only contains details (cost breakdown, room size, etc.) and does NOT include the visual 3D plan.\n\n📸 Please take a screenshot of your room plan before saving if you want to keep a visual record.\n\nDo you want to continue saving the cost estimation?",
+      "Save Cost Estimation - Important Reminder"
+    );
+    
+    if (!proceed) {
+      return; // User cancelled
+    }
+
     const nameInput = await showPrompt(
       "Enter a name for this cost estimation:",
       "",
       "Save Cost Estimation"
     );
+    
+    // If user cancelled the name input, cancel the entire save operation
+    if (nameInput === null) {
+      return;
+    }
+    
     const estimationName =
       (nameInput && nameInput.trim()) ||
       `Cost Estimation ${new Date().toLocaleString()}`;
 
     if (typeof saveCostEstimation === "function") {
-      saveCostEstimation(estimationName);
+      try {
+        await saveCostEstimation(estimationName);
 
-      // Show notification
-      const notification = document.getElementById(
-        "save-estimation-notification"
-      );
-      if (notification) {
-        notification.textContent = "saved to profile";
-        notification.classList.add("show");
+        // Show notification with reminder
+        const notification = document.getElementById(
+          "save-estimation-notification"
+        );
+        if (notification) {
+          notification.textContent = "saved to profile (remember to screenshot your plan!)";
+          notification.classList.add("show");
 
-        // Hide notification after 3 seconds
-        setTimeout(() => {
-          notification.classList.remove("show");
-        }, 3000);
+          // Hide notification after 5 seconds (longer to read the reminder)
+          setTimeout(() => {
+            notification.classList.remove("show");
+          }, 5000);
+        }
+      } catch (error) {
+        console.error("Error saving cost estimation:", error);
+        await showDialog(
+          `Error saving cost estimation: ${error.message}`,
+          "Error"
+        );
       }
     } else {
       await showDialog("Error: Save function not available", "Error");
@@ -2528,3 +2893,4 @@ window.showChairSubcategory = showChairSubcategory;
 window.showDeskSubcategory = showDeskSubcategory;
 window.showMirrorSubcategory = showMirrorSubcategory;
 window.showShelfSubcategory = showShelfSubcategory;
+window.showItemDetails = showItemDetails;

@@ -39,9 +39,9 @@ async function loadProfileData() {
         })
       : '-';
 
-    // Load saved cost estimations
+    // Load saved cost estimations (filtered by current user)
     const estimations = typeof getSavedCostEstimations === 'function' 
-      ? getSavedCostEstimations() 
+      ? await getSavedCostEstimations() 
       : [];
     document.getElementById('profile-plans-count').textContent = estimations.length;
 
