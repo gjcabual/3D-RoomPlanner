@@ -3,14 +3,35 @@
 const LOCAL_COST_ESTIMATIONS_KEY = 'localCostEstimations';
 
 /**
- * Get all saved cost estimations
- * @returns {Array} - Array of saved cost estimations
+ * Get all saved cost estimations for the current user
+ * @returns {Array} - Array of saved cost estimations for current user
  */
-function getSavedCostEstimations() {
+async function getSavedCostEstimations() {
   try {
+    // Get current user ID
+    let currentUserId = null;
+    if (typeof getCurrentUser === 'function') {
+      try {
+        const user = await getCurrentUser();
+        currentUserId = user?.id || null;
+      } catch (error) {
+        console.warn('Could not get current user:', error);
+        // If not authenticated, return empty array
+        return [];
+      }
+    }
+    
+    // If no user ID, return empty array (user not authenticated)
+    if (!currentUserId) {
+      return [];
+    }
+    
     const raw = localStorage.getItem(LOCAL_COST_ESTIMATIONS_KEY);
-    const estimations = raw ? JSON.parse(raw) : [];
-    return Array.isArray(estimations) ? estimations : [];
+    const allEstimations = raw ? JSON.parse(raw) : [];
+    const estimations = Array.isArray(allEstimations) ? allEstimations : [];
+    
+    // Filter by current user ID
+    return estimations.filter(est => est.userId === currentUserId);
   } catch (error) {
     console.warn('Error parsing saved cost estimations:', error);
     return [];
@@ -30,11 +51,17 @@ function saveCostEstimations(estimations) {
  * @param {Object} estimation - Cost estimation object
  * @returns {Array} - Updated array of estimations
  */
-function addCostEstimation(estimation) {
-  const estimations = getSavedCostEstimations();
+async function addCostEstimation(estimation) {
+  // Get all estimations (not filtered by user)
+  const raw = localStorage.getItem(LOCAL_COST_ESTIMATIONS_KEY);
+  const allEstimations = raw ? JSON.parse(raw) : [];
+  const estimations = Array.isArray(allEstimations) ? allEstimations : [];
+  
   estimations.unshift(estimation);
   saveCostEstimations(estimations);
-  return estimations;
+  
+  // Return filtered estimations for current user
+  return await getSavedCostEstimations();
 }
 
 /**
@@ -42,18 +69,61 @@ function addCostEstimation(estimation) {
  * @param {string} id - Estimation ID
  * @returns {Array} - Updated array of estimations
  */
-function deleteCostEstimation(id) {
-  const estimations = getSavedCostEstimations().filter(est => est.id !== id);
-  saveCostEstimations(estimations);
-  return estimations;
+async function deleteCostEstimation(id) {
+  // Get current user ID to ensure we only delete user's own estimations
+  let currentUserId = null;
+  if (typeof getCurrentUser === 'function') {
+    try {
+      const user = await getCurrentUser();
+      currentUserId = user?.id || null;
+    } catch (error) {
+      console.warn('Could not get current user:', error);
+      return [];
+    }
+  }
+  
+  // Get all estimations (not filtered by user)
+  const raw = localStorage.getItem(LOCAL_COST_ESTIMATIONS_KEY);
+  const allEstimations = raw ? JSON.parse(raw) : [];
+  const estimations = Array.isArray(allEstimations) ? allEstimations : [];
+  
+  // Filter out the estimation to delete (only if it belongs to current user)
+  const updatedEstimations = estimations.filter(est => {
+    // Only delete if it's the matching ID AND belongs to current user
+    if (est.id === id) {
+      return est.userId !== currentUserId; // Remove if it matches current user
+    }
+    return true; // Keep all other estimations
+  });
+  
+  saveCostEstimations(updatedEstimations);
+  
+  // Return filtered estimations for current user
+  return await getSavedCostEstimations();
 }
 
 /**
  * Save current cost estimation
  * @param {string} name - Project name
- * @returns {Object} - Saved estimation object
+ * @returns {Promise<Object>} - Saved estimation object
  */
-function saveCostEstimation(name) {
+async function saveCostEstimation(name) {
+  // Get current user ID
+  let currentUserId = null;
+  if (typeof getCurrentUser === 'function') {
+    try {
+      const user = await getCurrentUser();
+      currentUserId = user?.id || null;
+    } catch (error) {
+      console.warn('Could not get current user:', error);
+      throw new Error('User must be authenticated to save cost estimations');
+    }
+  }
+  
+  if (!currentUserId) {
+    throw new Error('User must be authenticated to save cost estimations');
+  }
+  
   const roomWidth = parseFloat(localStorage.getItem('roomWidth')) || 10;
   const roomLength = parseFloat(localStorage.getItem('roomLength')) || 10;
   
@@ -70,6 +140,7 @@ function saveCostEstimation(name) {
   
   const estimation = {
     id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+    userId: currentUserId, // Store user ID with estimation
     name: name || `Cost Estimation ${new Date().toLocaleString()}`,
     createdAt: new Date().toISOString(),
     roomWidth: roomWidth,
@@ -79,7 +150,7 @@ function saveCostEstimation(name) {
     furnitureCount: furnitureCount
   };
   
-  addCostEstimation(estimation);
+  await addCostEstimation(estimation);
   return estimation;
 }
 

@@ -2785,30 +2785,54 @@ async function handleSaveEstimation() {
   }
 
   try {
+    // Show warning dialog first
+    const proceed = await showConfirm(
+      "⚠️ Reminder: The saved cost estimation only contains details (cost breakdown, room size, etc.) and does NOT include the visual 3D plan.\n\n📸 Please take a screenshot of your room plan before saving if you want to keep a visual record.\n\nDo you want to continue saving the cost estimation?",
+      "Save Cost Estimation - Important Reminder"
+    );
+    
+    if (!proceed) {
+      return; // User cancelled
+    }
+
     const nameInput = await showPrompt(
       "Enter a name for this cost estimation:",
       "",
       "Save Cost Estimation"
     );
+    
+    // If user cancelled the name input, cancel the entire save operation
+    if (nameInput === null) {
+      return;
+    }
+    
     const estimationName =
       (nameInput && nameInput.trim()) ||
       `Cost Estimation ${new Date().toLocaleString()}`;
 
     if (typeof saveCostEstimation === "function") {
-      saveCostEstimation(estimationName);
+      try {
+        await saveCostEstimation(estimationName);
 
-      // Show notification
-      const notification = document.getElementById(
-        "save-estimation-notification"
-      );
-      if (notification) {
-        notification.textContent = "saved to profile";
-        notification.classList.add("show");
+        // Show notification with reminder
+        const notification = document.getElementById(
+          "save-estimation-notification"
+        );
+        if (notification) {
+          notification.textContent = "saved to profile (remember to screenshot your plan!)";
+          notification.classList.add("show");
 
-        // Hide notification after 3 seconds
-        setTimeout(() => {
-          notification.classList.remove("show");
-        }, 3000);
+          // Hide notification after 5 seconds (longer to read the reminder)
+          setTimeout(() => {
+            notification.classList.remove("show");
+          }, 5000);
+        }
+      } catch (error) {
+        console.error("Error saving cost estimation:", error);
+        await showDialog(
+          `Error saving cost estimation: ${error.message}`,
+          "Error"
+        );
       }
     } else {
       await showDialog("Error: Save function not available", "Error");
