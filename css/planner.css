@@ -146,6 +146,11 @@ body {
   display: block;
 }
 
+.model-icon svg {
+  display: block;
+  margin: 16px auto;
+}
+
 .model-name {
   font-size: 0.8em;
   color: #f5f5f5;
@@ -254,11 +259,10 @@ body {
   transform: translateY(0);
 }
 
-
 /* Cost Estimator Panel */
 #cost-panel {
   width: 100%;
-  max-height: calc(100vh - 100px); /* Account for hud-stack top (80px) + bottom padding (20px) */
+  max-height: 90vh; /* Ensure transition works */
   background: rgba(15, 15, 15, 0.96);
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
@@ -267,37 +271,22 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #cost-panel.collapsed {
-  width: 48px;
-  max-height: 48px;
-  align-self: flex-end;
+  width: 50px;
+  max-height: 50px;
+  border-radius: 25px;
+  cursor: pointer;
 }
 
 #cost-panel.collapsed .cost-header {
-  padding: 12px;
+  padding: 0;
   justify-content: center;
-  border-radius: 12px;
-}
-
-#cost-panel.collapsed .cost-header h3 {
-  display: block;
-  flex: none;
-  margin: 0;
-  font-size: 0;
-  line-height: 1;
-}
-
-#cost-panel.collapsed .cost-header h3::before {
-  content: "💰";
-  font-size: 24px;
-  display: block;
-}
-
-#cost-panel.collapsed .cost-toggle-btn {
-  display: none;
+  height: 50px;
 }
 
 .cost-header {
@@ -311,6 +300,19 @@ body {
   cursor: pointer;
   user-select: none;
   border-radius: 12px 12px 0 0;
+  transition: padding 0.3s ease;
+  white-space: nowrap;
+  min-width: 320px; /* Prevent text reflow during collapse */
+}
+
+#cost-panel.collapsed .cost-header h3 {
+  display: none;
+}
+
+/* Show icon when collapsed */
+#cost-panel.collapsed .cost-header::after {
+  content: "💰";
+  font-size: 24px;
 }
 
 .cost-header h3 {
@@ -327,16 +329,21 @@ body {
   font-size: 0.8em;
   cursor: pointer;
   padding: 4px 8px;
-  transition: transform 0.2s;
+  transition: transform 0.3s ease;
 }
 
-.cost-panel.collapsed .cost-toggle-btn {
-  transform: rotate(-90deg);
-}
-
-.cost-panel.collapsed .cost-body,
-.cost-panel.collapsed .cost-footer {
+#cost-panel.collapsed .cost-toggle-btn {
   display: none;
+}
+
+#cost-panel.collapsed .cost-body,
+#cost-panel.collapsed .cost-footer {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden; /* Ensure no scrollbars appear */
 }
 
 .cost-body {
@@ -348,6 +355,30 @@ body {
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
+
+  /* Prevent reflow during collapse */
+  min-width: 320px;
+  box-sizing: border-box;
+
+  /* Transition for collapse */
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 60vh;
+  opacity: 1;
+}
+.cost-footer {
+  /* Prevent reflow during collapse */
+  min-width: 320px;
+  box-sizing: border-box;
+
+  /* Transition for collapse */
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 150px;
+  opacity: 1;
+  overflow: hidden;
 }
 
 /* Custom Scrollbar for Cost Body - Webkit */
@@ -588,7 +619,7 @@ body {
 }
 
 .cost-save-btn {
-  background: #4CAF50;
+  background: #4caf50;
   color: white;
   border: none;
   padding: 8px 20px;
@@ -609,7 +640,7 @@ body {
 }
 
 .save-notification {
-  color: #4CAF50;
+  color: #4caf50;
   font-size: 0.85em;
   font-weight: 500;
   opacity: 0;
@@ -626,12 +657,12 @@ body {
     width: 260px;
     top: 20px;
   }
-  
+
   #instructions {
     top: 10px;
     left: 10px;
   }
-  
+
   #instructions .instructions-content {
     width: 280px;
     left: calc(100% + 8px);
@@ -935,4 +966,3 @@ body {
     padding: 15px;
   }
 }
-
