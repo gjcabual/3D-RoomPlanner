@@ -1,5 +1,16 @@
 // Authentication functions using Supabase
 
+function getSupabaseClient() {
+  const client = window.supabaseClient || window.supabase;
+  if (!client || !client.auth) {
+    console.error(
+      "[auth] Supabase client not initialized (missing window.supabaseClient/window.supabase.auth)."
+    );
+    return null;
+  }
+  return client;
+}
+
 /**
  * Sign up a new user
  * @param {string} email - User email
@@ -7,8 +18,12 @@
  * @param {string} role - User role ('user' or 'admin'), defaults to 'user'
  * @returns {Promise<Object>} - {success: boolean, data: Object, error: string}
  */
-async function signUp(email, password, role = 'user') {
+async function signUp(email, password, role = "user") {
   try {
+    const supabase = getSupabaseClient();
+    if (!supabase)
+      return { success: false, error: "Supabase client not initialized" };
+
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
@@ -21,19 +36,17 @@ async function signUp(email, password, role = 'user') {
     // Create user profile in users table if auth.users was created
     if (data.user) {
       // Validate role (default to 'user' for security)
-      const userRole = (role === 'admin' || role === 'user') ? role : 'user';
-      
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: data.user.id,
-          email: email,
-          role: userRole,
-        });
+      const userRole = role === "admin" || role === "user" ? role : "user";
 
-      if (profileError && profileError.code !== '23505') {
+      const { error: profileError } = await supabase.from("users").insert({
+        id: data.user.id,
+        email: email,
+        role: userRole,
+      });
+
+      if (profileError && profileError.code !== "23505") {
         // Ignore duplicate key error (user might already exist)
-        console.warn('Error creating user profile:', profileError);
+        console.warn("Error creating user profile:", profileError);
       }
     }
 
@@ -51,6 +64,10 @@ async function signUp(email, password, role = 'user') {
  */
 async function signIn(email, password) {
   try {
+    const supabase = getSupabaseClient();
+    if (!supabase)
+      return { success: false, error: "Supabase client not initialized" };
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
@@ -72,6 +89,10 @@ async function signIn(email, password) {
  */
 async function signOut() {
   try {
+    const supabase = getSupabaseClient();
+    if (!supabase)
+      return { success: false, error: "Supabase client not initialized" };
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       return { success: false, error: error.message };
@@ -88,10 +109,15 @@ async function signOut() {
  */
 async function getCurrentUser() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     return user;
   } catch (error) {
-    console.error('Error getting current user:', error);
+    console.error("Error getting current user:", error);
     return null;
   }
 }
@@ -102,23 +128,26 @@ async function getCurrentUser() {
  */
 async function getUserProfile() {
   try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
     const user = await getCurrentUser();
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
       .single();
 
     if (error) {
-      console.error('Error fetching user profile:', error);
+      console.error("Error fetching user profile:", error);
       return null;
     }
 
     return data;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error("Error getting user profile:", error);
     return null;
   }
 }
@@ -138,7 +167,7 @@ async function checkAuth() {
  */
 async function isAdmin() {
   const profile = await getUserProfile();
-  return profile && profile.role === 'admin';
+  return profile && profile.role === "admin";
 }
 
 /**
@@ -147,8 +176,22 @@ async function isAdmin() {
  * @returns {Function} - Unsubscribe function
  */
 function onAuthStateChange(callback) {
-  return supabase.auth.onAuthStateChange((event, session) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    // Keep the app running even if auth can't be wired up.
+    return () => {};
+  }
+
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
     callback(event, session);
   });
-}
 
+  // Supabase v2 returns { data: { subscription } }
+  return () => {
+    try {
+      data?.subscription?.unsubscribe?.();
+    } catch (e) {
+      // no-op
+    }
+  };
+}
