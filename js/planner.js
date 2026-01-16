@@ -1111,6 +1111,7 @@ function handleDrop(e) {
   // Get room dimensions for smart placement
   const roomWidth = parseFloat(localStorage.getItem("roomWidth")); // Already in meters
   const roomLength = parseFloat(localStorage.getItem("roomLength"));
+  const wallHeight = parseFloat(localStorage.getItem("roomHeight")) || 3;
 
   // Create furniture entity
   const furnitureEl = document.createElement("a-entity");
@@ -1143,10 +1144,22 @@ function handleDrop(e) {
   furnitureEl.setAttribute("scale", draggedItem.scale);
   furnitureEl.setAttribute(
     "draggable-furniture",
-    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
   );
   furnitureEl.setAttribute("clickable-furniture", "");
-  furnitureEl.setAttribute("material", "color: #FF8C00"); // Orange color for table
+
+  // Apply a default texture/material so OBJ models aren't plain white.
+  if (
+    typeof draggedItem.model === "string" &&
+    draggedItem.model.startsWith("mirror")
+  ) {
+    furnitureEl.setAttribute("textured-model", "mode", "mirror");
+  } else {
+    furnitureEl.setAttribute(
+      "textured-model",
+      `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+    );
+  }
   // Store model key as data attribute for easy retrieval during deletion
   furnitureEl.setAttribute("data-model-key", draggedItem.model);
 
@@ -2021,6 +2034,10 @@ function restoreRoom(roomData) {
       roomData.room_length ||
       parseFloat(localStorage.getItem("roomLength")) ||
       10;
+    const wallHeight =
+      roomData.room_height ||
+      parseFloat(localStorage.getItem("roomHeight")) ||
+      3;
 
     // Clear existing furniture first to avoid duplicates
     const existingFurniture =
@@ -2086,10 +2103,21 @@ function restoreRoom(roomData) {
       furnitureEl.setAttribute("cached-obj-model", "src", modelUrl);
       furnitureEl.setAttribute(
         "draggable-furniture",
-        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
       );
       furnitureEl.setAttribute("clickable-furniture", "");
-      furnitureEl.setAttribute("material", "color: #FF8C00");
+
+      if (
+        typeof itemData.model_key === "string" &&
+        itemData.model_key.startsWith("mirror")
+      ) {
+        furnitureEl.setAttribute("textured-model", "mode", "mirror");
+      } else {
+        furnitureEl.setAttribute(
+          "textured-model",
+          `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+        );
+      }
 
       // Set up model loading timeout and error handling for restored items
       let modelLoadTimeout;
