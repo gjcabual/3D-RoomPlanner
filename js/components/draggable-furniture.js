@@ -20,6 +20,14 @@ AFRAME.registerComponent("draggable-furniture", {
     this.isPlacementValid = true;
     this._idleCollisionNextCheckAt = 0;
     this._activeTween = null;
+    this._materialSnapshot = new Map();
+    this._materialsPrepared = false;
+
+    // Placement state machine:
+    // - placed: finalized item (acts as obstacle)
+    // - dragging: currently being manipulated (should be ignored as obstacle)
+    // - draft: not yet finalized (kept for future extensibility)
+    this.placementState = "placed";
 
     this.camera = null;
     this.cameraObj = null;
@@ -47,6 +55,9 @@ AFRAME.registerComponent("draggable-furniture", {
     this.onMouseUp = this.onMouseUp.bind(this);
     this.calculateDimensions = this.calculateDimensions.bind(this);
 
+    // Bind internal helpers
+    this._prepareMeshMaterials = this._prepareMeshMaterials.bind(this);
+
     // Add event listeners
     this.el.addEventListener("mousedown", this.onMouseDown);
     document.addEventListener("mousemove", this.onMouseMove);
@@ -56,11 +67,19 @@ AFRAME.registerComponent("draggable-furniture", {
     // Listen for model to load so we can calculate actual dimensions
     this.el.addEventListener("model-loaded", this.calculateDimensions);
 
+    // Prepare per-mesh material clones/snapshots as early as possible.
+    // This prevents selection/other components from mutating materials
+    // before we capture the "reset" baseline.
+    this.el.addEventListener("model-loaded", this._prepareMeshMaterials);
+
     // Try to calculate dimensions immediately if model is already loaded
     setTimeout(() => {
       if (!this.dimensionsCalculated) {
         this.calculateDimensions();
       }
+
+      // In case the model was already available before the model-loaded event.
+      this._prepareMeshMaterials();
     }, 100);
 
     // Get camera reference
@@ -71,15 +90,181 @@ AFRAME.registerComponent("draggable-furniture", {
 
     // Default last valid position is the initial position.
     this.lastValidPosition = this.el.object3D.position.clone();
+
+    // Mark initial entities as placed obstacles.
+    this._setPlacementState("placed");
+  },
+
+  _setPlacementState: function (state) {
+    const next = state || "placed";
+    this.placementState = next;
+
+    if (this.el) {
+      this.el.dataset.placementState = next;
+      if (next === "placed") {
+        this.el.classList.add("placed-item");
+        this.el.dataset.placementLayer = "PlacedItems";
+      } else {
+        this.el.classList.remove("placed-item");
+      }
+    }
+  },
+
+  finalizePlacement: function () {
+    // Restore original materials/textures after a successful drop.
+    this._applyFeedbackToMeshes("reset");
+    this.el.setAttribute("material", "emissive", this.defaultEmissive);
+    this.el.setAttribute(
+      "material",
+      "emissiveIntensity",
+      this.defaultEmissiveIntensity,
+    );
+    this._setPlacementState("placed");
+  },
+
+  _prepareMeshMaterials: function () {
+    // A-Frame's material component doesn't reliably override loaded model materials.
+    // We clone mesh materials per-instance and store a snapshot so we can tint them
+    // for drag/error feedback and restore them on reset.
+    if (this._materialsPrepared) return;
+    if (!this.el || !this.el.object3D) return;
+
+    let processed = 0;
+
+    this.el.object3D.traverse((child) => {
+      if (!child || !child.isMesh || !child.material) return;
+
+      const cloneAndSnapshot = (mat) => {
+        if (!mat) return mat;
+        const cloned = mat.clone();
+        // snapshot original values for restore
+        if (!this._materialSnapshot.has(cloned.uuid)) {
+          this._materialSnapshot.set(cloned.uuid, {
+            color: cloned.color ? cloned.color.clone() : null,
+            emissive: cloned.emissive ? cloned.emissive.clone() : null,
+            emissiveIntensity:
+              typeof cloned.emissiveIntensity === "number"
+                ? cloned.emissiveIntensity
+                : undefined,
+            opacity:
+              typeof cloned.opacity === "number" ? cloned.opacity : undefined,
+            transparent:
+              typeof cloned.transparent === "boolean"
+                ? cloned.transparent
+                : undefined,
+          });
+        }
+        return cloned;
+      };
+
+      if (Array.isArray(child.material)) {
+        child.material = child.material.map((m) => {
+          const cloned = cloneAndSnapshot(m);
+          if (cloned) processed += 1;
+          return cloned;
+        });
+      } else {
+        const cloned = cloneAndSnapshot(child.material);
+        if (cloned) processed += 1;
+        child.material = cloned;
+      }
+    });
+
+    // Only mark prepared once we've actually seen meshes/materials.
+    // This prevents an early call (before model-loaded) from permanently
+    // disabling snapshots and causing stuck tints.
+    if (processed > 0 || this._materialSnapshot.size > 0) {
+      this._materialsPrepared = true;
+    }
+  },
+
+  _applyFeedbackToMeshes: function (kind) {
+    this._prepareMeshMaterials();
+    if (!this.el || !this.el.object3D) return;
+
+    const applyToMat = (mat) => {
+      if (!mat) return;
+      const snap = this._materialSnapshot.get(mat.uuid);
+
+      if (kind === "reset") {
+        if (snap) {
+          if (mat.color && snap.color) mat.color.copy(snap.color);
+          if (mat.emissive && snap.emissive) mat.emissive.copy(snap.emissive);
+          if (
+            typeof snap.emissiveIntensity === "number" &&
+            typeof mat.emissiveIntensity === "number"
+          ) {
+            mat.emissiveIntensity = snap.emissiveIntensity;
+          }
+          if (
+            typeof snap.opacity === "number" &&
+            typeof mat.opacity === "number"
+          ) {
+            mat.opacity = snap.opacity;
+          }
+          if (
+            typeof snap.transparent === "boolean" &&
+            typeof mat.transparent === "boolean"
+          ) {
+            mat.transparent = snap.transparent;
+          }
+        }
+        mat.needsUpdate = true;
+        return;
+      }
+
+      //to fix
+      if (kind === "drag") {
+        // Valid placement: green tint + strong emissive.
+        // if (mat.color) mat.color.set("#b6ffb6");
+        // if (mat.emissive) mat.emissive.set("#00ff00");
+        // if (typeof mat.emissiveIntensity === "number")
+        mat.emissiveIntensity = 0.9;
+        mat.needsUpdate = true;
+        return;
+      }
+
+      //to fix
+      if (kind === "error") {
+        // Invalid placement: clearly red even on textured models.
+        // if (mat.color) mat.color.set("#ff6b6b");
+        // if (mat.emissive) mat.emissive.set("#ff0000");
+        // if (typeof mat.emissiveIntensity === "number")
+        mat.emissiveIntensity = 1.25;
+        mat.needsUpdate = true;
+      }
+    };
+
+    this.el.object3D.traverse((child) => {
+      if (!child || !child.isMesh || !child.material) return;
+      if (Array.isArray(child.material)) {
+        child.material.forEach((m) => applyToMat(m));
+      } else {
+        applyToMat(child.material);
+      }
+    });
   },
 
   getPlacedEntities: function () {
     // Treat other draggable furniture entities as "placed".
     const container = document.getElementById("furniture-container");
     if (!container) {
-      return Array.from(document.querySelectorAll("[draggable-furniture]"));
+      return Array.from(
+        document.querySelectorAll("[draggable-furniture]"),
+      ).filter((el) => {
+        const comp =
+          el && el.components && el.components["draggable-furniture"];
+        if (!comp) return true;
+        return !comp.isDragging;
+      });
     }
-    return Array.from(container.querySelectorAll("[draggable-furniture]"));
+    return Array.from(
+      container.querySelectorAll("[draggable-furniture]"),
+    ).filter((el) => {
+      const comp = el && el.components && el.components["draggable-furniture"];
+      if (!comp) return true;
+      return !comp.isDragging;
+    });
   },
 
   getObstacleEntities: function () {
@@ -147,15 +332,16 @@ AFRAME.registerComponent("draggable-furniture", {
     }
 
     if (!this.isWallMounted) {
-      // Check overlap with walls / board volumes.
-      const obstacles = this.getObstacleEntities();
-      for (const obsEl of obstacles) {
-        if (!obsEl || !obsEl.object3D) continue;
-        const obsBox = this._getWorldBoxForObject3D(obsEl.object3D);
-        if (!obsBox) continue;
-        if (this._boxesOverlap(selfBox, obsBox, 0.005)) {
-          return { valid: false, reason: "overlap-wall" };
-        }
+      // Wall/board validity should match our boundary clamping logic.
+      // Using wall mesh Box3 can produce false positives (walls are large planes).
+      const currentPos = this.el.object3D.position;
+      const adjusted = this.checkBoundaries(currentPos);
+      const boundaryEps = 0.001;
+      if (
+        Math.abs(currentPos.x - adjusted.x) > boundaryEps ||
+        Math.abs(currentPos.z - adjusted.z) > boundaryEps
+      ) {
+        return { valid: false, reason: "out-of-bounds" };
       }
     }
 
@@ -166,15 +352,39 @@ AFRAME.registerComponent("draggable-furniture", {
     const status = this.computePlacementValidity();
     this.isPlacementValid = !!status.valid;
 
+    // Temporary: disable red/green placement tint while dragging.
+    // Keep lastValidPosition tracking so invalid drops can still revert.
+    if (this.isDragging) {
+      if (this.isPlacementValid) {
+        this.lastValidPosition = this.el.object3D.position.clone();
+      }
+      // Ensure we don't get stuck tinted from any prior feedback.
+      this.setFeedback("reset");
+      return;
+    }
+
     if (this.isPlacementValid) {
       // Last valid position is tracked only while actively dragging.
       if (this.isDragging) {
         this.lastValidPosition = this.el.object3D.position.clone();
+        this.setFeedback("drag");
+      } else {
+        // Valid + not dragging: don't keep the green preview tint.
+        this.setFeedback("reset");
       }
-      this.setFeedback("drag");
       return;
     }
     this.setFeedback("error");
+  },
+
+  _cancelActiveTween: function () {
+    if (this._activeTween && typeof this._activeTween.cancel === "function") {
+      this._activeTween.cancel();
+    }
+    this._activeTween = null;
+    // If a tween was cancelled mid-way (e.g., user re-drags quickly),
+    // ensure we don't leave any stale red tint behind.
+    this.setFeedback("reset");
   },
 
   tweenToPosition: function (targetPosition, durationMs = 160) {
@@ -184,9 +394,7 @@ AFRAME.registerComponent("draggable-furniture", {
     const startTime = performance.now();
 
     // Cancel any previous tween.
-    if (this._activeTween && typeof this._activeTween.cancel === "function") {
-      this._activeTween.cancel();
-    }
+    this._cancelActiveTween();
 
     let cancelled = false;
     const tweenHandle = {
@@ -207,14 +415,16 @@ AFRAME.registerComponent("draggable-furniture", {
       const z = start.z + (target.z - start.z) * eased;
       this.el.setAttribute("position", `${x} ${y} ${z}`);
 
-      // Update feedback while tweening.
-      this.updatePlacementFeedback();
+      // Avoid running placement feedback during snap-back tweens.
+      // It can apply an "error" tint mid-animation and, if the tween is
+      // interrupted, leave the object permanently tinted.
 
       if (t < 1) {
         requestAnimationFrame(step);
       } else {
         // End state: reset emissive to neutral.
         this.setFeedback("reset");
+        this._activeTween = null;
       }
     };
 
@@ -292,15 +502,18 @@ AFRAME.registerComponent("draggable-furniture", {
   },
 
   setFeedback: function (kind) {
-    // Prefer emissive-only feedback so textures remain visible.
+    // Apply feedback at mesh-material level (works for loaded OBJ/GLTF models).
+    // Keep entity-level material attributes too (helps primitives / some setups).
     if (kind === "drag") {
-      this.el.setAttribute("material", "emissive", "#2E7D32");
-      this.el.setAttribute("material", "emissiveIntensity", "0.35");
+      this.el.setAttribute("material", "emissive", "#00ff00");
+      this.el.setAttribute("material", "emissiveIntensity", "0.9");
+      this._applyFeedbackToMeshes("drag");
       return;
     }
     if (kind === "error") {
-      this.el.setAttribute("material", "emissive", "#8B0000");
-      this.el.setAttribute("material", "emissiveIntensity", "0.35");
+      this.el.setAttribute("material", "emissive", "#ff0000");
+      this.el.setAttribute("material", "emissiveIntensity", "1.25");
+      this._applyFeedbackToMeshes("error");
       return;
     }
     // reset
@@ -310,6 +523,7 @@ AFRAME.registerComponent("draggable-furniture", {
       "emissiveIntensity",
       this.defaultEmissiveIntensity,
     );
+    this._applyFeedbackToMeshes("reset");
   },
 
   getWallPlanes: function () {
@@ -407,7 +621,12 @@ AFRAME.registerComponent("draggable-furniture", {
 
   onMouseDown: function (e) {
     if (e.detail.intersection) {
+      // If we were auto-snapping back to last valid position, stop that now.
+      // This prevents cancelled tweens from leaving stale feedback colors.
+      this._cancelActiveTween();
+
       this.isDragging = true;
+      this._setPlacementState("dragging");
       this.originalPosition = this.el.object3D.position.clone();
       // Initialize last valid position at drag start.
       if (!this.lastValidPosition) {
@@ -519,9 +738,9 @@ AFRAME.registerComponent("draggable-furniture", {
 
   onMouseUp: function (e) {
     if (this.isDragging) {
-      this.isDragging = false;
-
       if (this.isWallMounted && this.currentWall) {
+        // End drag attempt for wall-mounted items.
+        this.isDragging = false;
         const finalPos = this.el.object3D.position;
         const adjusted = this.clampMirrorToWall(this.currentWall, finalPos);
         this.el.setAttribute(
@@ -536,12 +755,16 @@ AFRAME.registerComponent("draggable-furniture", {
         this.updatePlacementFeedback();
         if (!this.isPlacementValid && this.lastValidPosition) {
           this.tweenToPosition(this.lastValidPosition, 180);
+          this._setPlacementState("placed");
         } else {
           this.lastValidPosition = this.el.object3D.position.clone();
-          this.setFeedback("reset");
+          this.finalizePlacement();
         }
         return;
       }
+
+      // End drag attempt for floor items.
+      this.isDragging = false;
 
       // Final boundary check
       const finalPosition = this.el.object3D.position;
@@ -559,10 +782,13 @@ AFRAME.registerComponent("draggable-furniture", {
       this.updatePlacementFeedback();
       if (!this.isPlacementValid && this.lastValidPosition) {
         this.tweenToPosition(this.lastValidPosition, 180);
+        // Invalid drop: restore original materials (no stuck red/green).
+        // User can drag again to retry.
+        this._setPlacementState("placed");
       } else {
         // Only commit and update last valid position when drop is green.
         this.lastValidPosition = this.el.object3D.position.clone();
-        this.setFeedback("reset");
+        this.finalizePlacement();
       }
 
       console.log("Stopped dragging table:", this.el.id);
@@ -600,20 +826,23 @@ AFRAME.registerComponent("draggable-furniture", {
     const clickableComponent = this.el.components["clickable-furniture"];
     const isSelected = clickableComponent && clickableComponent.isSelected;
 
-    // If selected, keep it green (selection takes priority)
-    if (isSelected) return;
-
     // Throttled invalid-state feedback when idle (e.g., after loads/rotations).
     const now = performance.now();
     if (now < this._idleCollisionNextCheckAt) return;
     this._idleCollisionNextCheckAt = now + 200;
 
-    const status = this.computePlacementValidity();
-    if (status.valid) {
-      this.setFeedback("reset");
-    } else {
-      this.setFeedback("error");
+    // Idle objects should not keep red/green preview tints.
+    // Only the actively dragged item shows validity feedback.
+    // If selected, keep the selection highlight (entity emissive) but DO reset
+    // any mesh tint that may have been applied.
+    if (isSelected) {
+      this._applyFeedbackToMeshes("reset");
+      this.el.setAttribute("material", "emissive", "#2E7D32");
+      this.el.setAttribute("material", "emissiveIntensity", "0.35");
+      return;
     }
+
+    this.setFeedback("reset");
   },
 
   checkBoundaries: function (position) {
