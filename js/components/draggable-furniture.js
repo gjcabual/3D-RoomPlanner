@@ -7,12 +7,20 @@ AFRAME.registerComponent("draggable-furniture", {
     objectWidth: { type: "number", default: 1.5 },
     objectLength: { type: "number", default: 1.5 },
     wallThickness: { type: "number", default: 0.1 },
+    // Minimum spacing (in meters) to keep between this item and other items.
+    // If within this clearance, item turns red and cannot be dropped there.
+    collisionClearance: { type: "number", default: 0.12 },
   },
 
   init: function () {
     this.isDragging = false;
     this.originalPosition = null;
     this.dragStartPosition = null;
+    this.lastValidPosition = null;
+    this.isPlacementValid = true;
+    this._idleCollisionNextCheckAt = 0;
+    this._activeTween = null;
+
     this.camera = null;
     this.cameraObj = null;
     this.raycaster = new THREE.Raycaster();
@@ -60,6 +68,157 @@ AFRAME.registerComponent("draggable-furniture", {
     if (this.camera) {
       this.cameraObj = this.camera.getObject3D("camera");
     }
+
+    // Default last valid position is the initial position.
+    this.lastValidPosition = this.el.object3D.position.clone();
+  },
+
+  getPlacedEntities: function () {
+    // Treat other draggable furniture entities as "placed".
+    const container = document.getElementById("furniture-container");
+    if (!container) {
+      return Array.from(document.querySelectorAll("[draggable-furniture]"));
+    }
+    return Array.from(container.querySelectorAll("[draggable-furniture]"));
+  },
+
+  getObstacleEntities: function () {
+    // Walls and the right-side board should block floor placement.
+    const obstacles = [];
+    obstacles.push(...Array.from(document.querySelectorAll(".room-wall")));
+    const boardEl = document.getElementById("cost-board");
+    if (boardEl) obstacles.push(boardEl);
+    return obstacles;
+  },
+
+  _getWorldBoxForObject3D: function (object3D) {
+    if (!object3D) return null;
+    object3D.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(object3D);
+    if (!box || box.isEmpty()) return null;
+    return box;
+  },
+
+  _boxesOverlap: function (boxA, boxB, epsilon = 0.01) {
+    if (!boxA || !boxB) return false;
+    // Treat mere touching as non-overlap by shrinking each box slightly.
+    const a = boxA.clone().expandByScalar(-epsilon);
+    const b = boxB.clone().expandByScalar(-epsilon);
+    if (a.isEmpty() || b.isEmpty()) return false;
+    return a.intersectsBox(b);
+  },
+
+  _boxesWithinClearance: function (boxA, boxB, clearance = 0.1) {
+    if (!boxA || !boxB) return false;
+    const c = Math.max(0, clearance);
+    if (c === 0) return false;
+    // If expanding boxA by clearance intersects boxB, they are too close.
+    const a = boxA.clone().expandByScalar(c);
+    return a.intersectsBox(boxB);
+  },
+
+  computePlacementValidity: function () {
+    // Mirrors are wall-mounted: skip wall volume overlap checks to avoid
+    // false positives with the wall mesh itself; still prevent overlap with
+    // other placed objects.
+    const selfBox = this._getWorldBoxForObject3D(this.el.object3D);
+    if (!selfBox) {
+      return { valid: true, reason: "no-geometry" };
+    }
+
+    const clearance =
+      typeof this.data.collisionClearance === "number"
+        ? this.data.collisionClearance
+        : 0.12;
+
+    // Check overlap with other placed objects.
+    const placed = this.getPlacedEntities();
+    for (const otherEl of placed) {
+      if (!otherEl || otherEl === this.el) continue;
+      if (!otherEl.object3D) continue;
+      const otherBox = this._getWorldBoxForObject3D(otherEl.object3D);
+      if (!otherBox) continue;
+      if (this._boxesOverlap(selfBox, otherBox, 0.01)) {
+        return { valid: false, reason: "overlap-object" };
+      }
+      if (this._boxesWithinClearance(selfBox, otherBox, clearance)) {
+        return { valid: false, reason: "too-close-object" };
+      }
+    }
+
+    if (!this.isWallMounted) {
+      // Check overlap with walls / board volumes.
+      const obstacles = this.getObstacleEntities();
+      for (const obsEl of obstacles) {
+        if (!obsEl || !obsEl.object3D) continue;
+        const obsBox = this._getWorldBoxForObject3D(obsEl.object3D);
+        if (!obsBox) continue;
+        if (this._boxesOverlap(selfBox, obsBox, 0.005)) {
+          return { valid: false, reason: "overlap-wall" };
+        }
+      }
+    }
+
+    return { valid: true, reason: "ok" };
+  },
+
+  updatePlacementFeedback: function () {
+    const status = this.computePlacementValidity();
+    this.isPlacementValid = !!status.valid;
+
+    if (this.isPlacementValid) {
+      // Last valid position is tracked only while actively dragging.
+      if (this.isDragging) {
+        this.lastValidPosition = this.el.object3D.position.clone();
+      }
+      this.setFeedback("drag");
+      return;
+    }
+    this.setFeedback("error");
+  },
+
+  tweenToPosition: function (targetPosition, durationMs = 160) {
+    if (!targetPosition) return;
+    const start = this.el.object3D.position.clone();
+    const target = targetPosition.clone();
+    const startTime = performance.now();
+
+    // Cancel any previous tween.
+    if (this._activeTween && typeof this._activeTween.cancel === "function") {
+      this._activeTween.cancel();
+    }
+
+    let cancelled = false;
+    const tweenHandle = {
+      cancel: () => {
+        cancelled = true;
+      },
+    };
+    this._activeTween = tweenHandle;
+
+    const step = (now) => {
+      if (cancelled) return;
+      const t = Math.min(1, (now - startTime) / durationMs);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      const x = start.x + (target.x - start.x) * eased;
+      const y = start.y + (target.y - start.y) * eased;
+      const z = start.z + (target.z - start.z) * eased;
+      this.el.setAttribute("position", `${x} ${y} ${z}`);
+
+      // Update feedback while tweening.
+      this.updatePlacementFeedback();
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // End state: reset emissive to neutral.
+        this.setFeedback("reset");
+      }
+    };
+
+    requestAnimationFrame(step);
   },
 
   calculateDimensions: function () {
@@ -124,7 +283,7 @@ AFRAME.registerComponent("draggable-furniture", {
     } else {
       // Fallback to schema defaults if calculation fails
       console.warn(
-        `Could not calculate dimensions for ${this.el.id}, using defaults`
+        `Could not calculate dimensions for ${this.el.id}, using defaults`,
       );
       this.actualWidth = this.data.objectWidth;
       this.actualLength = this.data.objectLength;
@@ -149,7 +308,7 @@ AFRAME.registerComponent("draggable-furniture", {
     this.el.setAttribute(
       "material",
       "emissiveIntensity",
-      this.defaultEmissiveIntensity
+      this.defaultEmissiveIntensity,
     );
   },
 
@@ -250,6 +409,10 @@ AFRAME.registerComponent("draggable-furniture", {
     if (e.detail.intersection) {
       this.isDragging = true;
       this.originalPosition = this.el.object3D.position.clone();
+      // Initialize last valid position at drag start.
+      if (!this.lastValidPosition) {
+        this.lastValidPosition = this.originalPosition.clone();
+      }
       this.dragStartPosition = e.detail.intersection.point;
 
       // Refresh model key detection (in case attribute was set after init)
@@ -261,7 +424,7 @@ AFRAME.registerComponent("draggable-furniture", {
       }
 
       // Visual feedback for drag start
-      this.setFeedback("drag");
+      this.updatePlacementFeedback();
 
       console.log("Started dragging table:", this.el.id);
     }
@@ -290,7 +453,7 @@ AFRAME.registerComponent("draggable-furniture", {
       planes.forEach((w) => {
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
           w.normal,
-          w.point
+          w.point,
         );
         const hit = this.raycaster.ray.intersectPlane(plane, intersectionPoint);
         if (!hit) return;
@@ -321,15 +484,15 @@ AFRAME.registerComponent("draggable-furniture", {
 
       this.el.setAttribute(
         "position",
-        `${adjusted.x} ${adjusted.y} ${adjusted.z}`
+        `${adjusted.x} ${adjusted.y} ${adjusted.z}`,
       );
       this.el.setAttribute(
         "rotation",
-        `0 ${this.getWallRotationY(chosen.wall)} 0`
+        `0 ${this.getWallRotationY(chosen.wall)} 0`,
       );
 
-      // Always show dragging feedback; mirror isn't "colliding" with walls.
-      this.setFeedback("drag");
+      // Real-time validity: mirrors can still overlap other placed objects.
+      this.updatePlacementFeedback();
       return;
     }
 
@@ -346,15 +509,11 @@ AFRAME.registerComponent("draggable-furniture", {
       const yFloor = 0;
       this.el.setAttribute(
         "position",
-        `${adjustedPosition.x} ${yFloor} ${adjustedPosition.z}`
+        `${adjustedPosition.x} ${yFloor} ${adjustedPosition.z}`,
       );
 
-      // Visual feedback for collision
-      if (this.isColliding(adjustedPosition)) {
-        this.setFeedback("error");
-      } else {
-        this.setFeedback("drag");
-      }
+      // Real-time feedback (red/green) based on actual overlaps.
+      this.updatePlacementFeedback();
     }
   },
 
@@ -367,13 +526,20 @@ AFRAME.registerComponent("draggable-furniture", {
         const adjusted = this.clampMirrorToWall(this.currentWall, finalPos);
         this.el.setAttribute(
           "position",
-          `${adjusted.x} ${adjusted.y} ${adjusted.z}`
+          `${adjusted.x} ${adjusted.y} ${adjusted.z}`,
         );
         this.el.setAttribute(
           "rotation",
-          `0 ${this.getWallRotationY(this.currentWall)} 0`
+          `0 ${this.getWallRotationY(this.currentWall)} 0`,
         );
-        this.setFeedback("reset");
+        // If invalid on drop, revert to last valid.
+        this.updatePlacementFeedback();
+        if (!this.isPlacementValid && this.lastValidPosition) {
+          this.tweenToPosition(this.lastValidPosition, 180);
+        } else {
+          this.lastValidPosition = this.el.object3D.position.clone();
+          this.setFeedback("reset");
+        }
         return;
       }
 
@@ -384,16 +550,20 @@ AFRAME.registerComponent("draggable-furniture", {
       if (!this.positionsEqual(finalPosition, adjustedPosition)) {
         this.el.setAttribute(
           "position",
-          `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`
+          `${adjustedPosition.x} ${adjustedPosition.y} ${adjustedPosition.z}`,
         );
         console.log("Table position adjusted to stay within bounds");
       }
 
-      // Don't reset color here - let tick() handle it based on collision state
-      // This allows the object to stay red if it's near walls
-
-      // Reset emissive; color is managed by selection/wall proximity.
-      this.setFeedback("reset");
+      // Decide whether the drop is allowed. If invalid, revert to last valid.
+      this.updatePlacementFeedback();
+      if (!this.isPlacementValid && this.lastValidPosition) {
+        this.tweenToPosition(this.lastValidPosition, 180);
+      } else {
+        // Only commit and update last valid position when drop is green.
+        this.lastValidPosition = this.el.object3D.position.clone();
+        this.setFeedback("reset");
+      }
 
       console.log("Stopped dragging table:", this.el.id);
     }
@@ -407,8 +577,8 @@ AFRAME.registerComponent("draggable-furniture", {
         typeof currentRotation === "object"
           ? currentRotation.y
           : typeof currentRotation === "string"
-          ? parseFloat(currentRotation.split(" ")[1])
-          : 0;
+            ? parseFloat(currentRotation.split(" ")[1])
+            : 0;
 
       // If rotation changed significantly, recalculate dimensions
       if (
@@ -433,20 +603,16 @@ AFRAME.registerComponent("draggable-furniture", {
     // If selected, keep it green (selection takes priority)
     if (isSelected) return;
 
-    // Check current position for wall proximity
-    const currentPosition = this.el.object3D.position;
-    const isNearWall = this.isColliding(currentPosition);
+    // Throttled invalid-state feedback when idle (e.g., after loads/rotations).
+    const now = performance.now();
+    if (now < this._idleCollisionNextCheckAt) return;
+    this._idleCollisionNextCheckAt = now + 200;
 
-    // Get current material color
-    const material = this.el.getAttribute("material");
-    const currentColor =
-      material && material.color ? material.color : this.defaultColor;
-
-    // Update color based on wall proximity
-    if (isNearWall) {
-      this.setFeedback("error");
-    } else {
+    const status = this.computePlacementValidity();
+    if (status.valid) {
       this.setFeedback("reset");
+    } else {
+      this.setFeedback("error");
     }
   },
 
