@@ -3,15 +3,16 @@
 ## Table of Contents
 
 1. [System Overview](#system-overview)
-2. [Architecture Patterns](#architecture-patterns)
-3. [Data Flow](#data-flow)
-4. [Core Components Deep Dive](#core-components-deep-dive)
-5. [3D Rendering System](#3d-rendering-system)
-6. [State Management](#state-management)
-7. [API Integration](#api-integration)
-8. [Error Handling & Fallbacks](#error-handling--fallbacks)
-9. [File Structure & Dependencies](#file-structure--dependencies)
-10. [Key Algorithms](#key-algorithms)
+2. [Technology Stack Analysis](#technology-stack-analysis)
+3. [Architecture Patterns](#architecture-patterns)
+4. [Data Flow](#data-flow)
+5. [Core Components Deep Dive](#core-components-deep-dive)
+6. [3D Rendering System](#3d-rendering-system)
+7. [State Management](#state-management)
+8. [API Integration](#api-integration)
+9. [Error Handling & Fallbacks](#error-handling--fallbacks)
+10. [File Structure & Dependencies](#file-structure--dependencies)
+11. [Key Algorithms](#key-algorithms)
 
 ---
 
@@ -22,25 +23,127 @@ The 3D Room Planner is a client-side web application that combines:
 - **3D Rendering**: A-Frame framework for WebGL-based 3D graphics
 - **Backend Services**: Supabase for authentication, database, and file storage
 - **State Management**: localStorage for client-side persistence
-- **UI Framework**: Vanilla JavaScript with custom CSS components
+- **UI Framework**: Vanilla JavaScript with custom CSS components and Tailwind CSS
 
-### Technology Stack
+---
+
+## Technology Stack Analysis
+
+### Frontend Technologies
+
+| Technology | Version | Purpose | CDN/Source |
+|------------|---------|---------|------------|
+| **HTML5** | - | Document structure, semantic markup | Native |
+| **CSS3** | - | Styling with Custom Properties (CSS Variables) | Native |
+| **JavaScript** | ES6+ | Application logic, DOM manipulation | Native |
+| **A-Frame** | 1.5.0 | WebXR/VR framework for 3D rendering | `https://aframe.io/releases/1.5.0/aframe.min.js` |
+| **Three.js** | (via A-Frame) | 3D math, WebGL abstraction, scene graph | Bundled with A-Frame |
+| **Tailwind CSS** | 3.x | Utility-first CSS framework | `https://cdn.tailwindcss.com` |
+| **HTML2Canvas** | 1.4.1 | Screenshot/snapshot capture | `https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js` |
+| **Supabase JS** | 2.x | Supabase client SDK | `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2` |
+
+### Backend Technologies (BaaS - Backend as a Service)
+
+| Technology | Purpose |
+|------------|---------|
+| **Supabase** | Backend as a Service platform |
+| **PostgreSQL** | Relational database (hosted by Supabase) |
+| **Supabase Auth** | Email/password authentication, JWT tokens |
+| **Supabase Storage** | File storage for 3D models (OBJ files) |
+| **Row Level Security (RLS)** | Database-level access control policies |
+
+### Development Tools
+
+| Tool | Purpose |
+|------|---------|
+| **Vite** | Development server and build tool (hot module replacement) |
+| **Git** | Version control |
+
+### 3D Asset Formats
+
+| Format | Purpose |
+|--------|---------|
+| **OBJ (Wavefront)** | 3D model geometry files |
+| **PNG** | Texture files (e.g., wood4k.png for floor) |
+| **JPG** | Thumbnail images for furniture items |
+
+### Technology Stack Diagram
 
 ```
-Frontend:
-├── A-Frame 1.5.0 (3D rendering engine)
-├── Three.js (via A-Frame, 3D math and WebGL)
-├── HTML2Canvas (screenshot capture)
-├── Tailwind CSS (utility-first styling)
-└── Vanilla JavaScript ES6+ (application logic)
-
-Backend:
-├── Supabase (BaaS platform)
-│   ├── PostgreSQL (database)
-│   ├── Auth (authentication)
-│   └── Storage (file hosting)
-└── Row Level Security (RLS) policies
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND LAYER                           │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   HTML5     │  │    CSS3     │  │    JavaScript ES6+      │ │
+│  │  Structure  │  │   Styling   │  │    Application Logic    │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    A-Frame 1.5.0                         │   │
+│  │  ┌─────────────────────────────────────────────────┐    │   │
+│  │  │              Three.js (WebGL)                    │    │   │
+│  │  │  - Scene Graph    - Materials    - Raycasting   │    │   │
+│  │  │  - Geometry       - Lighting     - Animation    │    │   │
+│  │  └─────────────────────────────────────────────────┘    │   │
+│  │  Custom Components:                                      │   │
+│  │  - draggable-furniture  - clickable-furniture           │   │
+│  │  - custom-movement      - floor-resize                  │   │
+│  │  - wall-mounted         - smart-placement               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ Tailwind CSS │  │ HTML2Canvas  │  │   Supabase JS SDK    │  │
+│  │   Styling    │  │  Snapshots   │  │   API Client         │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CLIENT-SIDE STORAGE                         │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    localStorage                           │  │
+│  │  - Room dimensions (width, length, height)               │  │
+│  │  - Workspace state (furniture positions, rotations)      │  │
+│  │  - Cost state (items, quantities, totals)                │  │
+│  │  - User preferences (welcomeDialogShown)                 │  │
+│  │  - Saved cost estimations                                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      BACKEND LAYER (Supabase)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Supabase  │  │   Supabase  │  │      Supabase           │ │
+│  │     Auth    │  │   Database  │  │      Storage            │ │
+│  │  (JWT/Email)│  │ (PostgreSQL)│  │   (OBJ Models)          │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│                                                                 │
+│  Database Tables:                                               │
+│  ┌──────────┐ ┌──────────┐ ┌─────────────┐ ┌──────────────┐   │
+│  │  users   │ │  items   │ │ item_prices │ │  room_plans  │   │
+│  └──────────┘ └──────────┘ └─────────────┘ └──────────────┘   │
+│                                                                 │
+│  Row Level Security (RLS) Policies:                            │
+│  - Users: Read/update own profile only                         │
+│  - Items: Public read, admin-only write                        │
+│  - Prices: Public read, admin-only write                       │
+│  - Plans: Users access own plans only                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Why These Technologies?
+
+| Technology | Rationale |
+|------------|-----------|
+| **A-Frame** | Simplifies WebGL/Three.js development with declarative HTML-like syntax; built-in VR support; Entity-Component-System architecture |
+| **Supabase** | Open-source Firebase alternative; PostgreSQL with real-time subscriptions; built-in auth and storage; generous free tier |
+| **Tailwind CSS** | Rapid UI development; consistent design tokens; no CSS naming conflicts; tree-shakable |
+| **Vanilla JS** | No framework overhead; direct DOM manipulation; full control over application flow |
+| **localStorage** | Offline-first capability; instant state persistence; no server round-trips for workspace state |
+| **OBJ Format** | Universal 3D format; well-supported by A-Frame/Three.js; human-readable |
 
 ---
 
@@ -63,13 +166,18 @@ A-Frame uses an entity-component-system (ECS) pattern:
 </a-entity>
 ```
 
-**Custom Components:**
+**Custom A-Frame Components:**
 
-- `draggable-furniture`: Handles drag interactions and collision detection
-- `clickable-furniture`: Manages selection and interaction
-- `movement`: First-person camera controls
-- `floor-resize`: Dynamic floor plane resizing
-- `smart-placement`: Intelligent furniture positioning
+| Component | File | Purpose |
+|-----------|------|---------|
+| `custom-movement` | `movement.js` | First-person camera controls (WASD + Q/E for vertical) |
+| `draggable-furniture` | `draggable-furniture.js` | Drag interactions with wall collision detection |
+| `clickable-furniture` | `clickable-furniture.js` | Selection, highlighting, and control panel display |
+| `floor-resize` | `floor-resize.js` | Dynamic floor plane resizing based on room dimensions |
+| `smart-placement` | `smart-placement.js` | Intelligent furniture positioning with collision avoidance |
+| `wall-mounted` | `wall-mounted.js` | Wall-mounted furniture behavior (mirrors, shelves) |
+| `wall-outline` | `planner.js` | Renders black edge outlines on room walls |
+| `position-debug` | `position-debug.js` | Debug visualization for furniture positions |
 
 ### 2. Module Pattern
 
@@ -773,92 +881,147 @@ furnitureEl.addEventListener("model-loaded", () => {
 
 ```
 3D-RoomPlanner/
-├── index.html                 # Welcome page
-├── planner.html              # Main 3D planner
-├── profile.html              # User profile
-├── admin.html                # Admin dashboard
+├── index.html                 # Welcome page (room dimension input)
+├── planner.html               # Main 3D room planner interface
+├── profile.html               # User profile and saved estimations
+├── admin.html                 # Admin dashboard for item/price management
 │
 ├── css/
-│   ├── variables.css         # CSS custom properties (design tokens)
-│   ├── components.css        # Reusable component classes
-│   ├── index.css             # Welcome page styles
-│   ├── planner.css           # Planner styles
-│   ├── profile.css           # Profile styles
-│   ├── admin.css             # Admin styles
-│   ├── auth.css              # Auth modal styles
-│   └── dialog.css            # Dialog styles
+│   ├── variables.css          # CSS Custom Properties (design tokens)
+│   ├── components.css         # Reusable component classes
+│   ├── index.css              # Welcome page styles (3D cube, inputs)
+│   ├── planner.css            # Planner styles (panels, cost board)
+│   ├── profile.css            # Profile page styles
+│   ├── admin.css              # Admin dashboard styles
+│   ├── auth.css               # Authentication modal styles
+│   └── dialog.css             # Dialog/modal styles
 │
 ├── js/
-│   ├── index.js              # Welcome page logic
-│   ├── planner.js            # Main planner logic (2500+ lines)
-│   ├── profile.js            # Profile page logic
-│   ├── admin.js              # Admin panel logic
+│   ├── index.js               # Welcome page logic (validation, navigation)
+│   ├── planner.js             # Main planner logic (~2900 lines)
+│   ├── profile.js             # Profile page logic
+│   ├── admin.js               # Admin panel logic
+│   ├── html-loader.js         # HTML component loader utility
 │   │
 │   ├── auth/
-│   │   ├── auth.js           # Auth functions (Supabase)
-│   │   └── auth-ui.js        # Auth UI management
+│   │   ├── auth.js            # Authentication functions (Supabase Auth)
+│   │   └── auth-ui.js         # Authentication UI management
 │   │
-│   ├── components/           # A-Frame custom components
-│   │   ├── movement.js       # Camera movement
-│   │   ├── draggable-furniture.js  # Drag & drop
-│   │   ├── clickable-furniture.js  # Selection
-│   │   ├── floor-resize.js   # Floor resizing
-│   │   ├── smart-placement.js      # Collision detection
-│   │   ├── position-debug.js # Debug visualization
-│   │   └── profile-menu.js   # Profile dropdown
+│   ├── components/            # A-Frame custom components
+│   │   ├── index.js           # Component exports
+│   │   ├── movement.js        # First-person camera movement (WASD/QE)
+│   │   ├── draggable-furniture.js  # Drag & drop with collision
+│   │   ├── clickable-furniture.js  # Selection and highlighting
+│   │   ├── floor-resize.js    # Dynamic floor resizing
+│   │   ├── smart-placement.js # Intelligent positioning
+│   │   ├── wall-mounted.js    # Wall-mounted furniture behavior
+│   │   ├── position-debug.js  # Debug visualization
+│   │   └── profile-menu.js    # Profile dropdown menu
 │   │
 │   └── utils/
-│       ├── supabase.js       # Supabase client
-│       ├── snapshot.js       # Screenshot capture
-│       ├── dialog.js         # Dialog utilities
-│       ├── cost-estimation.js # Cost management
-│       ├── workspace-state.js # State management
-│       ├── migrate-data.js   # Data migration
-│       ├── model-analyzer.js # Model file mapping
-│       └── debug.js          # Debug utilities
+│       ├── supabase.js        # Supabase client initialization
+│       ├── snapshot.js        # Screenshot capture (HTML2Canvas)
+│       ├── dialog.js          # Custom dialog utilities
+│       ├── cost-estimation.js # Cost calculation and persistence
+│       ├── workspace-state.js # Workspace state management
+│       ├── migrate-data.js    # Data migration utilities
+│       ├── model-analyzer.js  # Model file mapping
+│       └── debug.js           # Debug utilities
+│
+├── components/                # HTML component templates
+│   ├── auth-modal.html        # Authentication modal markup
+│   ├── cost-panel.html        # Cost estimator panel markup
+│   ├── dialog-modal.html      # Dialog modal markup
+│   ├── furniture-controls.html # Furniture control panel markup
+│   ├── instructions.html      # Instructions panel markup
+│   ├── profile-circle.html    # Profile menu markup
+│   ├── resize-panel.html      # Resize dimension panel markup
+│   ├── side-panel.html        # Furniture library sidebar markup
+│   └── sources-panel.html     # Price sources panel markup
 │
 ├── asset/
-│   ├── models/               # Local 3D model files
-│   │   ├── bed1.obj
-│   │   ├── bed2.obj
-│   │   ├── chair1.obj
-│   │   ├── chair2.obj
-│   │   ├── desk1.obj
-│   │   ├── desk2.obj
-│   │   ├── mirror1.obj
-│   │   ├── mirror2.obj
-│   │   ├── shelf1.obj
-│   │   ├── shelf2.obj
-│   │   ├── center_table1.obj
-│   │   ├── center_table2.obj
+│   ├── models/                # 3D furniture models (OBJ format)
+│   │   ├── bed1.obj, bed2.obj
+│   │   ├── chair1.obj, chair2.obj
+│   │   ├── desk1.obj, desk2.obj
+│   │   ├── mirror1.obj, mirror2.obj
+│   │   ├── shelf1.obj, shelf2.obj
+│   │   ├── center_table1.obj, center_table2.obj
 │   │   ├── wardrobe_modern.obj
 │   │   ├── wardrobe_traditional.obj
 │   │   └── wardrobe_openframe.obj
+│   ├── images/
+│   │   └── thumbnails/        # Furniture thumbnail images (JPG)
+│   │       ├── center_table1.jpg, center_table2.jpg
+│   │       ├── wardrobe3.jpg
+│   │       └── ... (other thumbnails)
 │   └── textures/
-│       └── wood4k.png        # Floor texture
+│       └── wood4k.png         # Floor wood texture (4K)
 │
-├── tailwind.config.js        # Tailwind CSS configuration
-├── database-setup.sql        # Database schema
-└── DOCUMENTATION.md          # User documentation
+├── .vite/                     # Vite development server cache
+│   └── deps/
+│
+├── .vscode/
+│   └── settings.json          # VS Code workspace settings
+│
+├── .cursor/
+│   └── plans/                 # Development plans (Cursor AI)
+│
+├── tailwind.config.js         # Tailwind CSS configuration
+├── database-setup.sql         # PostgreSQL schema for Supabase
+├── README-DATABASE-SETUP.md   # Database setup instructions
+├── DOCUMENTATION.md           # User-facing documentation
+└── CODE_ARCHITECTURE.md       # This file - technical architecture
 ```
+
+### File Statistics
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| HTML Pages | 4 | Main application pages |
+| CSS Files | 8 | Styling files |
+| JavaScript Files | 19 | Application logic |
+| HTML Components | 9 | Reusable HTML templates |
+| 3D Models | 15 | OBJ furniture models |
+| Textures | 1 | PNG floor texture |
+| Thumbnails | ~15 | JPG preview images |
 
 ### External Dependencies (CDN)
 
+All external libraries are loaded via CDN for simplicity and to avoid build steps:
+
 ```html
-<!-- A-Frame -->
+<!-- A-Frame 1.5.0 - WebXR/VR Framework (includes Three.js) -->
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-<!-- Supabase -->
-<script type="module">
-  import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js@2";
-</script>
+<!-- Supabase JS SDK v2 - Backend as a Service client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- HTML2Canvas (for screenshots) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- HTML2Canvas 1.4.1 - Screenshot capture library -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<!-- Tailwind CSS -->
+<!-- Tailwind CSS 3.x - Utility-first CSS framework (JIT CDN) -->
 <script src="https://cdn.tailwindcss.com"></script>
 ```
+
+**Dependency Load Order (planner.html):**
+
+1. CSS files (variables.css, components.css, planner.css, auth.css, profile.css, dialog.css)
+2. Tailwind CSS with custom configuration
+3. Supabase JS SDK
+4. HTML2Canvas
+5. A-Frame (must load before custom components)
+6. Custom A-Frame components (movement.js, floor-resize.js, etc.)
+7. Utility scripts (supabase.js, auth.js, etc.)
+8. Main application script (planner.js)
+
+**Why CDN over NPM/Bundling:**
+
+- Zero build step required
+- Faster development iteration
+- Browser caching benefits
+- Simpler deployment (static files only)
+- No node_modules overhead
 
 ---
 
@@ -973,42 +1136,131 @@ function collectRoomPlanData() {
 
 ### CSS Architecture
 
+The styling system uses a layered approach combining CSS Custom Properties (design tokens), custom component classes, and Tailwind CSS utilities.
+
+**Architecture Layers:**
+
+```
+┌─────────────────────────────────────────────────────┐
+│          Tailwind CSS Utilities (inline)            │
+│   Classes like: flex, items-center, bg-bg-primary   │
+├─────────────────────────────────────────────────────┤
+│         Page-Specific Styles (css/*.css)            │
+│   index.css, planner.css, profile.css, admin.css    │
+├─────────────────────────────────────────────────────┤
+│         Component Classes (components.css)          │
+│   .btn, .card, .panel, .modal, .badge, .tooltip     │
+├─────────────────────────────────────────────────────┤
+│         Design Tokens (variables.css)               │
+│   CSS Custom Properties for colors, spacing, etc.   │
+└─────────────────────────────────────────────────────┘
+```
+
 **1. Design Tokens (`css/variables.css`)**
+
+Centralized CSS Custom Properties for consistent theming:
 
 ```css
 :root {
+  /* Colors */
   --color-bg-primary: #0a0a0a;
   --color-bg-surface: rgba(15, 15, 15, 0.96);
   --color-text-primary: #ffffff;
+  --color-accent-success: #4CAF50;
+  --color-accent-error: #f44336;
+  --color-accent-orange: #FF8C00;
+
+  /* Spacing (4px base unit) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
   --spacing-base: 16px;
-  --radius-lg: 12px;
-  /* ... more tokens */
+  --spacing-lg: 20px;
+
+  /* Typography */
+  --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-size-base: 1rem;
+
+  /* Shadows */
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-panel: 2px 0 20px rgba(0, 0, 0, 0.5);
+
+  /* Border Radius */
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  /* Z-Index Scale */
+  --z-side-panel: 1500;
+  --z-dialog: 10001;
 }
 ```
 
-**2. Component Classes (`css/components.css`)**
+**2. Tailwind CSS Configuration (inline in HTML)**
+
+Each HTML page includes a Tailwind configuration that extends the default theme with custom design tokens:
+
+```javascript
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "bg-primary": "#0a0a0a",
+        "bg-surface": "rgba(15, 15, 15, 0.96)",
+        "text-primary": "#ffffff",
+        "accent-success": "#4CAF50",
+        "accent-error": "#f44336",
+      },
+      spacing: {
+        xs: "4px",
+        sm: "8px",
+        base: "16px",
+      },
+      boxShadow: {
+        md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+        panel: "2px 0 20px rgba(0, 0, 0, 0.5)",
+      },
+      zIndex: {
+        "side-panel": "1500",
+        dialog: "10001",
+      },
+    },
+  },
+};
+```
+
+**3. Component Classes (`css/components.css`)**
+
+Reusable component styles that use design tokens:
 
 ```css
 .btn {
   padding: var(--spacing-sm) var(--spacing-base);
   background: var(--color-bg-surface);
   border-radius: var(--radius-lg);
-  /* ... */
+  transition: var(--transition-base);
+}
+
+.btn:hover {
+  background: var(--color-bg-hover);
 }
 ```
 
-**3. Page-Specific Styles**
+**4. Page-Specific Styles**
 
-- `index.css`: Welcome page
-- `planner.css`: Main planner (panels, cost, furniture library)
-- `profile.css`: Profile page
-- `admin.css`: Admin dashboard
+| File | Purpose |
+|------|---------|
+| `index.css` | Welcome page (3D cube animation, dimension inputs) |
+| `planner.css` | Main planner (panels, cost board, furniture library) |
+| `profile.css` | User profile page styles |
+| `admin.css` | Admin dashboard styles |
+| `auth.css` | Authentication modal styles |
+| `dialog.css` | Dialog/modal styles (welcome, confirm, prompt) |
 
-**4. Tailwind CSS Integration**
+**5. Dark Theme Implementation**
 
-- Utility-first classes for rapid development
-- Custom theme configuration matching dark theme
-- CDN-based (no build step required)
+- All pages use `class="dark"` on the body element
+- Color scheme is dark by default (no light mode)
+- Consistent dark palette across all pages (#0a0a0a base)
 
 ---
 
@@ -1126,18 +1378,47 @@ AFRAME.registerComponent("position-debug", {
 
 ## Conclusion
 
-This 3D Room Planner is a sophisticated web application that combines:
+### Technology Summary
 
-- **3D Graphics**: A-Frame/Three.js for immersive visualization
-- **Backend Services**: Supabase for scalable infrastructure
-- **Client-Side Logic**: Vanilla JavaScript for flexibility
-- **Modern UI**: Tailwind CSS and custom components
+This 3D Room Planner is a modern web application built with a carefully chosen technology stack:
 
-The architecture prioritizes:
+| Layer | Technologies |
+|-------|--------------|
+| **3D Rendering** | A-Frame 1.5.0, Three.js (WebGL) |
+| **Frontend** | HTML5, CSS3, Vanilla JavaScript ES6+ |
+| **Styling** | Tailwind CSS 3.x, CSS Custom Properties |
+| **Backend** | Supabase (PostgreSQL, Auth, Storage) |
+| **Utilities** | HTML2Canvas (screenshots) |
+| **Development** | Vite (dev server), Git (version control) |
 
-- **User Experience**: Fast, responsive, intuitive
-- **Reliability**: Fallbacks and error handling
-- **Maintainability**: Modular, well-organized code
-- **Scalability**: Can grow with additional features
+### Architecture Strengths
 
-For questions or contributions, refer to the main `DOCUMENTATION.md` file for user-facing documentation.
+| Aspect | Implementation |
+|--------|----------------|
+| **User Experience** | Immediate visual feedback, smooth 3D navigation, intuitive drag-and-drop |
+| **Reliability** | Multi-layer fallback system, timeout handling, offline capability |
+| **Performance** | CDN-loaded libraries, localStorage caching, lazy model loading |
+| **Maintainability** | Modular component architecture, centralized design tokens, clear separation of concerns |
+| **Scalability** | Entity-Component-System pattern, database-backed catalog, extensible furniture library |
+| **Security** | Row Level Security, JWT authentication, input validation |
+
+### Key Technical Decisions
+
+1. **A-Frame over raw Three.js**: Simplified development with declarative HTML-like syntax
+2. **Supabase over custom backend**: Reduced server maintenance, built-in auth/storage
+3. **CDN over bundling**: Zero build step, faster iteration, browser caching
+4. **localStorage for workspace**: Instant persistence, offline-first experience
+5. **CSS Custom Properties + Tailwind**: Consistent theming with rapid utility development
+
+### Future Technical Considerations
+
+- **Performance**: Consider model LOD (Level of Detail) for complex scenes
+- **Mobile**: Touch controls and responsive 3D viewport
+- **Real-time**: Supabase Realtime for collaborative editing
+- **Export**: glTF export for broader 3D software compatibility
+- **Testing**: Jest/Playwright for automated testing
+
+---
+
+For user-facing documentation, refer to `DOCUMENTATION.md`.  
+For database setup instructions, refer to `README-DATABASE-SETUP.md`.

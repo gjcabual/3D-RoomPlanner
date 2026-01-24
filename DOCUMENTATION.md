@@ -8,74 +8,142 @@ The 3D Room Planner is a web-based application that allows users to design and v
 
 ### Technology Stack
 
-- **Frontend Framework**: Vanilla JavaScript (ES6+)
-- **3D Rendering**: A-Frame 1.5.0
-- **Backend**: Supabase (PostgreSQL database, Authentication, Storage)
-- **UI Libraries**: HTML2Canvas (for screenshot capture)
-- **Styling**: CSS3 with custom components, Tailwind CSS (utility-first)
-- **Design System**: CSS Custom Properties (variables) for theming
+#### Frontend Technologies
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **HTML5** | - | Document structure and semantic markup |
+| **CSS3** | - | Styling with CSS Custom Properties (design tokens) |
+| **JavaScript** | ES6+ | Application logic, DOM manipulation, event handling |
+| **A-Frame** | 1.5.0 | WebXR/VR framework for 3D rendering (built on Three.js) |
+| **Three.js** | (via A-Frame) | 3D math, WebGL abstraction, scene graph management |
+| **Tailwind CSS** | 3.x (CDN) | Utility-first CSS framework for rapid UI development |
+| **HTML2Canvas** | 1.4.1 | Screenshot/snapshot capture functionality |
+| **Supabase JS SDK** | 2.x | Client SDK for Supabase backend services |
+
+#### Backend Technologies (Supabase BaaS)
+
+| Technology | Purpose |
+|------------|---------|
+| **Supabase** | Backend as a Service platform |
+| **PostgreSQL** | Relational database for items, prices, users, room plans |
+| **Supabase Auth** | Email/password authentication with JWT tokens |
+| **Supabase Storage** | Cloud storage for 3D model files (OBJ format) |
+| **Row Level Security (RLS)** | Database-level access control policies |
+
+#### Development Tools
+
+| Tool | Purpose |
+|------|---------|
+| **Vite** | Development server with hot module replacement |
+| **Git** | Version control |
+
+#### 3D Asset Formats
+
+| Format | Usage |
+|--------|-------|
+| **OBJ (Wavefront)** | 3D furniture model geometry |
+| **PNG** | Textures (floor wood texture) |
+| **JPG** | Thumbnail images for furniture library |
+
+#### CDN Dependencies
+
+```html
+<!-- A-Frame 3D Framework -->
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+<!-- Supabase Client SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Screenshot Capture -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+```
 
 ### Project Structure
 
 ```
-TEST/
-├── index.html              # Welcome/Setup page
+3D-RoomPlanner/
+├── index.html              # Welcome/Setup page (room dimensions)
 ├── planner.html            # Main 3D planner interface
 ├── profile.html            # User profile page
 ├── admin.html              # Admin dashboard
-├── database-setup.sql      # Database schema and setup
+├── database-setup.sql      # PostgreSQL schema for Supabase
 ├── README-DATABASE-SETUP.md # Database setup instructions
+├── tailwind.config.js      # Tailwind CSS configuration
+├── DOCUMENTATION.md        # This file - user documentation
+├── CODE_ARCHITECTURE.md    # Technical architecture documentation
+│
 ├── css/
-│   ├── index.css          # Welcome page styles (modern dark theme)
-│   ├── planner.css        # Main planner styles
+│   ├── variables.css      # CSS Custom Properties (design tokens)
+│   ├── components.css     # Reusable component classes
+│   ├── index.css          # Welcome page styles (dark theme, 3D cube)
+│   ├── planner.css        # Main planner styles (panels, cost board)
 │   ├── profile.css        # Profile page styles
 │   ├── admin.css          # Admin panel styles
 │   ├── auth.css           # Authentication modal styles
-│   └── dialog.css         # Dialog modal styles (includes welcome dialog)
+│   └── dialog.css         # Dialog modal styles
+│
 ├── js/
 │   ├── index.js           # Welcome page logic
-│   ├── planner.js         # Main planner application logic
+│   ├── planner.js         # Main planner application logic (~2900 lines)
 │   ├── profile.js         # Profile page logic
 │   ├── admin.js           # Admin panel logic
+│   ├── html-loader.js     # HTML component loader utility
 │   ├── auth/
-│   │   ├── auth.js        # Authentication functions
+│   │   ├── auth.js        # Authentication functions (Supabase Auth)
 │   │   └── auth-ui.js     # Authentication UI management
 │   ├── components/        # A-Frame custom components
-│   │   ├── movement.js    # Camera movement controls
-│   │   ├── draggable-furniture.js  # Drag and drop functionality
-│   │   ├── clickable-furniture.js  # Furniture selection/interaction
+│   │   ├── index.js       # Component exports
+│   │   ├── movement.js    # Camera movement (WASD/QE)
+│   │   ├── draggable-furniture.js  # Drag and drop with collision
+│   │   ├── clickable-furniture.js  # Selection and interaction
 │   │   ├── floor-resize.js         # Dynamic floor resizing
-│   │   ├── smart-placement.js      # Collision detection and placement
+│   │   ├── smart-placement.js      # Intelligent positioning
+│   │   ├── wall-mounted.js         # Wall-mounted furniture behavior
 │   │   ├── position-debug.js       # Debug visualization
 │   │   └── profile-menu.js         # Profile dropdown menu
 │   └── utils/
 │       ├── supabase.js    # Supabase client initialization
-│       ├── snapshot.js    # Screenshot capture and local storage
-│       ├── migrate-data.js # Data migration utilities
-│       ├── debug.js       # Debug utilities
-│       ├── dialog.js      # Dialog utility (alert, confirm, prompt)
+│       ├── snapshot.js    # Screenshot capture (HTML2Canvas)
+│       ├── dialog.js      # Custom dialog utilities
+│       ├── cost-estimation.js # Cost calculation and persistence
 │       ├── workspace-state.js # Workspace state management
-│       ├── cost-estimation.js # Cost estimation utilities
-│       └── model-analyzer.js # Model file mapping and local path resolution
-└── asset/
-    ├── models/            # Local 3D model files (OBJ format)
-    │   ├── bed1.obj
-    │   ├── bed2.obj
-    │   ├── chair1.obj
-    │   ├── chair2.obj
-    │   ├── desk1.obj
-    │   ├── desk2.obj
-    │   ├── mirror1.obj
-    │   ├── mirror2.obj
-    │   ├── shelf1.obj
-    │   ├── shelf2.obj
-    │   ├── center_table1.obj
-    │   ├── center_table2.obj
-    │   ├── wardrobe_modern.obj
-    │   ├── wardrobe_traditional.obj
-    │   └── wardrobe_openframe.obj
-    └── textures/
-        └── wood4k.png     # Floor texture
+│       ├── migrate-data.js    # Data migration utilities
+│       ├── model-analyzer.js  # Model file mapping
+│       └── debug.js           # Debug utilities
+│
+├── components/            # HTML component templates
+│   ├── auth-modal.html
+│   ├── cost-panel.html
+│   ├── dialog-modal.html
+│   ├── furniture-controls.html
+│   ├── instructions.html
+│   ├── profile-circle.html
+│   ├── resize-panel.html
+│   ├── side-panel.html
+│   └── sources-panel.html
+│
+├── asset/
+│   ├── models/            # 3D furniture models (OBJ format, 15 files)
+│   │   ├── bed1.obj, bed2.obj
+│   │   ├── chair1.obj, chair2.obj
+│   │   ├── desk1.obj, desk2.obj
+│   │   ├── mirror1.obj, mirror2.obj
+│   │   ├── shelf1.obj, shelf2.obj
+│   │   ├── center_table1.obj, center_table2.obj
+│   │   ├── wardrobe_modern.obj
+│   │   ├── wardrobe_traditional.obj
+│   │   └── wardrobe_openframe.obj
+│   ├── images/
+│   │   └── thumbnails/    # Furniture preview images (JPG)
+│   └── textures/
+│       └── wood4k.png     # Floor wood texture (4K resolution)
+│
+├── .vite/                 # Vite development server cache
+└── .vscode/               # VS Code workspace settings
 ```
 
 ## Core Modules
@@ -192,6 +260,16 @@ Intelligent furniture placement with collision detection:
 - **Position adjustment**: Automatically adjusts furniture position
 - **Collision detection**: Prevents overlapping furniture
 - **Visual feedback**: Orange highlight during adjustment
+
+#### `wall-mounted.js`
+
+Handles wall-mounted furniture behavior (mirrors, shelves):
+
+- **Wall snapping**: Automatically snaps furniture to nearest wall
+- **Height constraints**: Constrains Y position within wall height
+- **Wall detection**: Identifies which wall (front, back, left, right) furniture is attached to
+- **Horizontal movement**: Restricts movement to along the wall surface
+- **Configurable parameters**: `roomWidth`, `roomLength`, `wallThickness`, `wallHeight`, `snapDistance`
 
 #### `profile-menu.js`
 
@@ -567,6 +645,17 @@ Bucket is set to **Public** for direct access.
 
 ## Configuration
 
+### External Dependencies (CDN)
+
+All external libraries are loaded via CDN from the HTML files:
+
+| Library | Version | CDN URL |
+|---------|---------|---------|
+| A-Frame | 1.5.0 | `https://aframe.io/releases/1.5.0/aframe.min.js` |
+| Supabase JS | 2.x | `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2` |
+| HTML2Canvas | 1.4.1 | `https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js` |
+| Tailwind CSS | 3.x | `https://cdn.tailwindcss.com` |
+
 ### Supabase Configuration
 
 Set in `js/utils/supabase.js`:
@@ -590,6 +679,22 @@ Set in `js/utils/supabase.js`:
 - **Fallback system**: Automatic fallback to local files if Supabase Storage fails
 
 ## Development Notes
+
+### Development Server
+
+The project uses **Vite** as a development server for hot module replacement:
+
+```bash
+# Install dependencies (if using npm)
+npm install
+
+# Start development server
+npm run dev
+# or
+npx vite
+```
+
+The `.vite/` directory contains development server cache files.
 
 ### Adding New Furniture Items
 
