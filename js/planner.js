@@ -506,7 +506,11 @@ async function loadItemsAndPrices() {
  * @param {string} modelKey - Model key (e.g., 'wardrobe1', 'table1')
  * @returns {string} - Model file URL
  */
+const MODEL_URL_CACHE = {};
+
 function getModelUrl(modelKey) {
+  if (MODEL_URL_CACHE[modelKey]) return MODEL_URL_CACHE[modelKey];
+
   const metadata = ITEM_METADATA[modelKey];
   const fallbackFile = STORAGE_MODEL_FILES[modelKey];
   const filePath = metadata?.model_file_path || fallbackFile;
@@ -514,10 +518,14 @@ function getModelUrl(modelKey) {
   if (!filePath) {
     // Try to get from model analyzer if available
     if (typeof getLocalModelPath === "function") {
-      return getLocalModelPath(modelKey);
+      const local = getLocalModelPath(modelKey);
+      MODEL_URL_CACHE[modelKey] = local;
+      return local;
     }
     // Final fallback
-    return `asset/models/${modelKey}.obj`;
+    const fallback = `asset/models/${modelKey}.obj`;
+    MODEL_URL_CACHE[modelKey] = fallback;
+    return fallback;
   }
 
   // Check if file is stored in Supabase bucket
@@ -528,6 +536,7 @@ function getModelUrl(modelKey) {
         .from("wardrobe-models")
         .getPublicUrl(filePath);
       if (data?.publicUrl) {
+        MODEL_URL_CACHE[modelKey] = data.publicUrl;
         return data.publicUrl;
       }
     } catch (error) {
@@ -539,7 +548,9 @@ function getModelUrl(modelKey) {
   }
 
   // Fallback to local path in asset/models folder
-  return `asset/models/${filePath}`;
+  const localPath = `asset/models/${filePath}`;
+  MODEL_URL_CACHE[modelKey] = localPath;
+  return localPath;
 }
 
 /**
@@ -1116,6 +1127,16 @@ function handleDragStart(e) {
   };
   e.target.classList.add("dragging");
 
+  // Warm up the model download/parse as early as possible.
+  try {
+    const modelUrl = getModelUrl(draggedItem.model);
+    if (typeof window.preloadObjModel === "function") {
+      window.preloadObjModel(modelUrl);
+    }
+  } catch (_) {
+    // no-op
+  }
+
   // Hide the drop indicator when dragging starts
   const dropIndicator = document.getElementById("drop-indicator");
   dropIndicator.classList.remove("show");
@@ -1152,6 +1173,7 @@ function handleDrop(e) {
   // Get room dimensions for smart placement
   const roomWidth = parseFloat(localStorage.getItem("roomWidth")); // Already in meters
   const roomLength = parseFloat(localStorage.getItem("roomLength"));
+  const wallHeight = parseFloat(localStorage.getItem("roomHeight")) || 3;
 
   // Create furniture entity
   const furnitureEl = document.createElement("a-entity");
@@ -1184,11 +1206,11 @@ function handleDrop(e) {
   // Now set remaining attributes after entity is in the scene
   // Get model URL from Supabase Storage or local path
   const modelUrl = getModelUrl(draggedItem.model);
-  furnitureEl.setAttribute("obj-model", `obj: url(${modelUrl})`);
+  furnitureEl.setAttribute("cached-obj-model", "src", modelUrl);
   furnitureEl.setAttribute("scale", draggedItem.scale);
   furnitureEl.setAttribute(
     "draggable-furniture",
-    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
   );
   
   // Check if item should be wall-mounted (mirrors and shelves)
@@ -1233,7 +1255,19 @@ function handleDrop(e) {
   }
   
   furnitureEl.setAttribute("clickable-furniture", "");
-  furnitureEl.setAttribute("material", "color: #FF8C00"); // Orange color for table
+
+  // Apply a default texture/material so OBJ models aren't plain white.
+  if (
+    typeof draggedItem.model === "string" &&
+    draggedItem.model.startsWith("mirror")
+  ) {
+    furnitureEl.setAttribute("textured-model", "mode", "mirror");
+  } else {
+    furnitureEl.setAttribute(
+      "textured-model",
+      `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+    );
+  }
   // Store model key as data attribute for easy retrieval during deletion
   furnitureEl.setAttribute("data-model-key", draggedItem.model);
 
@@ -2087,7 +2121,9 @@ function deleteFurniture() {
     modelKey = furniture.getAttribute("data-model-key");
 
     if (!modelKey) {
-      const objModelAttr = furniture.getAttribute("obj-model");
+      const objModelAttr =
+        furniture.getAttribute("cached-obj-model") ||
+        furniture.getAttribute("obj-model");
       let objModelString = "";
       if (typeof objModelAttr === "string") {
         objModelString = objModelAttr;
@@ -2260,6 +2296,10 @@ function restoreRoom(roomData) {
       roomData.room_length ||
       parseFloat(localStorage.getItem("roomLength")) ||
       10;
+    const wallHeight =
+      roomData.room_height ||
+      parseFloat(localStorage.getItem("roomHeight")) ||
+      3;
 
     // Clear existing furniture first to avoid duplicates
     const existingFurniture =
@@ -2326,10 +2366,10 @@ function restoreRoom(roomData) {
 
       // Load model
       const modelUrl = getModelUrl(itemData.model_key);
-      furnitureEl.setAttribute("obj-model", `obj: url(${modelUrl})`);
+      furnitureEl.setAttribute("cached-obj-model", "src", modelUrl);
       furnitureEl.setAttribute(
         "draggable-furniture",
-        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
       );
       
       // Check if item should be wall-mounted (mirrors and shelves)
@@ -2369,7 +2409,18 @@ function restoreRoom(roomData) {
       }
       
       furnitureEl.setAttribute("clickable-furniture", "");
-      furnitureEl.setAttribute("material", "color: #FF8C00");
+
+      if (
+        typeof itemData.model_key === "string" &&
+        itemData.model_key.startsWith("mirror")
+      ) {
+        furnitureEl.setAttribute("textured-model", "mode", "mirror");
+      } else {
+        furnitureEl.setAttribute(
+          "textured-model",
+          `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+        );
+      }
 
       // Set up model loading timeout and error handling for restored items
       let modelLoadTimeout;
