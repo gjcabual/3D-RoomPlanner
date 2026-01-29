@@ -6,6 +6,7 @@ AFRAME.registerComponent("clickable-furniture", {
     this.originalColor = null;
     this.rotationControls = null;
     this.currentRotation = 0; // Track current rotation in degrees
+    this.selectionOutline = null; // THREE.js outline helper
 
     el.addEventListener(
       "click",
@@ -23,7 +24,7 @@ AFRAME.registerComponent("clickable-furniture", {
           // Toggle selection
           this.toggleSelection();
         }
-      }.bind(this)
+      }.bind(this),
     );
 
     // Store original material for restoration
@@ -37,6 +38,53 @@ AFRAME.registerComponent("clickable-furniture", {
     } else {
       this.originalColor = "#ffffff";
     }
+  },
+
+  createOutline: function () {
+    // Remove existing outline if any
+    this.removeOutline();
+
+    const object3D = this.el.object3D;
+    if (!object3D) return;
+
+    // Use BoxHelper which automatically updates with the object
+    // Need to get the scene-level representation for accurate bounds
+    const box = new THREE.Box3().setFromObject(object3D);
+    if (box.isEmpty()) {
+      // Model might not be loaded yet, retry after a short delay
+      setTimeout(() => {
+        if (this.isSelected) this.createOutline();
+      }, 100);
+      return;
+    }
+
+    // Create BoxHelper - it follows the object automatically
+    this.selectionOutline = new THREE.BoxHelper(object3D, 0x000000);
+    this.selectionOutline.material.linewidth = 2;
+
+    // Add to scene (not to object) so it renders correctly
+    const scene = this.el.sceneEl.object3D;
+    scene.add(this.selectionOutline);
+
+    // Store reference to update in tick
+    this._outlineNeedsUpdate = true;
+  },
+
+  removeOutline: function () {
+    if (this.selectionOutline) {
+      // Remove from scene
+      if (this.selectionOutline.parent) {
+        this.selectionOutline.parent.remove(this.selectionOutline);
+      }
+      if (this.selectionOutline.geometry) {
+        this.selectionOutline.geometry.dispose();
+      }
+      if (this.selectionOutline.material) {
+        this.selectionOutline.material.dispose();
+      }
+      this.selectionOutline = null;
+    }
+    this._outlineNeedsUpdate = false;
   },
 
   deselectAllOtherFurniture: function () {
@@ -62,12 +110,25 @@ AFRAME.registerComponent("clickable-furniture", {
 
   select: function () {
     this.isSelected = true;
-    this.el.setAttribute("material", "emissive", "#2E7D32"); // Add glow effect
-    this.el.setAttribute("material", "emissiveIntensity", "0.35");
+
+    // Create black outline around the object
+    this.createOutline();
 
     // Show web-based control panel instead of 3D buttons
     if (typeof showControlPanel === "function") {
       showControlPanel(this.el.id);
+    }
+
+    // Notify UI (cost panel) about selection
+    try {
+      const modelKey = this.el.getAttribute("data-model-key") || null;
+      window.dispatchEvent(
+        new CustomEvent("furnitureSelected", {
+          detail: { id: this.el.id, modelKey },
+        }),
+      );
+    } catch (e) {
+      // no-op
     }
 
     console.log("Furniture selected:", this.el.id);
@@ -75,6 +136,9 @@ AFRAME.registerComponent("clickable-furniture", {
 
   deselect: function () {
     this.isSelected = false;
+
+    // Remove the selection outline
+    this.removeOutline();
 
     // Check if object is near walls - if so, let draggable-furniture component handle the color
     const draggableComponent = this.el.components["draggable-furniture"];
@@ -103,12 +167,39 @@ AFRAME.registerComponent("clickable-furniture", {
     }
 
     console.log("Furniture deselected:", this.el.id);
+
+    try {
+      const modelKey = this.el.getAttribute("data-model-key") || null;
+      window.dispatchEvent(
+        new CustomEvent("furnitureDeselected", {
+          detail: { id: this.el.id, modelKey },
+        }),
+      );
+    } catch (e) {
+      // no-op
+    }
   },
 
   // 3D rotation controls removed - now using web-based control panel
 
+  tick: function (time, deltaTime) {
+    // Only update outline if selected and outline exists
+    if (!this.isSelected) return;
+
+    // Throttle updates to every 50ms for performance
+    if (!this._lastOutlineUpdate) this._lastOutlineUpdate = 0;
+    if (time - this._lastOutlineUpdate < 50) return;
+    this._lastOutlineUpdate = time;
+
+    // Update BoxHelper to match current object bounds
+    if (this.selectionOutline && this.selectionOutline.update) {
+      this.selectionOutline.update();
+    }
+  },
+
   remove: function () {
     // Clean up when component is removed
+    this.removeOutline();
     if (typeof closeControlPanel === "function") {
       closeControlPanel();
     }

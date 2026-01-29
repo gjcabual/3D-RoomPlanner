@@ -274,7 +274,7 @@ function createTimeout(ms) {
   return new Promise((_, reject) => {
     setTimeout(
       () => reject(new Error(`Operation timed out after ${ms}ms`)),
-      ms
+      ms,
     );
   });
 }
@@ -330,7 +330,7 @@ async function loadItemsAndPrices() {
     if (itemsError || !items || items.length === 0) {
       console.warn(
         "Error fetching items or no items found, using fallbacks:",
-        itemsError
+        itemsError,
       );
       useFallbacks = true;
     } else {
@@ -440,7 +440,7 @@ async function loadItemsAndPrices() {
 
     if (useFallbacks) {
       console.info(
-        "Using fallback data (dummy prices and metadata) due to Supabase issues"
+        "Using fallback data (dummy prices and metadata) due to Supabase issues",
       );
     }
   } catch (error) {
@@ -467,7 +467,8 @@ async function loadItemsAndPrices() {
 }
 
 /**
- * Get model file URL from Supabase Storage or local path with fallbacks
+ * Get model file URL from local path (preferred) or Supabase Storage as fallback
+ * Models are preloaded locally for instant loading, so we prefer local paths.
  * @param {string} modelKey - Model key (e.g., 'wardrobe1', 'table1')
  * @returns {string} - Model file URL
  */
@@ -493,26 +494,8 @@ function getModelUrl(modelKey) {
     return fallback;
   }
 
-  // Check if file is stored in Supabase bucket
-  if (STORAGE_BUCKET_FILES.has(filePath)) {
-    try {
-      // Get public URL from Supabase Storage with timeout
-      const { data } = supabase.storage
-        .from("wardrobe-models")
-        .getPublicUrl(filePath);
-      if (data?.publicUrl) {
-        MODEL_URL_CACHE[modelKey] = data.publicUrl;
-        return data.publicUrl;
-      }
-    } catch (error) {
-      console.warn(
-        `Failed to get Supabase Storage URL for ${filePath}, using local fallback:`,
-        error
-      );
-    }
-  }
-
-  // Fallback to local path in asset/models folder
+  // ALWAYS prefer local path for preloaded models (faster, no network delay)
+  // Local models are preloaded by index-preloader.js and cached in browser
   const localPath = `asset/models/${filePath}`;
   MODEL_URL_CACHE[modelKey] = localPath;
   return localPath;
@@ -544,7 +527,7 @@ function initializeRoom() {
     // Don't redirect, just show dialog
     showDialog(
       "No room dimensions found. Please set room dimensions using the Resize Dimension button.",
-      "Setup Required"
+      "Setup Required",
     );
     return;
   }
@@ -601,6 +584,7 @@ function initializeRoom() {
     if (!hasFurniture && dropIndicator) {
       dropIndicator.classList.add("show");
     }
+    // Note: roomReady event is now dispatched after all async work is complete in window.load handler
   }, 500);
 }
 
@@ -647,7 +631,7 @@ function createRoomWalls(width, length, wallHeight = 3) {
     // Removed transparent: true to fix visual glitches
     wallEl.setAttribute(
       "material",
-      "color: #9d9d9d; roughness: 0.1; metalness: 0.5; envMapIntensity: 1.0"
+      "color: #9d9d9d; roughness: 0.1; metalness: 0.5; envMapIntensity: 1.0",
     );
     wallEl.setAttribute("shadow", "cast: true; receive: true");
     wallEl.setAttribute("class", "room-wall");
@@ -666,6 +650,9 @@ function createRoomWalls(width, length, wallHeight = 3) {
  * Update wall visibility based on camera position
  * Uses raycasting to hide walls that block the view of the room center
  */
+let _lastCameraPos = null;
+let _lastCameraRot = null;
+
 function updateWallVisibility() {
   const cameraRig = document.getElementById("cameraRig");
   const walls = Array.from(document.querySelectorAll(".room-wall"));
@@ -674,6 +661,13 @@ function updateWallVisibility() {
 
   const cameraPos = new THREE.Vector3();
   cameraRig.object3D.getWorldPosition(cameraPos);
+
+  // Check if camera moved significantly - skip update if not
+  if (_lastCameraPos) {
+    const dist = cameraPos.distanceToSquared(_lastCameraPos);
+    if (dist < 0.01) return; // Less than 10cm movement
+  }
+  _lastCameraPos = cameraPos.clone();
 
   // Target the center of the room (slightly elevated)
   const target = new THREE.Vector3(0, 1.5, 0);
@@ -752,16 +746,25 @@ function updateWallVisibility() {
 /**
  * Start the wall visibility updater loop
  */
+let _wallVisibilityInterval = null;
 function startWallVisibilityUpdater() {
-  // Update wall visibility every frame for smooth transitions
+  // Prevent multiple intervals from stacking
+  if (_wallVisibilityInterval) return;
+
+  // Update wall visibility less frequently for better performance
   const scene = document.querySelector("a-scene");
   if (scene) {
+    const startUpdater = () => {
+      // Delay initial start to let scene stabilize
+      setTimeout(() => {
+        _wallVisibilityInterval = setInterval(updateWallVisibility, 300); // 300ms for better performance
+      }, 1000);
+    };
+
     if (scene.hasLoaded) {
-      setInterval(updateWallVisibility, 100);
+      startUpdater();
     } else {
-      scene.addEventListener("loaded", () => {
-        setInterval(updateWallVisibility, 100);
-      });
+      scene.addEventListener("loaded", startUpdater);
     }
   }
 }
@@ -786,7 +789,7 @@ function createBlenderGrid() {
     size,
     divisions,
     colorCenterLine,
-    colorGrid
+    colorGrid,
   );
   gridHelper.name = "blender-grid";
   gridHelper.position.y = -0.1; // Lowered further to prevent z-fighting with floor
@@ -894,7 +897,7 @@ function saveRoomDimensions() {
   if (!width || !length || width <= 0 || length <= 0) {
     showDialog(
       "Please enter valid width and length values (greater than 0).",
-      "Invalid Dimensions"
+      "Invalid Dimensions",
     );
     return;
   }
@@ -956,7 +959,7 @@ function checkFurnitureBoundaries(roomWidth, roomLength) {
       roomLength,
       draggableComponent.data.objectWidth || 1.5,
       draggableComponent.data.objectLength || 1.5,
-      wallThickness
+      wallThickness,
     );
 
     // Update color based on boundary status
@@ -980,7 +983,7 @@ function checkFurnitureBoundaries(roomWidth, roomLength) {
           furniture.setAttribute(
             "material",
             "color",
-            clickableComponent.originalColor
+            clickableComponent.originalColor,
           );
         } else {
           furniture.setAttribute("material", "color", "#FF8C00");
@@ -1001,7 +1004,7 @@ function isFurnitureOutsideBoundaries(
   roomLength,
   objWidth,
   objLength,
-  wallThickness
+  wallThickness,
 ) {
   const innerX = roomWidth / 2 - wallThickness / 2;
   const innerZ = roomLength / 2 - wallThickness / 2;
@@ -1116,6 +1119,8 @@ function handleDrop(e) {
   // Create furniture entity
   const furnitureEl = document.createElement("a-entity");
   furnitureEl.id = `furniture-${furnitureCounter++}`;
+  // Default position for floor items; mirrors are wall-mounted and will be
+  // auto-placed on the wall the camera is facing.
   furnitureEl.setAttribute("position", `${dropX} 0 ${dropZ}`);
 
   // Create placeholder box that shows immediately while model loads
@@ -1144,7 +1149,7 @@ function handleDrop(e) {
   furnitureEl.setAttribute("scale", draggedItem.scale);
   furnitureEl.setAttribute(
     "draggable-furniture",
-    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+    `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`,
   );
   furnitureEl.setAttribute("clickable-furniture", "");
 
@@ -1157,7 +1162,7 @@ function handleDrop(e) {
   } else {
     furnitureEl.setAttribute(
       "textured-model",
-      `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+      `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`,
     );
   }
   // Store model key as data attribute for easy retrieval during deletion
@@ -1174,7 +1179,7 @@ function handleDrop(e) {
     clearTimeout(modelLoadTimeout);
 
     const placeholder = furnitureEl.querySelector(
-      `#${furnitureEl.id}-placeholder`
+      `#${furnitureEl.id}-placeholder`,
     );
     if (placeholder) {
       placeholder.remove();
@@ -1187,18 +1192,18 @@ function handleDrop(e) {
   modelLoadTimeout = setTimeout(() => {
     if (!modelLoaded) {
       console.warn(
-        `Model load timeout for ${draggedItem.model} at ${modelUrl}`
+        `Model load timeout for ${draggedItem.model} at ${modelUrl}`,
       );
       // Keep placeholder visible but make it semi-transparent to indicate loading issue
       const placeholder = furnitureEl.querySelector(
-        `#${furnitureEl.id}-placeholder`
+        `#${furnitureEl.id}-placeholder`,
       );
       if (placeholder) {
         placeholder.setAttribute("opacity", "0.5");
         placeholder.setAttribute("color", "#888888");
         // Optionally show error message
         console.warn(
-          `Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`
+          `Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`,
         );
       }
     }
@@ -1209,7 +1214,7 @@ function handleDrop(e) {
     clearTimeout(modelLoadTimeout);
     console.error(`Model load error for ${draggedItem.model}:`, e.detail);
     const placeholder = furnitureEl.querySelector(
-      `#${furnitureEl.id}-placeholder`
+      `#${furnitureEl.id}-placeholder`,
     );
     if (placeholder) {
       placeholder.setAttribute("opacity", "0.5");
@@ -1220,6 +1225,117 @@ function handleDrop(e) {
   // Update cost estimator
   const itemName = getItemName(draggedItem.model);
   addItemToCost(draggedItem.model, itemName);
+
+  // If this is a mirror, attempt to auto-place it on the wall the camera is facing
+  if (
+    typeof draggedItem.model === "string" &&
+    draggedItem.model.startsWith("mirror")
+  ) {
+    try {
+      const camEl = document.querySelector("a-camera");
+      let camPos = new THREE.Vector3();
+      let camDir = new THREE.Vector3(0, 0, -1);
+      if (camEl && camEl.object3D) {
+        camEl.object3D.getWorldPosition(camPos);
+        camEl.object3D.getWorldDirection(camDir);
+      } else {
+        // fallback camera at origin
+        camPos.set(0, 1.6, 5);
+      }
+
+      const ray = new THREE.Ray(camPos, camDir.normalize());
+      // Build wall planes similar to draggable-furniture logic
+      const roomWidth = parseFloat(localStorage.getItem("roomWidth")) || 10;
+      const roomLength = parseFloat(localStorage.getItem("roomLength")) || 10;
+      const wallThickness = 0.1;
+      const innerX = roomWidth / 2 - wallThickness / 2;
+      const innerZ = roomLength / 2 - wallThickness / 2;
+
+      const planes = [
+        {
+          name: "north",
+          point: new THREE.Vector3(0, 0, -innerZ),
+          normal: new THREE.Vector3(0, 0, 1),
+        },
+        {
+          name: "south",
+          point: new THREE.Vector3(0, 0, innerZ),
+          normal: new THREE.Vector3(0, 0, -1),
+        },
+        {
+          name: "west",
+          point: new THREE.Vector3(-innerX, 0, 0),
+          normal: new THREE.Vector3(1, 0, 0),
+        },
+        {
+          name: "east",
+          point: new THREE.Vector3(innerX, 0, 0),
+          normal: new THREE.Vector3(-1, 0, 0),
+        },
+      ];
+
+      const hits = [];
+      const ip = new THREE.Vector3();
+      planes.forEach((w) => {
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+          w.normal,
+          w.point,
+        );
+        const hit = ray.intersectPlane(plane, ip);
+        if (!hit) return;
+        const dist = camPos.distanceTo(ip);
+        if (!isFinite(dist) || dist <= 0.001) return;
+        hits.push({ wall: w.name, point: ip.clone(), dist });
+      });
+
+      if (hits.length > 0) {
+        hits.sort((a, b) => a.dist - b.dist);
+        const chosen = hits[0];
+        // Clamp similarly to draggable-furniture.clampMirrorToWall
+        const defaultHalfX = 0.75; // approximate half width
+        const defaultHalfZ = 0.75;
+        const halfAlongWall =
+          chosen.wall === "north" || chosen.wall === "south"
+            ? defaultHalfX
+            : defaultHalfZ;
+        const halfY = 0.5;
+        const minY = 0 + halfY;
+        const maxY =
+          (parseFloat(localStorage.getItem("roomHeight")) || 3) - halfY;
+        const clampedY = Math.max(minY, Math.min(maxY, chosen.point.y));
+
+        let pos = { x: 0, y: clampedY, z: 0 };
+        if (chosen.wall === "north" || chosen.wall === "south") {
+          const minX = -innerX + halfAlongWall;
+          const maxX = innerX - halfAlongWall;
+          const clampedX = Math.max(minX, Math.min(maxX, chosen.point.x));
+          const z = chosen.wall === "north" ? -innerZ + 0.02 : innerZ - 0.02;
+          pos.x = clampedX;
+          pos.z = z;
+        } else {
+          const minZ = -innerZ + halfAlongWall;
+          const maxZ = innerZ - halfAlongWall;
+          const clampedZ = Math.max(minZ, Math.min(maxZ, chosen.point.z));
+          const x = chosen.wall === "west" ? -innerX + 0.02 : innerX - 0.02;
+          pos.x = x;
+          pos.z = clampedZ;
+        }
+
+        furnitureEl.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
+        const rotY =
+          chosen.wall === "north"
+            ? 0
+            : chosen.wall === "south"
+              ? 180
+              : chosen.wall === "west"
+                ? -90
+                : 90;
+        furnitureEl.setAttribute("rotation", `0 ${rotY} 0`);
+      }
+    } catch (err) {
+      console.warn("Auto-place mirror failed:", err);
+    }
+  }
 
   // Expand cost panel when item is dropped
   const costPanel = document.getElementById("cost-panel");
@@ -1292,25 +1408,24 @@ function renderCost() {
     total += lineTotal;
 
     const content = `
-      <div class="cost-item-details">
-        <div>
-          <div class="cost-item-name">${item.name}</div>
-          <div class="cost-item-meta">${item.qty} × ${peso(
-      unitCost
-    )} (unit cost)</div>
-        </div>
-        <div class="cost-source-controls">
-          <button class="cost-source-toggle" data-model="${key}" data-item-name="${
-      item.name
-    }">Sources</button>
+      <div class="cost-item-info">
+        <div class="cost-item-name">${item.name}</div>
+        <div class="cost-item-meta">${item.qty} × ${peso(unitCost)}</div>
+      </div>
+      <div class="cost-item-right">
+        <div class="cost-item-total">${peso(lineTotal)}</div>
+        <div class="cost-item-actions">
+          <button class="cost-source-toggle" data-model="${key}" data-item-name="${item.name}" title="View Sources">🔗</button>
+          <button class="cost-item-remove" data-model="${key}" title="Remove">✕</button>
         </div>
       </div>
-      <div class="cost-item-total">${peso(lineTotal)}</div>
     `;
 
     if (costItemsList) {
       const row = document.createElement("div");
       row.className = "cost-item";
+      row.setAttribute("data-model", key);
+      row.style.cursor = "pointer";
       row.innerHTML = content;
       costItemsList.appendChild(row);
     }
@@ -1321,6 +1436,101 @@ function renderCost() {
   const totalDisplay = document.getElementById("cost-total-display");
   if (totalDisplay) totalDisplay.textContent = peso(total);
 }
+
+// Remove one instance of an item by modelKey (remove last placed instance)
+function removeItemInstance(modelKey) {
+  if (!modelKey || !costState.items[modelKey]) return;
+  // Find last furniture entity with matching model key
+  const nodes = Array.from(
+    document.querySelectorAll('[data-model-key="' + modelKey + '"]'),
+  );
+  if (nodes.length > 0) {
+    const last = nodes[nodes.length - 1];
+    last.remove();
+  }
+
+  // Decrement qty and remove the cost entry if qty reaches zero
+  costState.items[modelKey].qty = Math.max(
+    0,
+    costState.items[modelKey].qty - 1,
+  );
+  if (costState.items[modelKey].qty === 0) {
+    delete costState.items[modelKey];
+  }
+  renderCost();
+  saveWorkspaceState();
+}
+
+// Listen for clicks within cost panel (delegation)
+document.addEventListener("click", function (e) {
+  const removeBtn = e.target.closest(".cost-item-remove");
+  const sourceBtn = e.target.closest(".cost-source-toggle");
+  const costItemRow = e.target.closest(".cost-item");
+
+  // Handle remove button
+  if (removeBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const model = removeBtn.getAttribute("data-model");
+    if (model) removeItemInstance(model);
+    return;
+  }
+
+  // Handle source button - don't select item
+  if (sourceBtn) {
+    return; // Let existing source toggle handler work
+  }
+
+  // Handle clicking the cost item row itself (select furniture)
+  if (costItemRow && !removeBtn && !sourceBtn) {
+    const model = costItemRow.getAttribute("data-model");
+    if (model) {
+      // Select the first matching furniture entity in the scene
+      const el = document.querySelector('[data-model-key="' + model + '"]');
+      if (el && el.components && el.components["clickable-furniture"]) {
+        // Deselect all others first
+        document.querySelectorAll("[clickable-furniture]").forEach((f) => {
+          if (f !== el && f.components["clickable-furniture"]) {
+            f.components["clickable-furniture"].deselect();
+          }
+        });
+        // Select this one
+        if (!el.components["clickable-furniture"].isSelected) {
+          el.components["clickable-furniture"].select();
+        }
+      }
+    }
+    return;
+  }
+});
+
+// Highlight cost row when furniture is selected in-scene
+window.addEventListener("furnitureSelected", function (e) {
+  const model = e.detail && e.detail.modelKey;
+  // Remove previous highlights
+  document
+    .querySelectorAll(".cost-item.highlight")
+    .forEach((r) => r.classList.remove("highlight"));
+  if (!model) return;
+  const row = document.querySelector('.cost-item[data-model="' + model + '"]');
+  if (row) {
+    row.classList.add("highlight");
+    // Auto-scroll to the highlighted item
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
+window.addEventListener("furnitureDeselected", function (e) {
+  const model = e.detail && e.detail.modelKey;
+  if (!model) {
+    document
+      .querySelectorAll(".cost-item.highlight")
+      .forEach((r) => r.classList.remove("highlight"));
+    return;
+  }
+  const row = document.querySelector('.cost-item[data-model="' + model + '"]');
+  if (row) row.classList.remove("highlight");
+});
 
 // Grid functions removed
 
@@ -1405,7 +1615,7 @@ function showSourcesPanel(modelKey, itemName) {
         <div class="source-store">${src.store}</div>
         <div class="source-price">${peso(src.price)}</div>
       </div>
-    `
+    `,
       )
       .join("");
 
@@ -1825,7 +2035,7 @@ function rotateFurnitureLeft() {
       const newRotation = (parseFloat(currentRotation.y) - 90) % 360;
       furniture.setAttribute(
         "rotation",
-        `${currentRotation.x} ${newRotation} ${currentRotation.z}`
+        `${currentRotation.x} ${newRotation} ${currentRotation.z}`,
       );
       saveWorkspaceState();
     }
@@ -1840,7 +2050,7 @@ function rotateFurnitureRight() {
       const newRotation = (parseFloat(currentRotation.y) + 90) % 360;
       furniture.setAttribute(
         "rotation",
-        `${currentRotation.x} ${newRotation} ${currentRotation.z}`
+        `${currentRotation.x} ${newRotation} ${currentRotation.z}`,
       );
       saveWorkspaceState();
     }
@@ -1932,7 +2142,7 @@ function saveWorkspaceState() {
       localStorage.setItem("workspaceState", JSON.stringify(legacyState));
 
       console.log(
-        `Workspace state saved: ${furnitureData.length} furniture items`
+        `Workspace state saved: ${furnitureData.length} furniture items`,
       );
     } else {
       // Fallback to old method if collectRoomPlanData not available
@@ -1973,7 +2183,7 @@ function saveWorkspaceState() {
 
       localStorage.setItem("workspaceState", JSON.stringify(state));
       console.log(
-        `Workspace state saved: ${furnitureData.length} furniture items`
+        `Workspace state saved: ${furnitureData.length} furniture items`,
       );
     }
   } catch (error) {
@@ -1985,7 +2195,7 @@ function saveWorkspaceState() {
  * Restore room from saved room plan data
  * @param {Object} roomData - Room plan data from collectRoomPlanData()
  */
-function restoreRoom(roomData) {
+async function restoreRoom(roomData) {
   if (!roomData) {
     console.warn("No room data provided to restoreRoom");
     return;
@@ -2007,8 +2217,11 @@ function restoreRoom(roomData) {
       return;
     }
 
+    // Array to track model loading promises
+    const modelLoadPromises = [];
+
     console.log(
-      `Restoring ${furnitureData.length} furniture items from saved room state`
+      `Restoring ${furnitureData.length} furniture items from saved room state`,
     );
 
     // Restore furniture counter
@@ -2044,12 +2257,13 @@ function restoreRoom(roomData) {
       furnitureContainer.querySelectorAll('[id^="furniture-"]');
     if (existingFurniture.length > 0) {
       console.log(
-        `Clearing ${existingFurniture.length} existing furniture items before restore`
+        `Clearing ${existingFurniture.length} existing furniture items before restore`,
       );
       existingFurniture.forEach((item) => item.remove());
     }
 
-    for (const itemData of furnitureData) {
+    // Batched processing helper
+    const processItem = (itemData) => {
       // Validate item data
       if (
         !itemData.model_key ||
@@ -2059,21 +2273,21 @@ function restoreRoom(roomData) {
         typeof itemData.position.z !== "number"
       ) {
         console.warn("Invalid furniture item data:", itemData);
-        continue;
+        return;
       }
 
       const furnitureEl = document.createElement("a-entity");
       furnitureEl.id = `furniture-${furnitureCounter++}`;
       furnitureEl.setAttribute(
         "position",
-        `${itemData.position.x} ${itemData.position.y} ${itemData.position.z}`
+        `${itemData.position.x} ${itemData.position.y} ${itemData.position.z}`,
       );
 
       // Handle rotation
       const rotation = itemData.rotation || { x: 0, y: 0, z: 0 };
       furnitureEl.setAttribute(
         "rotation",
-        `${rotation.x} ${rotation.y} ${rotation.z}`
+        `${rotation.x} ${rotation.y} ${rotation.z}`,
       );
 
       // Handle scale
@@ -2103,7 +2317,7 @@ function restoreRoom(roomData) {
       furnitureEl.setAttribute("cached-obj-model", "src", modelUrl);
       furnitureEl.setAttribute(
         "draggable-furniture",
-        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`
+        `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`,
       );
       furnitureEl.setAttribute("clickable-furniture", "");
 
@@ -2115,66 +2329,92 @@ function restoreRoom(roomData) {
       } else {
         furnitureEl.setAttribute(
           "textured-model",
-          `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`
+          `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`,
         );
       }
 
-      // Set up model loading timeout and error handling for restored items
-      let modelLoadTimeout;
-      let modelLoaded = false;
+      // Create a promise that resolves when model loads or rejects on error/timeout
+      const modelLoadPromise = new Promise((resolve) => {
+        let modelLoadTimeout;
+        let modelLoaded = false;
 
-      const onModelLoaded = function () {
-        if (modelLoaded) return;
-        modelLoaded = true;
-        clearTimeout(modelLoadTimeout);
+        const onModelLoaded = function () {
+          if (modelLoaded) return;
+          modelLoaded = true;
+          clearTimeout(modelLoadTimeout);
 
-        const placeholder = furnitureEl.querySelector(
-          `#${furnitureEl.id}-placeholder`
+          const placeholder = furnitureEl.querySelector(
+            `#${furnitureEl.id}-placeholder`,
+          );
+          if (placeholder) {
+            placeholder.remove();
+          }
+          resolve(); // Resolve on successful load
+        };
+
+        furnitureEl.addEventListener("model-loaded", onModelLoaded, {
+          once: true,
+        });
+
+        // Set timeout for model loading
+        modelLoadTimeout = setTimeout(() => {
+          if (!modelLoaded) {
+            modelLoaded = true; // Prevent double handling
+            console.warn(
+              `Model load timeout for ${itemData.model_key} at ${modelUrl}`,
+            );
+            const placeholder = furnitureEl.querySelector(
+              `#${furnitureEl.id}-placeholder`,
+            );
+            if (placeholder) {
+              placeholder.setAttribute("opacity", "0.5");
+              placeholder.setAttribute("color", "#888888");
+            }
+            resolve(); // Resolve on timeout (don't block forever)
+          }
+        }, MODEL_LOAD_TIMEOUT);
+
+        // Listen for model error
+        furnitureEl.addEventListener(
+          "model-error",
+          function (e) {
+            if (modelLoaded) return;
+            modelLoaded = true;
+            clearTimeout(modelLoadTimeout);
+            console.error(
+              `Model load error for ${itemData.model_key}:`,
+              e.detail,
+            );
+            const placeholder = furnitureEl.querySelector(
+              `#${furnitureEl.id}-placeholder`,
+            );
+            if (placeholder) {
+              placeholder.setAttribute("opacity", "0.5");
+              placeholder.setAttribute("color", "#FF6B6B");
+            }
+            resolve(); // Resolve on error (don't block forever)
+          },
+          { once: true },
         );
-        if (placeholder) {
-          placeholder.remove();
-        }
-      };
-
-      furnitureEl.addEventListener("model-loaded", onModelLoaded, {
-        once: true,
       });
 
-      // Set timeout for model loading
-      modelLoadTimeout = setTimeout(() => {
-        if (!modelLoaded) {
-          console.warn(
-            `Model load timeout for ${itemData.model_key} at ${modelUrl}`
-          );
-          const placeholder = furnitureEl.querySelector(
-            `#${furnitureEl.id}-placeholder`
-          );
-          if (placeholder) {
-            placeholder.setAttribute("opacity", "0.5");
-            placeholder.setAttribute("color", "#888888");
-          }
-        }
-      }, MODEL_LOAD_TIMEOUT);
+      modelLoadPromises.push(modelLoadPromise);
+    };
 
-      // Listen for model error
-      furnitureEl.addEventListener(
-        "model-error",
-        function (e) {
-          clearTimeout(modelLoadTimeout);
-          console.error(
-            `Model load error for ${itemData.model_key}:`,
-            e.detail
-          );
-          const placeholder = furnitureEl.querySelector(
-            `#${furnitureEl.id}-placeholder`
-          );
-          if (placeholder) {
-            placeholder.setAttribute("opacity", "0.5");
-            placeholder.setAttribute("color", "#FF6B6B");
-          }
-        },
-        { once: true }
-      );
+    // Execute batch processing
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < furnitureData.length; i += BATCH_SIZE) {
+      const batch = furnitureData.slice(i, i + BATCH_SIZE);
+      batch.forEach(processItem);
+      // Yield to main thread to prevent UI freeze
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    // Wait for ALL models to finish loading before continuing
+    if (modelLoadPromises.length > 0) {
+      console.log(`Waiting for ${modelLoadPromises.length} models to load...`);
+      await Promise.all(modelLoadPromises);
+      console.log("All models loaded");
     }
 
     // Restore cost state
@@ -2231,7 +2471,7 @@ async function restoreWorkspaceState() {
   } catch (error) {
     console.warn(
       "Error restoring from currentRoomState, trying legacy format:",
-      error
+      error,
     );
   }
 
@@ -2249,7 +2489,7 @@ async function restoreWorkspaceState() {
     } catch (parseError) {
       console.error(
         "Error parsing workspace state from localStorage:",
-        parseError
+        parseError,
       );
       // Clear corrupted data
       localStorage.removeItem("workspaceState");
@@ -2267,7 +2507,7 @@ async function restoreWorkspaceState() {
     }
 
     console.log(
-      `Restoring ${state.furniture.length} furniture items from legacy saved state`
+      `Restoring ${state.furniture.length} furniture items from legacy saved state`,
     );
 
     // Convert legacy format to new format
@@ -2428,18 +2668,18 @@ window.addEventListener("load", async function () {
     initializeRoom();
     // Auto-restore room state after room is initialized
     // Use longer timeout to ensure scene is fully ready
-    setTimeout(() => {
+    setTimeout(async () => {
       // Try to restore from currentRoomState first (auto-restore)
       const saved = localStorage.getItem("currentRoomState");
       if (saved) {
         try {
           const roomData = JSON.parse(saved);
-          restoreRoom(roomData);
+          await restoreRoom(roomData); // Wait for all models to load
           console.log("Room state auto-restored from currentRoomState");
         } catch (error) {
           console.error(
             "Error parsing currentRoomState, trying legacy restore:",
-            error
+            error,
           );
           restoreWorkspaceState();
         }
@@ -2448,28 +2688,30 @@ window.addEventListener("load", async function () {
         restoreWorkspaceState();
       }
 
-      // Show welcome dialog after room is initialized (one-time only)
+      // Signal that ALL initialization is complete (room + data + restore + models loaded)
+      window.dispatchEvent(new CustomEvent("roomReady"));
+
+      // Show welcome dialog after room is ready (one-time only)
       setTimeout(() => {
         showWelcomeDialog();
-      }, 1000);
-    }, 800);
+      }, 500);
+    }, 100);
   } else {
     scene.addEventListener("loaded", function () {
       initializeRoom();
       // Auto-restore room state after room is initialized
-      // Use longer timeout to ensure scene is fully ready
-      setTimeout(() => {
+      setTimeout(async () => {
         // Try to restore from currentRoomState first (auto-restore)
         const saved = localStorage.getItem("currentRoomState");
         if (saved) {
           try {
             const roomData = JSON.parse(saved);
-            restoreRoom(roomData);
+            await restoreRoom(roomData); // Wait for all models to load
             console.log("Room state auto-restored from currentRoomState");
           } catch (error) {
             console.error(
               "Error parsing currentRoomState, trying legacy restore:",
-              error
+              error,
             );
             restoreWorkspaceState();
           }
@@ -2478,11 +2720,14 @@ window.addEventListener("load", async function () {
           restoreWorkspaceState();
         }
 
-        // Show welcome dialog after room is initialized (one-time only)
+        // Signal that ALL initialization is complete (room + data + restore + models loaded)
+        window.dispatchEvent(new CustomEvent("roomReady"));
+
+        // Show welcome dialog after room is ready (one-time only)
         setTimeout(() => {
           showWelcomeDialog();
-        }, 1000);
-      }, 800);
+        }, 500);
+      }, 100);
     });
   }
 
@@ -2505,7 +2750,7 @@ window.addEventListener("load", async function () {
           ...roomPlanData,
           costState: costState,
           furnitureCounter: furnitureCounter,
-        })
+        }),
       );
       console.log("Room state auto-saved on page unload");
     } else {
@@ -2524,7 +2769,7 @@ window.addEventListener("load", async function () {
             ...roomPlanData,
             costState: costState,
             furnitureCounter: furnitureCounter,
-          })
+          }),
         );
       } else {
         saveWorkspaceState();
@@ -2574,7 +2819,7 @@ async function handleSaveEstimation() {
     const nameInput = await showPrompt(
       "Enter a name for this cost estimation:",
       "",
-      "Save Cost Estimation"
+      "Save Cost Estimation",
     );
     const estimationName =
       (nameInput && nameInput.trim()) ||
@@ -2585,7 +2830,7 @@ async function handleSaveEstimation() {
 
       // Show notification
       const notification = document.getElementById(
-        "save-estimation-notification"
+        "save-estimation-notification",
       );
       if (notification) {
         notification.textContent = "saved to profile";
@@ -2603,7 +2848,7 @@ async function handleSaveEstimation() {
     console.error("Error saving cost estimation:", error);
     await showDialog(
       "Unable to save cost estimation. Please try again.",
-      "Error"
+      "Error",
     );
   }
 }

@@ -9,12 +9,25 @@ function startPlanner() {
 
   // Validation
   if (!width || !length || !height) {
-    showDialog("Please enter width, length, and height dimensions", "Validation Error");
+    showDialog(
+      "Please enter width, length, and height dimensions",
+      "Validation Error",
+    );
     return;
   }
 
-  if (width < 1 || width > 20 || length < 1 || length > 20 || height < 1 || height > 20) {
-    showDialog("Please enter dimensions between 1M and 20M", "Validation Error");
+  if (
+    width < 1 ||
+    width > 20 ||
+    length < 1 ||
+    length > 20 ||
+    height < 1 ||
+    height > 20
+  ) {
+    showDialog(
+      "Please enter dimensions between 1M and 20M",
+      "Validation Error",
+    );
     return;
   }
 
@@ -23,7 +36,7 @@ function startPlanner() {
   localStorage.setItem("roomLength", length);
   localStorage.setItem("roomHeight", height);
 
-  // Redirect to planner page
+  // Navigate directly to planner - loading is handled there
   window.location.href = "planner.html";
 }
 
@@ -34,16 +47,14 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-// Auto-focus first input
+// Set up input event listeners (focus is handled by preloader after loading completes)
 window.addEventListener("load", function () {
-  document.getElementById("room-width").focus();
-  
   // Add tab navigation between inputs
   const inputs = ["room-width", "room-length", "room-height"];
   inputs.forEach((id, index) => {
     const input = document.getElementById(id);
     if (input) {
-      input.addEventListener("keydown", function(e) {
+      input.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           startPlanner();
@@ -54,4 +65,3 @@ window.addEventListener("load", function () {
     }
   });
 });
-

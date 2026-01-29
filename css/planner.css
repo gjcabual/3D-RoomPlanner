@@ -228,7 +228,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 #instructions:hover .instructions-button {
@@ -252,7 +254,9 @@ body {
   opacity: 0;
   pointer-events: none;
   transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   z-index: 1201;
 }
 
@@ -275,10 +279,12 @@ body {
   flex-direction: column;
   overflow: hidden;
   /* Combined transitions for smooth state changes and hover exit */
-  transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+  transition:
+    width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     border-radius 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    transform 0.1s ease-out,
+    box-shadow 0.1s ease-out;
 }
 
 #cost-panel.collapsed {
@@ -326,7 +332,8 @@ body {
   top: 50%;
   transform: translate(-50%, -50%) scale(0.5);
   opacity: 0;
-  transition: opacity 0.5s ease,
+  transition:
+    opacity 0.5s ease,
     transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: none;
 }
@@ -339,7 +346,9 @@ body {
 
 .cost-header h3,
 .cost-toggle-btn {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   opacity: 1;
   transform: scale(1);
 }
@@ -369,7 +378,9 @@ body {
 
 #cost-panel.collapsed .cost-body,
 #cost-panel.collapsed .cost-footer {
+  height: 0;
   max-height: 0;
+  min-height: 0;
   padding-top: 0;
   padding-bottom: 0;
   opacity: 0;
@@ -381,20 +392,23 @@ body {
   padding: 15px;
   overflow-y: auto;
   overflow-x: hidden;
-  flex: 1;
   background: rgba(15, 15, 15, 0.96);
-  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
 
-  /* Prevent reflow during collapse */
+  /* Fixed height - scrollable list */
+  height: 200px;
+  max-height: 200px;
+  min-height: 200px;
   min-width: 320px;
   box-sizing: border-box;
 
   /* Transition for collapse */
-  transition: max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 0.2s ease-out, padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  max-height: 60vh;
+  transition:
+    max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.2s ease-out,
+    padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   opacity: 1;
 }
 .cost-footer {
@@ -403,8 +417,10 @@ body {
   box-sizing: border-box;
 
   /* Transition for collapse */
-  transition: max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 0.2s ease-out, padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition:
+    max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.2s ease-out,
+    padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   max-height: 150px;
   opacity: 1;
   overflow: hidden;
@@ -469,7 +485,9 @@ body {
   font-size: 0.8em;
   padding: 4px 10px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .cost-source-toggle:hover {
@@ -656,7 +674,9 @@ body {
   font-size: 0.9em;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .cost-save-btn:hover {

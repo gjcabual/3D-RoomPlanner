@@ -43,9 +43,10 @@ AFRAME.registerComponent("draggable-furniture", {
     this.currentWall = null; // 'north' | 'south' | 'west' | 'east'
 
     // Actual dimensions from 3D model (will be calculated when model loads)
-    this.actualWidth = this.data.objectWidth; // Fallback to schema default
-    this.actualLength = this.data.objectLength; // Fallback to schema default
-    this.actualHeight = 1; // Fallback
+    // Use larger fallback (2.0m) to prevent overlap before model dimensions are calculated
+    this.actualWidth = 2.0;
+    this.actualLength = 2.0;
+    this.actualHeight = 1.5;
     this.dimensionsCalculated = false;
     this.lastRotationY = undefined; // Track rotation for dimension recalculation
 
@@ -66,6 +67,61 @@ AFRAME.registerComponent("draggable-furniture", {
 
     // Listen for model to load so we can calculate actual dimensions
     this.el.addEventListener("model-loaded", this.calculateDimensions);
+
+    // After model loads, re-check boundaries to clamp restored furniture that may overlap walls
+    this.el.addEventListener("model-loaded", () => {
+      setTimeout(() => {
+        if (
+          this.dimensionsCalculated &&
+          !this.isDragging &&
+          !this.isWallMounted
+        ) {
+          const pos = this.el.object3D.position;
+          const adjusted = this.checkBoundaries(pos);
+          if (
+            Math.abs(pos.x - adjusted.x) > 0.01 ||
+            Math.abs(pos.z - adjusted.z) > 0.01
+          ) {
+            console.log(
+              `[${this.el.id}] Clamping to boundaries after model load`,
+            );
+            this.el.setAttribute(
+              "position",
+              `${adjusted.x} ${pos.y} ${adjusted.z}`,
+            );
+          }
+        }
+      }, 50);
+    });
+
+    // Recalculate dimensions when rotation changes (throttled)
+    // Also re-check boundaries after rotation to prevent wall penetration
+    this.el.addEventListener("componentchanged", (evt) => {
+      if (evt.detail.name === "rotation") {
+        if (this._rotationTimer) return;
+        this._rotationTimer = setTimeout(() => {
+          this.calculateDimensions();
+          // After recalculating dimensions, clamp position to stay within walls
+          if (!this.isDragging && !this.isWallMounted) {
+            const pos = this.el.object3D.position;
+            const adjusted = this.checkBoundaries(pos);
+            if (
+              Math.abs(pos.x - adjusted.x) > 0.01 ||
+              Math.abs(pos.z - adjusted.z) > 0.01
+            ) {
+              console.log(
+                `[${this.el.id}] Clamping to boundaries after rotation`,
+              );
+              this.el.setAttribute(
+                "position",
+                `${adjusted.x} ${pos.y} ${adjusted.z}`,
+              );
+            }
+          }
+          this._rotationTimer = null;
+        }, 100);
+      }
+    });
 
     // Prepare per-mesh material clones/snapshots as early as possible.
     // This prevents selection/other components from mutating materials
@@ -209,6 +265,21 @@ AFRAME.registerComponent("draggable-furniture", {
             mat.transparent = snap.transparent;
           }
         }
+        // If we have no snapshot (possible when material was modified before
+        // we captured a baseline), fall back to safe defaults to avoid
+        // permanently stuck red/green tints.
+        if (!snap) {
+          try {
+            if (mat.color) mat.color.set("#ffffff");
+            if (mat.emissive) mat.emissive.set("#000000");
+            if (typeof mat.emissiveIntensity === "number")
+              mat.emissiveIntensity = 0;
+            if (typeof mat.opacity === "number") mat.opacity = 1;
+            if (typeof mat.transparent === "boolean") mat.transparent = false;
+          } catch (e) {
+            // no-op
+          }
+        }
         mat.needsUpdate = true;
         return;
       }
@@ -216,10 +287,10 @@ AFRAME.registerComponent("draggable-furniture", {
       //to fix
       if (kind === "drag") {
         // Valid placement: green tint + strong emissive.
-        // if (mat.color) mat.color.set("#b6ffb6");
-        // if (mat.emissive) mat.emissive.set("#00ff00");
-        // if (typeof mat.emissiveIntensity === "number")
-        mat.emissiveIntensity = 0.9;
+        if (mat.color) mat.color.set("#b6ffb6");
+        if (mat.emissive) mat.emissive.set("#00ff00");
+        if (typeof mat.emissiveIntensity === "number")
+          mat.emissiveIntensity = 0.9;
         mat.needsUpdate = true;
         return;
       }
@@ -227,10 +298,10 @@ AFRAME.registerComponent("draggable-furniture", {
       //to fix
       if (kind === "error") {
         // Invalid placement: clearly red even on textured models.
-        // if (mat.color) mat.color.set("#ff6b6b");
-        // if (mat.emissive) mat.emissive.set("#ff0000");
-        // if (typeof mat.emissiveIntensity === "number")
-        mat.emissiveIntensity = 1.25;
+        if (mat.color) mat.color.set("#ff6b6b");
+        if (mat.emissive) mat.emissive.set("#ff0000");
+        if (typeof mat.emissiveIntensity === "number")
+          mat.emissiveIntensity = 1.25;
         mat.needsUpdate = true;
       }
     };
@@ -689,12 +760,30 @@ AFRAME.registerComponent("draggable-furniture", {
       });
 
       if (candidates.length === 0) return;
-      candidates.sort((a, b) => a.dist - b.dist);
+
+      // Filter to only walls that are facing the camera (visible walls)
+      // A wall is visible if its normal points toward the camera
+      const cameraPos = this.raycaster.ray.origin;
+      const visibleCandidates = candidates.filter((c) => {
+        const wallInfo = planes.find((p) => p.name === c.wall);
+        if (!wallInfo) return true;
+        // Vector from wall to camera
+        const toCamera = new THREE.Vector3().subVectors(cameraPos, c.point);
+        // If dot product with wall normal is positive, camera is in front of wall
+        return toCamera.dot(wallInfo.normal) > 0;
+      });
+
+      // Use visible candidates if any, otherwise fall back to all candidates
+      const sortedCandidates =
+        visibleCandidates.length > 0 ? visibleCandidates : candidates;
+      sortedCandidates.sort((a, b) => a.dist - b.dist);
 
       // Prefer sticking to the current wall while dragging, if available.
-      let chosen = candidates[0];
+      let chosen = sortedCandidates[0];
       if (this.currentWall) {
-        const sameWall = candidates.find((c) => c.wall === this.currentWall);
+        const sameWall = sortedCandidates.find(
+          (c) => c.wall === this.currentWall,
+        );
         if (sameWall) chosen = sameWall;
       }
 
@@ -796,66 +885,24 @@ AFRAME.registerComponent("draggable-furniture", {
   },
 
   tick: function () {
-    // Track rotation to recalculate dimensions when object rotates
-    const currentRotation = this.el.getAttribute("rotation");
-    if (currentRotation) {
-      const rotY =
-        typeof currentRotation === "object"
-          ? currentRotation.y
-          : typeof currentRotation === "string"
-            ? parseFloat(currentRotation.split(" ")[1])
-            : 0;
-
-      // If rotation changed significantly, recalculate dimensions
-      if (
-        this.lastRotationY !== undefined &&
-        Math.abs(this.lastRotationY - rotY) > 1
-      ) {
-        this.calculateDimensions();
-      }
-      this.lastRotationY = rotY;
-    }
-
-    // Wall-mounted items (mirrors) don't participate in floor collision feedback.
-    if (this.isWallMounted) return;
-
-    // Skip collision checking while dragging (handled in onMouseMove)
-    if (this.isDragging) return;
-
-    // Check if object is selected (selected objects should stay green)
-    const clickableComponent = this.el.components["clickable-furniture"];
-    const isSelected = clickableComponent && clickableComponent.isSelected;
-
-    // Throttled invalid-state feedback when idle (e.g., after loads/rotations).
-    const now = performance.now();
-    if (now < this._idleCollisionNextCheckAt) return;
-    this._idleCollisionNextCheckAt = now + 200;
-
-    // Idle objects should not keep red/green preview tints.
-    // Only the actively dragged item shows validity feedback.
-    // If selected, keep the selection highlight (entity emissive) but DO reset
-    // any mesh tint that may have been applied.
-    if (isSelected) {
-      this._applyFeedbackToMeshes("reset");
-      this.el.setAttribute("material", "emissive", "#2E7D32");
-      this.el.setAttribute("material", "emissiveIntensity", "0.35");
-      return;
-    }
-
-    this.setFeedback("reset");
+    // Optimization: minimized tick function
+    // Rotation updates are handled via componentchanged event
+    // Collision feedback is handled during drag/drop events
   },
 
   checkBoundaries: function (position) {
     const roomWidth = this.data.roomWidth;
     const roomLength = this.data.roomLength;
-    // Use actual calculated dimensions from 3D model, fallback to schema defaults
-    const objWidth = this.actualWidth || this.data.objectWidth;
-    const objLength = this.actualLength || this.data.objectLength;
+    // Use actual calculated dimensions from 3D model, fallback to larger default
+    // Add extra margin (0.3m) to ensure furniture stays well inside walls
+    const objWidth = (this.actualWidth || 2.0) + 0.3;
+    const objLength = (this.actualLength || 2.0) + 0.3;
     const wallThickness = this.data.wallThickness;
 
     // Calculate safe boundaries using INNER wall faces (account for wall thickness)
-    const innerX = roomWidth / 2 - wallThickness / 2;
-    const innerZ = roomLength / 2 - wallThickness / 2;
+    // Use full wall thickness to keep objects completely inside
+    const innerX = roomWidth / 2 - wallThickness;
+    const innerZ = roomLength / 2 - wallThickness;
     let safeXMin = -innerX + objWidth / 2;
     let safeXMax = innerX - objWidth / 2;
     const safeZMin = -innerZ + objLength / 2;
@@ -886,14 +933,15 @@ AFRAME.registerComponent("draggable-furniture", {
     if (this.isWallMounted) return false;
     const roomWidth = this.data.roomWidth;
     const roomLength = this.data.roomLength;
-    // Use actual calculated dimensions from 3D model, fallback to schema defaults
-    const objWidth = this.actualWidth || this.data.objectWidth;
-    const objLength = this.actualLength || this.data.objectLength;
+    // Use actual calculated dimensions from 3D model, fallback to larger default
+    // Add extra margin to match checkBoundaries
+    const objWidth = (this.actualWidth || 2.0) + 0.3;
+    const objLength = (this.actualLength || 2.0) + 0.3;
     const wallThickness = this.data.wallThickness;
     const epsilon = 0.1; // Only turn red when very close to walls (almost touching)
 
-    const innerX = roomWidth / 2 - wallThickness / 2;
-    const innerZ = roomLength / 2 - wallThickness / 2;
+    const innerX = roomWidth / 2 - wallThickness;
+    const innerZ = roomLength / 2 - wallThickness;
     const safeXMin = -innerX + objWidth / 2;
     const safeXMax = innerX - objWidth / 2;
     const safeZMin = -innerZ + objLength / 2;

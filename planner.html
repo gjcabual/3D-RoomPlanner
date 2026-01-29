@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -88,10 +88,246 @@
     <script src="js/utils/dialog.js"></script>
     <script src="js/utils/snapshot.js"></script>
     <script src="js/components/profile-menu.js"></script>
+    <!-- Asset Preloader (loads models/textures ahead of time) -->
+    <script src="js/utils/asset-preloader.js"></script>
     <!-- Main Application Script -->
     <script src="js/planner.js"></script>
   </head>
   <body class="dark">
+    <!-- Loading Overlay - shown until A-Frame scene is fully ready -->
+    <div id="planner-loading-overlay">
+      <div class="planner-loading-content">
+        <div class="planner-loading-spinner"></div>
+        <h2 class="planner-loading-title">Setting Up Your Room</h2>
+        <p class="planner-loading-status" id="planner-loading-status">
+          Initializing 3D environment...
+        </p>
+        <div class="planner-loading-progress-bar">
+          <div
+            class="planner-loading-progress-fill"
+            id="planner-loading-progress-fill"
+          ></div>
+        </div>
+        <p class="planner-loading-percent" id="planner-loading-percent">0%</p>
+      </div>
+    </div>
+    <style>
+      #planner-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a0a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        transition: opacity 0.5s ease;
+      }
+      /* Grid background pattern */
+      #planner-loading-overlay::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        opacity: 0.5;
+      }
+      #planner-loading-overlay.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #planner-loading-overlay.hidden {
+        display: none;
+      }
+      .planner-loading-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: white;
+        max-width: 400px;
+        padding: 40px;
+      }
+      .planner-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #ff8c00;
+        border-radius: 50%;
+        animation: planner-spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      @keyframes planner-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .planner-loading-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 10px;
+      }
+      .planner-loading-status {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0 0 20px;
+      }
+      .planner-loading-progress-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+      .planner-loading-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff8c00, #ffa500);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.15s ease;
+      }
+      .planner-loading-percent {
+        font-size: 14px;
+        font-weight: 500;
+        color: #ff8c00;
+        margin: 0;
+      }
+    </style>
+    <script>
+      // Hide loading overlay when scene is fully loaded and rendered
+      (function () {
+        let sceneReady = false;
+        let roomReady = false;
+        let renderFrames = 0;
+        const FRAMES_TO_WAIT = 120; // Wait for 120 render frames (~2 seconds) to ensure GPU is stable
+
+        function hideLoadingOverlay() {
+          const overlay = document.getElementById("planner-loading-overlay");
+          if (overlay && !overlay.classList.contains("hidden")) {
+            overlay.classList.add("fade-out");
+            setTimeout(() => overlay.classList.add("hidden"), 500);
+          }
+        }
+
+        function updateStatus(text) {
+          const status = document.getElementById("planner-loading-status");
+          if (status) status.textContent = text;
+        }
+
+        function updateProgress(percent) {
+          const fill = document.getElementById("planner-loading-progress-fill");
+          const percentText = document.getElementById(
+            "planner-loading-percent",
+          );
+          if (fill) fill.style.width = `${percent}%`;
+          if (percentText) percentText.textContent = `${percent}%`;
+        }
+
+        function checkAllReady() {
+          if (sceneReady && roomReady && renderFrames >= FRAMES_TO_WAIT) {
+            updateStatus("Ready!");
+            updateProgress(100);
+            // Add extra buffer to ensure any pending GPU/async work completes
+            setTimeout(() => {
+              hideLoadingOverlay();
+              // Defer non-critical initialization
+              requestIdleCallback
+                ? requestIdleCallback(deferredInit)
+                : setTimeout(deferredInit, 100);
+            }, 500);
+            return true;
+          }
+          return false;
+        }
+
+        function deferredInit() {
+          // Any non-critical initialization can happen here after overlay is hidden
+          console.log("[Planner] Deferred initialization complete");
+        }
+
+        // Count render frames after scene is loaded
+        function waitForRenderFrames() {
+          const scene = document.querySelector("a-scene");
+          if (!scene || !scene.renderer) {
+            requestAnimationFrame(waitForRenderFrames);
+            return;
+          }
+
+          renderFrames++;
+          // Progress: 30% for scene load + 70% for render frames
+          const renderProgress = Math.min(
+            70,
+            Math.round((renderFrames / FRAMES_TO_WAIT) * 70),
+          );
+          const totalProgress = 30 + renderProgress;
+          updateProgress(totalProgress);
+          updateStatus("Rendering 3D scene...");
+
+          if (!checkAllReady()) {
+            requestAnimationFrame(waitForRenderFrames);
+          }
+        }
+
+        // Listen for room ready event from planner.js
+        window.addEventListener("roomReady", function () {
+          roomReady = true;
+          checkAllReady();
+        });
+
+        // Wait for A-Frame scene to be fully loaded
+        function waitForScene() {
+          const scene = document.querySelector("a-scene");
+          if (!scene) {
+            setTimeout(waitForScene, 100);
+            return;
+          }
+
+          updateStatus("Loading 3D engine...");
+          updateProgress(10);
+
+          if (scene.hasLoaded) {
+            onSceneReady();
+          } else {
+            scene.addEventListener("loaded", onSceneReady);
+          }
+        }
+
+        function onSceneReady() {
+          sceneReady = true;
+          updateStatus("Building room...");
+          updateProgress(30);
+          // Start counting render frames
+          requestAnimationFrame(waitForRenderFrames);
+        }
+
+        // Fallback: hide after 10 seconds max if something goes wrong
+        setTimeout(function () {
+          const overlay = document.getElementById("planner-loading-overlay");
+          if (overlay && !overlay.classList.contains("hidden")) {
+            console.warn(
+              "[Planner] Fallback: hiding loading overlay after timeout",
+            );
+            hideLoadingOverlay();
+          }
+        }, 10000);
+
+        // Start checking for scene
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", waitForScene);
+        } else {
+          waitForScene();
+        }
+      })();
+    </script>
+
     <!-- Profile Circle -->
     <div
       id="profile-circle"
@@ -110,7 +346,7 @@
         <button
           type="button"
           class="profile-dropdown-item"
-          onclick="window.location.href='profile.html'"
+          onclick="window.location.href = 'profile.html'"
         >
           Profile
         </button>
@@ -119,7 +355,7 @@
           id="profile-admin-link"
           class="profile-dropdown-item"
           style="display: none"
-          onclick="window.location.href='admin.html'"
+          onclick="window.location.href = 'admin.html'"
         >
           Admin Dashboard
         </button>
@@ -487,8 +723,8 @@
             margin-bottom: 10px;
             transition: all 0.2s ease;
           "
-          onmouseover="this.style.background='rgba(255, 255, 255, 0.15)'"
-          onmouseout="this.style.background='rgba(255, 255, 255, 0.08)'"
+          onmouseover="this.style.background = 'rgba(255, 255, 255, 0.15)'"
+          onmouseout="this.style.background = 'rgba(255, 255, 255, 0.08)'"
         >
           ← Back
         </button>

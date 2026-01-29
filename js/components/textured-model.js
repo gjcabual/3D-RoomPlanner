@@ -22,7 +22,7 @@
         normalized,
         (tex) => resolve(tex),
         undefined,
-        () => resolve(null)
+        () => resolve(null),
       );
     });
 
@@ -37,6 +37,19 @@
     const parts = String(dataRepeat).split(/\s+/).map(parseFloat);
     return { x: parts[0] || 1, y: parts[1] || 1 };
   }
+
+  // Expose texture preload helper for asset-preloader.js
+  window.preloadTexture = function preloadTexture(url) {
+    return loadTexture(url).then((tex) => tex !== null);
+  };
+
+  // Expose cache status for debugging
+  window.getTextureCacheStatus = function getTextureCacheStatus() {
+    return {
+      size: TEXTURE_CACHE.size,
+      keys: Array.from(TEXTURE_CACHE.keys()),
+    };
+  };
 
   AFRAME.registerComponent("textured-model", {
     schema: {

@@ -44,7 +44,7 @@
         normalized,
         (obj) => resolve(obj),
         undefined,
-        (err) => reject(err || new Error(`Failed to load OBJ: ${normalized}`))
+        (err) => reject(err || new Error(`Failed to load OBJ: ${normalized}`)),
       );
     });
 
@@ -70,6 +70,20 @@
   // Expose a small preload helper (optional usage from app code).
   window.preloadObjModel = function preloadObjModel(url) {
     return loadObj(url).catch(() => null);
+  };
+
+  // Expose cache status for debugging and preloader integration
+  window.getObjCacheStatus = function getObjCacheStatus() {
+    return {
+      size: OBJ_CACHE.size,
+      keys: Array.from(OBJ_CACHE.keys()),
+    };
+  };
+
+  // Check if a model is already cached
+  window.isObjModelCached = function isObjModelCached(url) {
+    const normalized = normalizeUrl(url);
+    return OBJ_CACHE.has(normalized);
   };
 
   AFRAME.registerComponent("cached-obj-model", {
