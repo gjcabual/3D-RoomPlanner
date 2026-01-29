@@ -93,6 +93,48 @@
 
     init() {
       this._currentSrc = "";
+      this._loadingIndicator = null;
+    },
+
+    // Show a spinning loading indicator while model loads
+    _showLoadingIndicator() {
+      if (this._loadingIndicator) return;
+
+      // Create a simple spinning ring as loading indicator
+      const geometry = new THREE.TorusGeometry(0.3, 0.05, 8, 24);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xff8c00, // Orange color matching the app theme
+        transparent: true,
+        opacity: 0.8,
+      });
+      this._loadingIndicator = new THREE.Mesh(geometry, material);
+      this._loadingIndicator.rotation.x = Math.PI / 2;
+
+      // Add animation
+      this._animateLoading = () => {
+        if (this._loadingIndicator) {
+          this._loadingIndicator.rotation.z += 0.05;
+          this._loadingAnimationId = requestAnimationFrame(
+            this._animateLoading,
+          );
+        }
+      };
+      this._animateLoading();
+
+      this.el.object3D.add(this._loadingIndicator);
+    },
+
+    _hideLoadingIndicator() {
+      if (this._loadingAnimationId) {
+        cancelAnimationFrame(this._loadingAnimationId);
+        this._loadingAnimationId = null;
+      }
+      if (this._loadingIndicator) {
+        this.el.object3D.remove(this._loadingIndicator);
+        this._loadingIndicator.geometry.dispose();
+        this._loadingIndicator.material.dispose();
+        this._loadingIndicator = null;
+      }
     },
 
     update(oldData) {
@@ -108,22 +150,32 @@
         return;
       }
 
+      // Show loading indicator if model is not cached (lazy loading)
+      const isCached = OBJ_CACHE.has(newSrc);
+      if (!isCached) {
+        this._showLoadingIndicator();
+      }
+
       loadObj(newSrc)
         .then((original) => {
           // If src changed while loading, ignore.
           if (this._currentSrc !== newSrc) return;
 
+          this._hideLoadingIndicator();
           const cloned = cloneWithUniqueMaterials(original);
           this.el.setObject3D("mesh", cloned);
           this.el.emit("model-loaded", { format: "obj", model: cloned });
         })
         .catch((error) => {
           if (this._currentSrc !== newSrc) return;
+          this._hideLoadingIndicator();
           this.el.emit("model-error", { format: "obj", src: newSrc, error });
         });
     },
 
     remove() {
+      // Clean up loading indicator
+      this._hideLoadingIndicator();
       // Clean up object3D reference on component removal.
       try {
         this.el.removeObject3D("mesh");

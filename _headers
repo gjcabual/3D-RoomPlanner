@@ -1,0 +1,22 @@
+# Netlify headers configuration for caching
+
+# Cache 3D models and textures for 1 year (immutable assets)
+/asset/models/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/asset/textures/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache JS and CSS for 1 day (may change occasionally)
+/js/*
+  Cache-Control: public, max-age=86400
+
+/css/*
+  Cache-Control: public, max-age=86400
+
+/components/*
+  Cache-Control: public, max-age=86400
+
+# HTML pages - short cache or no cache for updates
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate

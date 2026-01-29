@@ -5,27 +5,14 @@
 (() => {
   "use strict";
 
-  // All models to preload (local paths)
-  const ALL_MODELS = [
-    "asset/models/bed1.obj",
-    "asset/models/bed2.obj",
-    "asset/models/center_table1.obj",
-    "asset/models/center_table2.obj",
-    "asset/models/chair1.obj",
-    "asset/models/chair2.obj",
-    "asset/models/desk1.obj",
-    "asset/models/desk2.obj",
-    "asset/models/mirror1.obj",
-    "asset/models/mirror2.obj",
-    "asset/models/shelf1.obj",
-    "asset/models/shelf2.obj",
-    "asset/models/wardrobe_modern.obj",
-    "asset/models/wardrobe_traditional.obj",
-    "asset/models/wardrobe_openframe.obj",
-  ];
+  // PERFORMANCE OPTIMIZATION: Don't preload heavy 3D models on index page
+  // Models total ~597MB - too heavy for upfront loading over network
+  // They will be lazy-loaded in the planner when furniture is dragged
+  const ALL_MODELS = [];
 
-  // Textures to preload
-  const ALL_TEXTURES = ["asset/textures/wood4k.png"];
+  // PERFORMANCE OPTIMIZATION: Don't preload heavy textures on index page
+  // The 4K wood texture is 12MB - load it lazily when needed
+  const ALL_TEXTURES = [];
 
   // HTML components to preload (for faster planner UI)
   const ALL_COMPONENTS = [
@@ -454,14 +441,13 @@
     state.loadedAssets = 0;
 
     console.log(
-      `[Preloader] Starting preload of ${state.totalAssets} assets...`,
+      `[Preloader] Starting preload of ${state.totalAssets} lightweight assets...`,
     );
     console.log(`  - ${ALL_EXTERNAL_SCRIPTS.length} external libraries`);
-    console.log(`  - ${ALL_MODELS.length} 3D models`);
-    console.log(`  - ${ALL_TEXTURES.length} textures`);
     console.log(`  - ${ALL_LOCAL_SCRIPTS.length} scripts`);
     console.log(`  - ${ALL_COMPONENTS.length} components`);
     console.log(`  - ${ALL_CSS.length} stylesheets`);
+    console.log(`  - 3D models (${15}) will be lazy-loaded when needed`);
 
     // Load assets with concurrency limit to avoid overwhelming the browser
     const concurrency = 6;
