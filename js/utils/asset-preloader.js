@@ -5,39 +5,31 @@
 (() => {
   "use strict";
 
-  // PERFORMANCE: Lazy loading configuration
-  // On slow connections, don't preload everything - load on-demand
-  const LAZY_LOADING_MODE = true; // Set to false to preload everything upfront
+  // BACKGROUND PRELOADING: Models are already cached from index page background preload
+  // This preloader populates the THREE.js cache from browser cache (very fast)
+  const LAZY_LOADING_MODE = false; // Models are pre-cached, load them all into THREE.js
 
-  // Only preload the most commonly used models (reduced from 15 to 3)
-  // Other models will load when first dragged into scene
-  const PRELOAD_MODELS = LAZY_LOADING_MODE
-    ? [
-        // Only preload 1-2 small essential models for faster initial load
-        "desk1.obj", // 12.59 MB - smallest model
-      ]
-    : [
-        "bed1.obj",
-        "bed2.obj",
-        "center_table1.obj",
-        "center_table2.obj",
-        "chair1.obj",
-        "chair2.obj",
-        "desk1.obj",
-        "desk2.obj",
-        "mirror1.obj",
-        "mirror2.obj",
-        "shelf1.obj",
-        "shelf2.obj",
-        "wardrobe_modern.obj",
-        "wardrobe_traditional.obj",
-        "wardrobe_openframe.obj",
-      ];
+  // All models - they're already in browser cache from index page background preload
+  const PRELOAD_MODELS = [
+    "bed1.obj",
+    "bed2.obj",
+    "center_table1.obj",
+    "center_table2.obj",
+    "chair1.obj",
+    "chair2.obj",
+    "desk1.obj",
+    "desk2.obj",
+    "mirror1.obj",
+    "mirror2.obj",
+    "shelf1.obj",
+    "shelf2.obj",
+    "wardrobe_modern.obj",
+    "wardrobe_traditional.obj",
+    "wardrobe_openframe.obj",
+  ];
 
-  // PERFORMANCE: Skip heavy texture preload in lazy mode
-  const PRELOAD_TEXTURES = LAZY_LOADING_MODE
-    ? []
-    : ["asset/textures/wood4k.png"];
+  // Textures - also pre-cached from index page
+  const PRELOAD_TEXTURES = ["asset/textures/wood4k.png"];
 
   // Configuration: HTML components to preload (for faster UI)
   const PRELOAD_COMPONENTS = [

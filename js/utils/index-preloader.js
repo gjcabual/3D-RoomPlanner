@@ -5,14 +5,31 @@
 (() => {
   "use strict";
 
-  // PERFORMANCE OPTIMIZATION: Don't preload heavy 3D models on index page
-  // Models total ~597MB - too heavy for upfront loading over network
-  // They will be lazy-loaded in the planner when furniture is dragged
-  const ALL_MODELS = [];
+  // TWO-PHASE LOADING STRATEGY:
+  // Phase 1: Load essential assets fast (scripts, CSS, components) - show page quickly
+  // Phase 2: Background preload 3D models while user reads/interacts - ready when needed
 
-  // PERFORMANCE OPTIMIZATION: Don't preload heavy textures on index page
-  // The 4K wood texture is 12MB - load it lazily when needed
-  const ALL_TEXTURES = [];
+  // All 3D models to background-preload (loaded AFTER page is shown)
+  const ALL_MODELS = [
+    "asset/models/desk1.obj", // 12.59 MB - smallest, load first
+    "asset/models/wardrobe_modern.obj", // 19.51 MB
+    "asset/models/shelf2.obj", // 29.22 MB
+    "asset/models/wardrobe_openframe.obj", // 31.62 MB
+    "asset/models/desk2.obj", // 35.35 MB
+    "asset/models/center_table2.obj", // 39.99 MB
+    "asset/models/wardrobe_traditional.obj", // 41.49 MB
+    "asset/models/shelf1.obj", // 41.79 MB
+    "asset/models/center_table1.obj", // 43.59 MB
+    "asset/models/mirror1.obj", // 48.55 MB
+    "asset/models/bed2.obj", // 50.13 MB
+    "asset/models/chair2.obj", // 50.13 MB
+    "asset/models/bed1.obj", // 50.25 MB
+    "asset/models/chair1.obj", // 50.72 MB
+    "asset/models/mirror2.obj", // 51.69 MB
+  ];
+
+  // Textures to background-preload
+  const ALL_TEXTURES = ["asset/textures/wood4k.png"];
 
   // HTML components to preload (for faster planner UI)
   const ALL_COMPONENTS = [
@@ -72,6 +89,11 @@
     totalAssets: 0,
     loadedAssets: 0,
     errors: [],
+    // Phase 2: Background preloading state
+    backgroundPreloading: false,
+    backgroundComplete: false,
+    backgroundTotal: 0,
+    backgroundLoaded: 0,
   };
 
   /**
@@ -424,39 +446,40 @@
   }
 
   /**
-   * Preload all assets (models, textures, components, pages, CSS, scripts)
+   * PHASE 1: Preload essential assets (scripts, CSS, components) - fast!
+   * Models and textures are loaded in Phase 2 (background)
    */
   async function preloadAllAssets() {
-    // Combine all assets to preload - external scripts first (heaviest), then local
-    const allAssets = [
+    // Phase 1: Only essential assets (no 3D models - they're heavy)
+    const essentialAssets = [
       ...ALL_EXTERNAL_SCRIPTS,
-      ...ALL_TEXTURES,
-      ...ALL_MODELS,
       ...ALL_LOCAL_SCRIPTS,
       ...ALL_COMPONENTS,
       ...ALL_PAGES,
       ...ALL_CSS,
     ];
-    state.totalAssets = allAssets.length;
+    state.totalAssets = essentialAssets.length;
     state.loadedAssets = 0;
 
     console.log(
-      `[Preloader] Starting preload of ${state.totalAssets} lightweight assets...`,
+      `[Preloader] Phase 1: Loading ${state.totalAssets} essential assets...`,
     );
     console.log(`  - ${ALL_EXTERNAL_SCRIPTS.length} external libraries`);
     console.log(`  - ${ALL_LOCAL_SCRIPTS.length} scripts`);
     console.log(`  - ${ALL_COMPONENTS.length} components`);
     console.log(`  - ${ALL_CSS.length} stylesheets`);
-    console.log(`  - 3D models (${15}) will be lazy-loaded when needed`);
+    console.log(
+      `  - 3D models (${ALL_MODELS.length}) will load in background after page shows`,
+    );
 
     // Load assets with concurrency limit to avoid overwhelming the browser
     const concurrency = 6;
     let index = 0;
 
     const loadNext = async () => {
-      while (index < allAssets.length) {
+      while (index < essentialAssets.length) {
         const currentIndex = index++;
-        const url = allAssets[currentIndex];
+        const url = essentialAssets[currentIndex];
         const success = await preloadAsset(url);
 
         state.loadedAssets++;
@@ -481,7 +504,7 @@
     await Promise.all(workers);
 
     console.log(
-      `[Preloader] Complete: ${state.loadedAssets}/${state.totalAssets} assets loaded`,
+      `[Preloader] Phase 1 Complete: ${state.loadedAssets}/${state.totalAssets} essential assets loaded`,
     );
     if (state.errors.length > 0) {
       console.warn(
@@ -490,12 +513,218 @@
       );
     }
 
-    // Mark as complete
+    // Mark Phase 1 as complete - show page immediately!
     state.isLoading = false;
     updateProgress(state.totalAssets, state.totalAssets, "Ready!");
 
     // Small delay before hiding to show 100%
-    setTimeout(hideLoadingScreen, 300);
+    setTimeout(() => {
+      hideLoadingScreen();
+      // Start Phase 2: Background preload 3D models while user interacts
+      startBackgroundPreload();
+    }, 300);
+  }
+
+  /**
+   * PHASE 2: Background preload 3D models and textures
+   * Runs quietly after page is shown - user can interact while this happens
+   */
+  async function startBackgroundPreload() {
+    const heavyAssets = [...ALL_TEXTURES, ...ALL_MODELS];
+    if (heavyAssets.length === 0) return;
+
+    state.backgroundPreloading = true;
+    state.backgroundTotal = heavyAssets.length;
+    state.backgroundLoaded = 0;
+
+    console.log(
+      `[Preloader] Phase 2: Background loading ${heavyAssets.length} 3D assets...`,
+    );
+
+    // Show subtle background loading indicator
+    showBackgroundLoadingIndicator();
+
+    // Load with lower concurrency to not slow down user interaction
+    const concurrency = 2; // Lower than phase 1 to be less intrusive
+    let index = 0;
+
+    const loadNext = async () => {
+      while (index < heavyAssets.length) {
+        const currentIndex = index++;
+        const url = heavyAssets[currentIndex];
+        const success = await preloadAsset(url);
+
+        state.backgroundLoaded++;
+        if (!success) state.errors.push(url);
+
+        // Update background progress indicator
+        updateBackgroundProgress();
+
+        const assetName = url.split("/").pop();
+        console.log(
+          `[Preloader] Background: ${state.backgroundLoaded}/${state.backgroundTotal} - ${assetName}`,
+        );
+      }
+    };
+
+    // Start concurrent loaders
+    const workers = [];
+    for (let i = 0; i < concurrency; i++) {
+      workers.push(loadNext());
+    }
+
+    await Promise.all(workers);
+
+    state.backgroundPreloading = false;
+    state.backgroundComplete = true;
+    hideBackgroundLoadingIndicator();
+
+    console.log(
+      `[Preloader] Phase 2 Complete: All ${state.backgroundTotal} 3D assets cached!`,
+    );
+    console.log(`[Preloader] Furniture will now load instantly when dragged.`);
+  }
+
+  /**
+   * Show a subtle progress indicator for background loading
+   */
+  function showBackgroundLoadingIndicator() {
+    // Create a subtle bottom bar that shows background loading progress
+    const indicator = document.createElement("div");
+    indicator.id = "background-preload-indicator";
+    indicator.innerHTML = `
+      <div class="bg-preload-text">
+        <span class="bg-preload-icon">📦</span>
+        <span class="bg-preload-label">Loading furniture models...</span>
+        <span class="bg-preload-count" id="bg-preload-count">0/${state.backgroundTotal}</span>
+      </div>
+      <div class="bg-preload-bar">
+        <div class="bg-preload-fill" id="bg-preload-fill"></div>
+      </div>
+    `;
+
+    const style = document.createElement("style");
+    style.id = "background-preload-styles";
+    style.textContent = `
+      #background-preload-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(10, 10, 10, 0.9);
+        border: 1px solid rgba(255, 140, 0, 0.3);
+        border-radius: 12px;
+        padding: 12px 16px;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, sans-serif;
+        min-width: 220px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.3s ease;
+      }
+      
+      @keyframes slideIn {
+        from { transform: translateX(100px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100px); opacity: 0; }
+      }
+      
+      .bg-preload-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: #fff;
+        font-size: 13px;
+      }
+      
+      .bg-preload-icon {
+        font-size: 16px;
+      }
+      
+      .bg-preload-label {
+        flex: 1;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      
+      .bg-preload-count {
+        color: #FF8C00;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      
+      .bg-preload-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      
+      .bg-preload-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #FF8C00, #FFA500);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+      
+      #background-preload-indicator.complete {
+        border-color: rgba(34, 197, 94, 0.5);
+      }
+      
+      #background-preload-indicator.complete .bg-preload-fill {
+        background: linear-gradient(90deg, #22c55e, #4ade80);
+      }
+      
+      #background-preload-indicator.hiding {
+        animation: slideOut 0.3s ease forwards;
+      }
+    `;
+
+    document.head.appendChild(style);
+    document.body.appendChild(indicator);
+  }
+
+  /**
+   * Update background loading progress
+   */
+  function updateBackgroundProgress() {
+    const fill = document.getElementById("bg-preload-fill");
+    const count = document.getElementById("bg-preload-count");
+    const indicator = document.getElementById("background-preload-indicator");
+
+    if (fill && count) {
+      const percent = (state.backgroundLoaded / state.backgroundTotal) * 100;
+      fill.style.width = `${percent}%`;
+      count.textContent = `${state.backgroundLoaded}/${state.backgroundTotal}`;
+
+      // Show complete state
+      if (state.backgroundLoaded >= state.backgroundTotal && indicator) {
+        indicator.classList.add("complete");
+        const label = indicator.querySelector(".bg-preload-label");
+        if (label) label.textContent = "All furniture ready!";
+      }
+    }
+  }
+
+  /**
+   * Hide background loading indicator
+   */
+  function hideBackgroundLoadingIndicator() {
+    const indicator = document.getElementById("background-preload-indicator");
+    if (indicator) {
+      // Show complete state for a moment
+      setTimeout(() => {
+        indicator.classList.add("hiding");
+        setTimeout(() => {
+          indicator.remove();
+          const style = document.getElementById("background-preload-styles");
+          if (style) style.remove();
+        }, 300);
+      }, 2000); // Show "complete" for 2 seconds before hiding
+    }
   }
 
   /**
@@ -520,5 +749,16 @@
   window.IndexPreloader = {
     getState: () => ({ ...state }),
     isComplete: () => !state.isLoading,
+    isBackgroundComplete: () => state.backgroundComplete,
+    getBackgroundProgress: () => ({
+      loading: state.backgroundPreloading,
+      complete: state.backgroundComplete,
+      loaded: state.backgroundLoaded,
+      total: state.backgroundTotal,
+      percent:
+        state.backgroundTotal > 0
+          ? Math.round((state.backgroundLoaded / state.backgroundTotal) * 100)
+          : 0,
+    }),
   };
 })();
