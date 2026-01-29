@@ -70,12 +70,12 @@ AFRAME.registerComponent("draggable-furniture", {
 
     // After model loads, re-check boundaries to clamp restored furniture that may overlap walls
     this.el.addEventListener("model-loaded", () => {
+      // Wait for calculateDimensions to complete, then clamp
       setTimeout(() => {
-        if (
-          this.dimensionsCalculated &&
-          !this.isDragging &&
-          !this.isWallMounted
-        ) {
+        // Recalculate to ensure we have up-to-date dimensions
+        this.calculateDimensions();
+
+        if (!this.isDragging && !this.isWallMounted) {
           const pos = this.el.object3D.position;
           const adjusted = this.checkBoundaries(pos);
           if (
@@ -91,7 +91,7 @@ AFRAME.registerComponent("draggable-furniture", {
             );
           }
         }
-      }, 50);
+      }, 100);
     });
 
     // Recalculate dimensions when rotation changes (throttled)
@@ -128,15 +128,8 @@ AFRAME.registerComponent("draggable-furniture", {
     // before we capture the "reset" baseline.
     this.el.addEventListener("model-loaded", this._prepareMeshMaterials);
 
-    // Try to calculate dimensions immediately if model is already loaded
-    setTimeout(() => {
-      if (!this.dimensionsCalculated) {
-        this.calculateDimensions();
-      }
-
-      // In case the model was already available before the model-loaded event.
-      this._prepareMeshMaterials();
-    }, 100);
+    // Defer initial boundary check to after model is loaded
+    // This is handled by the model-loaded event listener above
 
     // Get camera reference
     this.camera = document.querySelector("a-camera");
@@ -562,13 +555,14 @@ AFRAME.registerComponent("draggable-furniture", {
         },
       });
     } else {
-      // Fallback to schema defaults if calculation fails
+      // Fallback to larger conservative defaults if calculation fails
+      // This ensures furniture stays away from walls until actual dimensions are known
       console.warn(
-        `Could not calculate dimensions for ${this.el.id}, using defaults`,
+        `Could not calculate dimensions for ${this.el.id}, using conservative defaults`,
       );
-      this.actualWidth = this.data.objectWidth;
-      this.actualLength = this.data.objectLength;
-      this.actualHeight = 1;
+      this.actualWidth = 2.5;
+      this.actualLength = 2.5;
+      this.actualHeight = 1.5;
     }
   },
 
@@ -713,6 +707,12 @@ AFRAME.registerComponent("draggable-furniture", {
           this.modelKey.startsWith("mirror");
       }
 
+      // Ensure dimensions are calculated before dragging
+      // This is critical to prevent wall overlap
+      if (!this.dimensionsCalculated) {
+        this.calculateDimensions();
+      }
+
       // Visual feedback for drag start
       this.updatePlacementFeedback();
 
@@ -726,6 +726,11 @@ AFRAME.registerComponent("draggable-furniture", {
       const camEl = document.querySelector("a-camera");
       if (camEl) this.cameraObj = camEl.getObject3D("camera");
       if (!this.cameraObj) return;
+    }
+
+    // Ensure dimensions are calculated for accurate boundary checking
+    if (!this.dimensionsCalculated) {
+      this.calculateDimensions();
     }
 
     // Update mouse position
@@ -893,34 +898,43 @@ AFRAME.registerComponent("draggable-furniture", {
   checkBoundaries: function (position) {
     const roomWidth = this.data.roomWidth;
     const roomLength = this.data.roomLength;
-    // Use actual calculated dimensions from 3D model, fallback to larger default
-    // Add extra margin (0.3m) to ensure furniture stays well inside walls
-    const objWidth = (this.actualWidth || 2.0) + 0.3;
-    const objLength = (this.actualLength || 2.0) + 0.3;
     const wallThickness = this.data.wallThickness;
+    const margin = 0.1; // 10cm margin from walls
 
-    // Calculate safe boundaries using INNER wall faces (account for wall thickness)
-    // Use full wall thickness to keep objects completely inside
-    const innerX = roomWidth / 2 - wallThickness;
-    const innerZ = roomLength / 2 - wallThickness;
-    let safeXMin = -innerX + objWidth / 2;
-    let safeXMax = innerX - objWidth / 2;
-    const safeZMin = -innerZ + objLength / 2;
-    const safeZMax = innerZ - objLength / 2;
+    // Get object dimensions - use calculated or conservative fallback
+    let halfWidth = (this.actualWidth || 2.0) / 2;
+    let halfLength = (this.actualLength || 2.0) / 2;
 
-    // If cost board exists on right side, clamp to just inside its plane
-    const boardEl = document.getElementById("cost-board");
-    if (boardEl && boardEl.object3D) {
-      const boardX = boardEl.object3D.position.x;
-      const proximity = 0.02; // 2cm margin before board
-      const boardLimit = boardX - objWidth / 2 - proximity;
-      if (!isNaN(boardLimit)) {
-        safeXMax = Math.min(safeXMax, boardLimit);
+    // Try to get actual bounding box size from the model
+    const object3D = this.el.object3D;
+    if (object3D) {
+      object3D.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(object3D);
+      if (!box.isEmpty()) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        halfWidth = size.x / 2;
+        halfLength = size.z / 2;
       }
     }
 
-    let newX = Math.max(safeXMin, Math.min(safeXMax, position.x));
-    let newZ = Math.max(safeZMin, Math.min(safeZMax, position.z));
+    // Room boundaries (inner wall faces)
+    const roomMinX = -roomWidth / 2 + wallThickness + margin + halfWidth;
+    const roomMaxX = roomWidth / 2 - wallThickness - margin - halfWidth;
+    const roomMinZ = -roomLength / 2 + wallThickness + margin + halfLength;
+    const roomMaxZ = roomLength / 2 - wallThickness - margin - halfLength;
+
+    // Clamp position to stay within room
+    let newX = Math.max(roomMinX, Math.min(roomMaxX, position.x));
+    let newZ = Math.max(roomMinZ, Math.min(roomMaxZ, position.z));
+
+    // If cost board exists on right side, also clamp against it
+    const boardEl = document.getElementById("cost-board");
+    if (boardEl && boardEl.object3D) {
+      const boardX = boardEl.object3D.position.x;
+      const boardLimit = boardX - margin - halfWidth;
+      newX = Math.min(newX, boardLimit);
+    }
 
     return {
       x: newX,
@@ -933,36 +947,37 @@ AFRAME.registerComponent("draggable-furniture", {
     if (this.isWallMounted) return false;
     const roomWidth = this.data.roomWidth;
     const roomLength = this.data.roomLength;
-    // Use actual calculated dimensions from 3D model, fallback to larger default
-    // Add extra margin to match checkBoundaries
-    const objWidth = (this.actualWidth || 2.0) + 0.3;
-    const objLength = (this.actualLength || 2.0) + 0.3;
     const wallThickness = this.data.wallThickness;
-    const epsilon = 0.1; // Only turn red when very close to walls (almost touching)
+    const margin = 0.1;
 
-    const innerX = roomWidth / 2 - wallThickness;
-    const innerZ = roomLength / 2 - wallThickness;
-    const safeXMin = -innerX + objWidth / 2;
-    const safeXMax = innerX - objWidth / 2;
-    const safeZMin = -innerZ + objLength / 2;
-    const safeZMax = innerZ - objLength / 2;
+    // Get object dimensions
+    let halfWidth = (this.actualWidth || 2.0) / 2;
+    let halfLength = (this.actualLength || 2.0) / 2;
 
-    // Right-side board plane (if present) overrides right wall proximity
-    let rightTouch = position.x >= safeXMax - epsilon;
-    const boardEl = document.getElementById("cost-board");
-    if (boardEl && boardEl.object3D) {
-      const boardX = boardEl.object3D.position.x;
-      const proximity = 0.05; // 5cm margin before board
-      const boardTouchX = position.x + objWidth / 2 >= boardX - proximity;
-      rightTouch = boardTouchX; // prefer board proximity for visual feedback
+    const object3D = this.el.object3D;
+    if (object3D) {
+      const box = new THREE.Box3().setFromObject(object3D);
+      if (!box.isEmpty()) {
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        halfWidth = size.x / 2;
+        halfLength = size.z / 2;
+      }
     }
 
-    // Only consider colliding when actually very close to or crossing boundaries
+    // Room boundaries
+    const roomMinX = -roomWidth / 2 + wallThickness + margin + halfWidth;
+    const roomMaxX = roomWidth / 2 - wallThickness - margin - halfWidth;
+    const roomMinZ = -roomLength / 2 + wallThickness + margin + halfLength;
+    const roomMaxZ = roomLength / 2 - wallThickness - margin - halfLength;
+
+    // Check if at or beyond boundaries
+    const epsilon = 0.05;
     return (
-      position.x <= safeXMin + epsilon ||
-      rightTouch ||
-      position.z <= safeZMin + epsilon ||
-      position.z >= safeZMax - epsilon
+      position.x <= roomMinX + epsilon ||
+      position.x >= roomMaxX - epsilon ||
+      position.z <= roomMinZ + epsilon ||
+      position.z >= roomMaxZ - epsilon
     );
   },
 

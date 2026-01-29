@@ -3,6 +3,54 @@ let furnitureCounter = 0;
 let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
 
+// ============= LOADING OVERLAY CONTROLLER =============
+const LoadingController = {
+  overlay: null,
+  statusEl: null,
+  fillEl: null,
+  percentEl: null,
+  isHidden: false,
+
+  init() {
+    this.overlay = document.getElementById("planner-loading-overlay");
+    this.statusEl = document.getElementById("planner-loading-status");
+    this.fillEl = document.getElementById("planner-loading-progress-fill");
+    this.percentEl = document.getElementById("planner-loading-percent");
+  },
+
+  updateStatus(text) {
+    if (this.statusEl) this.statusEl.textContent = text;
+  },
+
+  updateProgress(percent) {
+    if (this.fillEl) this.fillEl.style.width = `${percent}%`;
+    if (this.percentEl) this.percentEl.textContent = `${percent}%`;
+  },
+
+  hide() {
+    if (this.isHidden || !this.overlay) return;
+    this.isHidden = true;
+    this.updateStatus("Ready!");
+    this.updateProgress(100);
+    this.overlay.classList.add("fade-out");
+    setTimeout(() => {
+      if (this.overlay) this.overlay.classList.add("hidden");
+    }, 500);
+  },
+
+  // Fallback timeout
+  startFallbackTimer() {
+    setTimeout(() => {
+      if (!this.isHidden) {
+        console.warn(
+          "[Planner] Fallback: hiding loading overlay after timeout",
+        );
+        this.hide();
+      }
+    }, 8000);
+  },
+};
+
 // Register wall outline component
 AFRAME.registerComponent("wall-outline", {
   init: function () {
@@ -2662,73 +2710,62 @@ window.addEventListener("load", async function () {
     sidePanel.dataset.originalContent = sidePanel.innerHTML;
   }
 
+  // Initialize loading controller
+  LoadingController.init();
+  LoadingController.startFallbackTimer();
+  LoadingController.updateStatus("Loading 3D engine...");
+  LoadingController.updateProgress(10);
+
   // Make sure A-Frame scene is ready
   const scene = document.querySelector("a-scene");
-  if (scene.hasLoaded) {
+
+  async function onSceneLoaded() {
+    LoadingController.updateStatus("Building room...");
+    LoadingController.updateProgress(30);
+
     initializeRoom();
+
+    LoadingController.updateStatus("Loading furniture...");
+    LoadingController.updateProgress(50);
+
     // Auto-restore room state after room is initialized
-    // Use longer timeout to ensure scene is fully ready
-    setTimeout(async () => {
-      // Try to restore from currentRoomState first (auto-restore)
-      const saved = localStorage.getItem("currentRoomState");
-      if (saved) {
-        try {
-          const roomData = JSON.parse(saved);
-          await restoreRoom(roomData); // Wait for all models to load
-          console.log("Room state auto-restored from currentRoomState");
-        } catch (error) {
-          console.error(
-            "Error parsing currentRoomState, trying legacy restore:",
-            error,
-          );
-          restoreWorkspaceState();
-        }
-      } else {
-        // Fallback to legacy restore
+    const saved = localStorage.getItem("currentRoomState");
+    if (saved) {
+      try {
+        const roomData = JSON.parse(saved);
+        await restoreRoom(roomData);
+        console.log("Room state auto-restored from currentRoomState");
+      } catch (error) {
+        console.error(
+          "Error parsing currentRoomState, trying legacy restore:",
+          error,
+        );
         restoreWorkspaceState();
       }
+    } else {
+      restoreWorkspaceState();
+    }
 
-      // Signal that ALL initialization is complete (room + data + restore + models loaded)
-      window.dispatchEvent(new CustomEvent("roomReady"));
+    LoadingController.updateStatus("Finalizing...");
+    LoadingController.updateProgress(90);
 
-      // Show welcome dialog after room is ready (one-time only)
-      setTimeout(() => {
-        showWelcomeDialog();
-      }, 500);
-    }, 100);
-  } else {
-    scene.addEventListener("loaded", function () {
-      initializeRoom();
-      // Auto-restore room state after room is initialized
-      setTimeout(async () => {
-        // Try to restore from currentRoomState first (auto-restore)
-        const saved = localStorage.getItem("currentRoomState");
-        if (saved) {
-          try {
-            const roomData = JSON.parse(saved);
-            await restoreRoom(roomData); // Wait for all models to load
-            console.log("Room state auto-restored from currentRoomState");
-          } catch (error) {
-            console.error(
-              "Error parsing currentRoomState, trying legacy restore:",
-              error,
-            );
-            restoreWorkspaceState();
-          }
-        } else {
-          // Fallback to legacy restore
-          restoreWorkspaceState();
-        }
+    // Short delay to let GPU stabilize, then hide overlay
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        LoadingController.hide();
 
-        // Signal that ALL initialization is complete (room + data + restore + models loaded)
-        window.dispatchEvent(new CustomEvent("roomReady"));
-
-        // Show welcome dialog after room is ready (one-time only)
+        // Show welcome dialog after loading is complete
         setTimeout(() => {
           showWelcomeDialog();
-        }, 500);
-      }, 100);
+        }, 600);
+      });
     });
+  }
+
+  if (scene.hasLoaded) {
+    onSceneLoaded();
+  } else {
+    scene.addEventListener("loaded", onSceneLoaded);
   }
 
   // Ensure cost panel renders at least once on load
