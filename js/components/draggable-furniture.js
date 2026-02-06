@@ -123,10 +123,20 @@ AFRAME.registerComponent("draggable-furniture", {
       }
     });
 
-    // Prepare per-mesh material clones/snapshots as early as possible.
-    // This prevents selection/other components from mutating materials
-    // before we capture the "reset" baseline.
-    this.el.addEventListener("model-loaded", this._prepareMeshMaterials);
+    // Prepare per-mesh material clones/snapshots AFTER textured-model has
+    // finished applying materials. textured-model runs async (await loadTexture)
+    // on model-loaded, so we delay our snapshot to capture the final materials
+    // instead of the raw OBJ defaults. Without this delay, the snapshot stores
+    // pre-texture materials and "reset" reverts to wrong colors/textures.
+    this.el.addEventListener("model-loaded", () => {
+      // Reset flag so next snapshot captures fresh materials
+      this._materialsPrepared = false;
+      this._materialSnapshot.clear();
+      // Wait for textured-model to finish (async texture load + apply)
+      setTimeout(() => {
+        this._prepareMeshMaterials();
+      }, 500);
+    });
 
     // Defer initial boundary check to after model is loaded
     // This is handled by the model-loaded event listener above
@@ -258,12 +268,13 @@ AFRAME.registerComponent("draggable-furniture", {
             mat.transparent = snap.transparent;
           }
         }
-        // If we have no snapshot (possible when material was modified before
-        // we captured a baseline), fall back to safe defaults to avoid
-        // permanently stuck red/green tints.
+        // If we have no snapshot (textured-model may still be applying),
+        // only clear emissive tint but DON'T reset color to white — that
+        // would wipe the applied texture color. The textured-model component
+        // owns the base color; we only own emissive feedback.
         if (!snap) {
           try {
-            if (mat.color) mat.color.set("#ffffff");
+            // Only clear feedback properties, leave base color alone
             if (mat.emissive) mat.emissive.set("#000000");
             if (typeof mat.emissiveIntensity === "number")
               mat.emissiveIntensity = 0;

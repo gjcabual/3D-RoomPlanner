@@ -65,6 +65,8 @@
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/profile.css" />
     <link rel="stylesheet" href="css/dialog.css" />
+    <!-- Preload floor texture ASAP - browser starts downloading before JS even parses -->
+    <link rel="preload" href="asset/textures/wood2k.jpg" as="image" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -802,8 +804,8 @@
         intensity="8"
         castShadow="true"
         shadow-bias="-0.0001"
-        shadow-mapSize-width="2048"
-        shadow-mapSize-height="2048"
+        shadow-mapSize-width="1024"
+        shadow-mapSize-height="1024"
       ></a-light>
 
       <!-- Floor with metallic material -->
@@ -813,7 +815,7 @@
         width="10"
         height="0.1"
         depth="10"
-        material="src: url(asset/textures/wood4k.png); roughness: 0.4; metalness: 0.8; repeat: 2 2"
+        material="src: url(asset/textures/wood2k.jpg); roughness: 0.4; metalness: 0.8; repeat: 2 2"
         shadow="receive: true"
         floor-resize
       ></a-box>

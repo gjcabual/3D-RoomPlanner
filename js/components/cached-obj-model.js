@@ -1,5 +1,7 @@
 // cached-obj-model.js
 // Lightweight OBJ loader with in-memory caching + cloning for faster repeated spawns.
+// Supports both main-thread OBJLoader (for on-demand loads) and
+// pre-parsed worker results (for zero-lag background preloading).
 
 (() => {
   if (!window.AFRAME) return;
@@ -23,6 +25,68 @@
     } catch (_) {
       // no-op
     }
+  }
+
+  /**
+   * Build a THREE.Object3D (Group of Meshes) from pre-parsed buffer data
+   * returned by the obj-parser-worker.  This is nearly instant because
+   * there is zero string parsing – we just set typed-array attributes.
+   *
+   * @param {Array<{positions: Float32Array, normals: Float32Array|null, uvs: Float32Array|null}>} meshes
+   * @returns {THREE.Group}
+   */
+  function buildObject3DFromBuffers(meshes) {
+    const group = new THREE.Group();
+
+    for (const mesh of meshes) {
+      if (!mesh.positions || mesh.positions.length === 0) continue;
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(mesh.positions, 3),
+      );
+
+      if (mesh.normals && mesh.normals.length > 0) {
+        geometry.setAttribute(
+          "normal",
+          new THREE.BufferAttribute(mesh.normals, 3),
+        );
+      } else {
+        geometry.computeVertexNormals();
+      }
+
+      if (mesh.uvs && mesh.uvs.length > 0) {
+        geometry.setAttribute("uv", new THREE.BufferAttribute(mesh.uvs, 2));
+      }
+
+      const material = new THREE.MeshStandardMaterial();
+      const child = new THREE.Mesh(geometry, material);
+      group.add(child);
+    }
+
+    return group;
+  }
+
+  /**
+   * Inject a pre-parsed model (from the Web Worker) directly into the cache.
+   * Called by asset-preloader so that subsequent loadObj() calls return instantly.
+   *
+   * @param {string} url
+   * @param {Array} meshBuffers – array from the worker message
+   */
+  function injectWorkerResult(url, meshBuffers) {
+    const normalized = normalizeUrl(url);
+    if (!normalized || OBJ_CACHE.has(normalized)) return;
+
+    // Validate: never cache empty geometry – let the real OBJLoader handle it
+    const hasGeometry =
+      meshBuffers &&
+      meshBuffers.some((m) => m.positions && m.positions.length > 0);
+    if (!hasGeometry) return;
+
+    const obj = buildObject3DFromBuffers(meshBuffers);
+    OBJ_CACHE.set(normalized, Promise.resolve(obj));
   }
 
   function loadObj(url) {
@@ -71,6 +135,9 @@
   window.preloadObjModel = function preloadObjModel(url) {
     return loadObj(url).catch(() => null);
   };
+
+  // Expose worker-result injector for the asset-preloader
+  window.injectObjWorkerResult = injectWorkerResult;
 
   // Expose cache status for debugging and preloader integration
   window.getObjCacheStatus = function getObjCacheStatus() {

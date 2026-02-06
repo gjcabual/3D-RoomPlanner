@@ -1,15 +1,16 @@
 // asset-preloader.js
 // Preloads all frequently used assets (3D models, textures) into memory
 // so they appear instantly when dragged into the workspace.
+//
+// PERFORMANCE: OBJ parsing is moved to a Web Worker so it NEVER blocks
+// the main thread.  The worker parses the OBJ text into Float32Array
+// buffers, transfers them back, and we reconstruct a lightweight
+// THREE.Object3D on the main thread (instant, no string parsing).
 
 (() => {
   "use strict";
 
-  // BACKGROUND PRELOADING: Models are already cached from index page background preload
-  // This preloader populates the THREE.js cache from browser cache (very fast)
-  const LAZY_LOADING_MODE = false; // Models are pre-cached, load them all into THREE.js
-
-  // All models - they're already in browser cache from index page background preload
+  // All models to preload in the background
   const PRELOAD_MODELS = [
     "bed1.obj",
     "bed2.obj",
@@ -28,8 +29,8 @@
     "wardrobe_openframe.obj",
   ];
 
-  // Textures - also pre-cached from index page
-  const PRELOAD_TEXTURES = ["asset/textures/wood4k.png"];
+  // Textures - compressed JPGs, pre-cached from index page
+  const PRELOAD_TEXTURES = ["asset/textures/wood2k.jpg"];
 
   // Configuration: HTML components to preload (for faster UI)
   const PRELOAD_COMPONENTS = [
@@ -55,6 +56,82 @@
   // Component cache for HTML components
   const COMPONENT_CACHE = new Map();
 
+  // ── Web Worker management ──────────────────────────────────────────
+  let objWorker = null;
+  let workerIdCounter = 0;
+  const pendingWorkerJobs = new Map(); // id -> { resolve, reject }
+
+  /**
+   * Lazily create / return the OBJ parser Web Worker.
+   */
+  function getObjWorker() {
+    if (objWorker) return objWorker;
+
+    try {
+      objWorker = new Worker("js/workers/obj-parser-worker.js");
+      objWorker.onmessage = (e) => {
+        const { id, url, cacheKey, meshes, error } = e.data;
+        const job = pendingWorkerJobs.get(id);
+        if (!job) return;
+        pendingWorkerJobs.delete(id);
+
+        if (error) {
+          console.warn(
+            `[AssetPreloader] Worker parse failed for ${url}: ${error}`,
+          );
+          job.resolve(false);
+          return;
+        }
+
+        // Validate: only cache if the parser produced real geometry
+        const hasGeometry =
+          meshes && meshes.some((m) => m.positions && m.positions.length > 0);
+        if (!hasGeometry) {
+          console.warn(
+            `[AssetPreloader] Worker produced empty geometry for ${url}, skipping cache`,
+          );
+          job.resolve(false);
+          return;
+        }
+
+        // Inject the pre-parsed geometry into the OBJ cache so that
+        // cached-obj-model.js returns it instantly on demand.
+        // Use cacheKey (the relative path) so the key matches what
+        // cached-obj-model.js will look up when furniture is spawned.
+        if (typeof window.injectObjWorkerResult === "function") {
+          window.injectObjWorkerResult(cacheKey || url, meshes);
+        }
+
+        job.resolve(true);
+      };
+
+      objWorker.onerror = (err) => {
+        console.warn("[AssetPreloader] Worker error:", err.message);
+        // Reject all pending jobs
+        for (const [, job] of pendingWorkerJobs) {
+          job.resolve(false);
+        }
+        pendingWorkerJobs.clear();
+      };
+    } catch (err) {
+      console.warn("[AssetPreloader] Failed to create worker:", err);
+      objWorker = null;
+    }
+    return objWorker;
+  }
+
+  /**
+   * Terminate the worker when preloading is done to free resources.
+   */
+  function terminateWorker() {
+    if (objWorker) {
+      objWorker.terminate();
+      objWorker = null;
+    }
+  }
+
+  // ── Model preloading ───────────────────────────────────────────────
+
   /**
    * Get the base path for local models
    */
@@ -63,36 +140,57 @@
   }
 
   /**
-   * Preload a single OBJ model using the existing preloadObjModel helper
-   * @param {string} modelPath - Path to the OBJ file
-   * @returns {Promise<boolean>} - True if loaded successfully
+   * Convert a potentially-relative URL to absolute so the Web Worker
+   * (whose base URL is js/workers/) can fetch it correctly.
+   */
+  function toAbsoluteUrl(relativeUrl) {
+    try {
+      return new URL(relativeUrl, window.location.href).href;
+    } catch (_) {
+      return relativeUrl;
+    }
+  }
+
+  /**
+   * Preload a single OBJ model using the Web Worker (off main thread).
+   * Falls back to main-thread OBJLoader if the worker is unavailable.
    */
   function preloadModel(modelPath) {
+    // Skip if already in the OBJ cache
+    if (
+      typeof window.isObjModelCached === "function" &&
+      window.isObjModelCached(modelPath)
+    ) {
+      return Promise.resolve(true);
+    }
+
+    const worker = getObjWorker();
+
+    if (worker) {
+      // ── Worker path (zero main-thread blocking) ──
+      // Send absolute URL so the worker's fetch() resolves correctly
+      // (worker base URL differs from page base URL).
+      // Also send the original relative path as cacheKey so it matches
+      // what cached-obj-model.js will look up later.
+      return new Promise((resolve) => {
+        const id = ++workerIdCounter;
+        pendingWorkerJobs.set(id, { resolve });
+        worker.postMessage({
+          id,
+          url: toAbsoluteUrl(modelPath),
+          cacheKey: modelPath,
+        });
+      });
+    }
+
+    // ── Fallback: main-thread OBJLoader (only if worker failed) ──
     return new Promise((resolve) => {
-      // Use the global preloadObjModel if available (from cached-obj-model.js)
       if (typeof window.preloadObjModel === "function") {
         window
           .preloadObjModel(modelPath)
-          .then((result) => {
-            resolve(result !== null);
-          })
-          .catch(() => {
-            resolve(false);
-          });
-      } else if (window.THREE && typeof THREE.OBJLoader === "function") {
-        // Fallback: manually load using THREE.OBJLoader
-        const loader = new THREE.OBJLoader();
-        loader.load(
-          modelPath,
-          () => resolve(true),
-          undefined,
-          () => resolve(false),
-        );
+          .then((result) => resolve(result !== null))
+          .catch(() => resolve(false));
       } else {
-        // No loader available, skip
-        console.warn(
-          `[AssetPreloader] OBJLoader not available, skipping: ${modelPath}`,
-        );
         resolve(false);
       }
     });
@@ -280,30 +378,28 @@
       showLoadingUI();
     }
 
-    // Preload models (in parallel with concurrency limit)
-    const modelPromises = modelUrls.map(async (url) => {
-      const success = await preloadModel(url);
-      preloadState.loadedAssets++;
-      if (!success) {
-        preloadState.errors.push({ type: "model", url });
-      }
-      updateProgress();
-      return success;
-    });
+    // PERFORMANCE: Models are parsed in a Web Worker – zero main-thread blocking.
+    // We still send them sequentially to the worker to avoid saturating
+    // the network / memory, but none of this blocks the UI.
 
-    // Preload textures (in parallel)
-    const texturePromises = textureUrls.map(async (url) => {
+    // Load textures first (small, stays on main thread – instant)
+    for (const url of textureUrls) {
       const success = await preloadTexture(url);
       preloadState.loadedAssets++;
-      if (!success) {
-        preloadState.errors.push({ type: "texture", url });
-      }
+      if (!success) preloadState.errors.push({ type: "texture", url });
       updateProgress();
-      return success;
-    });
+    }
 
-    // Wait for all to complete
-    await Promise.all([...modelPromises, ...texturePromises]);
+    // Load models via the Web Worker (off main thread, no jank)
+    for (const url of modelUrls) {
+      const success = await preloadModel(url);
+      preloadState.loadedAssets++;
+      if (!success) preloadState.errors.push({ type: "model", url });
+      updateProgress();
+    }
+
+    // Worker is no longer needed – free its resources
+    terminateWorker();
 
     preloadState.isPreloading = false;
     preloadState.isComplete = true;
@@ -547,42 +643,47 @@
   };
 
   // Auto-preload when DOM is ready (can be disabled by setting window.DISABLE_AUTO_PRELOAD = true)
-  // Note: showProgress is false because assets are already preloaded on the index page
+  // PERFORMANCE: OBJ parsing runs in a Web Worker so it never blocks the main
+  // thread.  We only need a short delay to let the scene finish initialising.
   document.addEventListener("DOMContentLoaded", () => {
-    // Wait for A-Frame and THREE.js to be ready
-    const checkAndPreload = () => {
+    const startPreload = () => {
       if (window.DISABLE_AUTO_PRELOAD) {
         console.log("[AssetPreloader] Auto-preload disabled");
         return;
       }
-
-      // Check if THREE.js and OBJLoader are available
-      if (window.THREE && typeof THREE.OBJLoader === "function") {
-        // Small delay to ensure scene is initialized
-        // Assets are already in browser cache from index preloader, just populate THREE.js cache
-        setTimeout(() => {
-          preloadAllAssets({ showProgress: false });
-        }, 100);
-      } else {
-        // Wait for A-Frame scene to load THREE.js
-        const scene = document.querySelector("a-scene");
-        if (scene) {
-          if (scene.hasLoaded) {
-            setTimeout(() => {
-              preloadAllAssets({ showProgress: false });
-            }, 100);
-          } else {
-            scene.addEventListener("loaded", () => {
-              preloadAllAssets({ showProgress: false });
-            });
-          }
-        } else {
-          // No scene found, try again shortly
-          setTimeout(checkAndPreload, 500);
-        }
-      }
+      console.log(
+        "[AssetPreloader] Starting background preload (Web Worker)...",
+      );
+      preloadAllAssets({ showProgress: false });
     };
 
-    checkAndPreload();
+    const schedulePreload = () => {
+      // Short delay – just enough for the A-Frame scene to render its first
+      // frame.  The worker does all heavy parsing off-thread, so no jank.
+      setTimeout(startPreload, 3000);
+    };
+
+    // Make sure THREE.js is available (loaded by A-Frame)
+    if (window.THREE) {
+      schedulePreload();
+    } else {
+      const scene = document.querySelector("a-scene");
+      if (scene) {
+        if (scene.hasLoaded) {
+          schedulePreload();
+        } else {
+          scene.addEventListener("loaded", schedulePreload);
+        }
+      } else {
+        // No scene found, try again shortly
+        setTimeout(() => {
+          const s = document.querySelector("a-scene");
+          if (s) {
+            if (s.hasLoaded) schedulePreload();
+            else s.addEventListener("loaded", schedulePreload);
+          }
+        }, 500);
+      }
+    }
   });
 })();

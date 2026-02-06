@@ -5,6 +5,7 @@
   if (!window.AFRAME) return;
 
   const TEXTURE_CACHE = new Map(); // url -> Promise<THREE.Texture>
+  const MATERIAL_CACHE = new Map(); // materialKey -> THREE.Material (shared materials to reduce shader compilation)
 
   function loadTexture(url) {
     if (!url) return Promise.resolve(null);
@@ -28,6 +29,41 @@
 
     TEXTURE_CACHE.set(normalized, promise);
     return promise;
+  }
+
+  /**
+   * Get or create a shared base material to reduce shader compilation overhead
+   * @param {string} mode - 'wood' or 'mirror'
+   * @param {THREE.Texture|null} texture - Optional texture
+   * @param {Object} options - Material options
+   * @returns {THREE.MeshStandardMaterial}
+   */
+  function getSharedMaterial(mode, texture, options = {}) {
+    const key = `${mode}_${texture ? "tex" : "notex"}_${options.roughness}_${options.metalness}`;
+
+    if (MATERIAL_CACHE.has(key)) {
+      // Return a clone of the cached material (shares compiled shader)
+      return MATERIAL_CACHE.get(key).clone();
+    }
+
+    let material;
+    if (mode === "mirror") {
+      material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#d9d9d9"),
+        roughness: 0.08,
+        metalness: 0.85,
+      });
+    } else {
+      material = new THREE.MeshStandardMaterial({
+        map: texture || null,
+        color: new THREE.Color(options.color || "#ffffff"),
+        roughness: options.roughness ?? 0.85,
+        metalness: options.metalness ?? 0.05,
+      });
+    }
+
+    MATERIAL_CACHE.set(key, material);
+    return material.clone();
   }
 
   function toRepeat(dataRepeat) {
@@ -97,18 +133,11 @@
         }
       }
 
-      const baseMaterial = useMirror
-        ? new THREE.MeshStandardMaterial({
-            color: new THREE.Color("#d9d9d9"),
-            roughness: 0.08,
-            metalness: 0.85,
-          })
-        : new THREE.MeshStandardMaterial({
-            map: texture || null,
-            color: new THREE.Color(this.data.color || "#ffffff"),
-            roughness: this.data.roughness,
-            metalness: this.data.metalness,
-          });
+      const baseMaterial = getSharedMaterial(mode, texture, {
+        color: this.data.color,
+        roughness: this.data.roughness,
+        metalness: this.data.metalness,
+      });
 
       meshRoot.traverse((node) => {
         if (!node.isMesh) return;

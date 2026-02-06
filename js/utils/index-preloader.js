@@ -28,8 +28,8 @@
     "asset/models/mirror2.obj", // 51.69 MB
   ];
 
-  // Textures to background-preload
-  const ALL_TEXTURES = ["asset/textures/wood4k.png"];
+  // Textures to preload (compressed JPG - only 366KB)
+  const ALL_TEXTURES = ["asset/textures/wood2k.jpg"];
 
   // HTML components to preload (for faster planner UI)
   const ALL_COMPONENTS = [
@@ -409,9 +409,37 @@
   }
 
   /**
-   * Preload a single asset using fetch
+   * Preload a single asset using fetch (or Image for textures)
+   * Textures use Image() to ensure browser caches the decoded image,
+   * not just raw bytes - this makes THREE.js TextureLoader pick it up instantly.
    */
   function preloadAsset(url) {
+    // Use Image preloading for image files - this ensures the browser
+    // caches a decoded image that THREE.js TextureLoader will reuse
+    if (/\.(png|jpe?g|webp|gif|bmp)$/i.test(url)) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          // Force decode so it's ready in GPU-friendly format
+          if (img.decode) {
+            img
+              .decode()
+              .then(() => resolve(true))
+              .catch(() => resolve(true));
+          } else {
+            resolve(true);
+          }
+        };
+        img.onerror = () => {
+          console.warn(`[Preloader] Failed to load image: ${url}`);
+          resolve(false);
+        };
+        img.crossOrigin = "anonymous";
+        img.src = url;
+      });
+    }
+
+    // Use fetch for non-image assets (scripts, HTML, CSS, models)
     return fetch(url, {
       mode: "cors",
       credentials: "omit",
@@ -446,12 +474,14 @@
   }
 
   /**
-   * PHASE 1: Preload essential assets (scripts, CSS, components) - fast!
-   * Models and textures are loaded in Phase 2 (background)
+   * PHASE 1: Preload essential assets (scripts, CSS, components, textures) - fast!
+   * Textures are now compressed JPGs (366KB + 1.5MB) so they load in Phase 1.
+   * Only heavy 3D models are deferred to Phase 2 (background).
    */
   async function preloadAllAssets() {
-    // Phase 1: Only essential assets (no 3D models - they're heavy)
+    // Phase 1: Essential assets INCLUDING textures (small JPGs now)
     const essentialAssets = [
+      ...ALL_TEXTURES, // Textures first! (366KB + 1.5MB = fast)
       ...ALL_EXTERNAL_SCRIPTS,
       ...ALL_LOCAL_SCRIPTS,
       ...ALL_COMPONENTS,
@@ -463,6 +493,9 @@
 
     console.log(
       `[Preloader] Phase 1: Loading ${state.totalAssets} essential assets...`,
+    );
+    console.log(
+      `  - ${ALL_TEXTURES.length} textures (compressed JPGs - fast!)`,
     );
     console.log(`  - ${ALL_EXTERNAL_SCRIPTS.length} external libraries`);
     console.log(`  - ${ALL_LOCAL_SCRIPTS.length} scripts`);
@@ -526,11 +559,12 @@
   }
 
   /**
-   * PHASE 2: Background preload 3D models and textures
-   * Runs quietly after page is shown - user can interact while this happens
+   * PHASE 2: Background preload 3D models only
+   * Textures are already loaded in Phase 1 (compressed JPGs).
+   * Runs quietly after page is shown - user can interact while this happens.
    */
   async function startBackgroundPreload() {
-    const heavyAssets = [...ALL_TEXTURES, ...ALL_MODELS];
+    const heavyAssets = [...ALL_MODELS]; // Only models - textures done in Phase 1
     if (heavyAssets.length === 0) return;
 
     state.backgroundPreloading = true;
@@ -564,6 +598,9 @@
         console.log(
           `[Preloader] Background: ${state.backgroundLoaded}/${state.backgroundTotal} - ${assetName}`,
         );
+
+        // Small delay between loads to prevent frame drops
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     };
 

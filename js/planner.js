@@ -10,28 +10,63 @@ const LoadingController = {
   fillEl: null,
   percentEl: null,
   isHidden: false,
+  currentProgress: 0,
+  targetProgress: 0,
+  animationFrame: null,
 
   init() {
     this.overlay = document.getElementById("planner-loading-overlay");
     this.statusEl = document.getElementById("planner-loading-status");
     this.fillEl = document.getElementById("planner-loading-progress-fill");
     this.percentEl = document.getElementById("planner-loading-percent");
+    this.currentProgress = 0;
+    this.targetProgress = 0;
   },
 
   updateStatus(text) {
     if (this.statusEl) this.statusEl.textContent = text;
   },
 
+  // Smooth animated progress update
   updateProgress(percent) {
-    if (this.fillEl) this.fillEl.style.width = `${percent}%`;
-    if (this.percentEl) this.percentEl.textContent = `${percent}%`;
+    this.targetProgress = percent;
+    if (!this.animationFrame) {
+      this._animateProgress();
+    }
+  },
+
+  _animateProgress() {
+    const diff = this.targetProgress - this.currentProgress;
+
+    if (Math.abs(diff) < 0.5) {
+      this.currentProgress = this.targetProgress;
+      this._renderProgress();
+      this.animationFrame = null;
+      return;
+    }
+
+    // Ease towards target (faster when far, slower when close)
+    this.currentProgress += diff * 0.15;
+    this._renderProgress();
+
+    this.animationFrame = requestAnimationFrame(() => this._animateProgress());
+  },
+
+  _renderProgress() {
+    const rounded = Math.round(this.currentProgress);
+    if (this.fillEl) this.fillEl.style.width = `${this.currentProgress}%`;
+    if (this.percentEl) this.percentEl.textContent = `${rounded}%`;
   },
 
   hide() {
     if (this.isHidden || !this.overlay) return;
     this.isHidden = true;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
     this.updateStatus("Ready!");
-    this.updateProgress(100);
+    this.currentProgress = 100;
+    this._renderProgress();
     this.overlay.classList.add("fade-out");
     setTimeout(() => {
       if (this.overlay) this.overlay.classList.add("hidden");
@@ -47,9 +82,266 @@ const LoadingController = {
         );
         this.hide();
       }
-    }, 8000);
+    }, 8000); // 8s fallback - 2K texture loads fast, shouldn't need this
   },
 };
+
+/**
+ * Pre-upload textures to GPU to prevent stutter when they're first used
+ * This is the key to avoiding lag - texture upload to VRAM causes frame drops
+ */
+async function preUploadTexturesToGPU(statusCallback) {
+  const scene = document.querySelector("a-scene");
+  if (!scene || !scene.renderer) return;
+
+  const renderer = scene.renderer;
+
+  // Get the floor element which has the fast-loading 2K texture
+  const floor = document.getElementById("floor");
+  if (!floor) return;
+
+  console.log("[GPU] Pre-uploading textures to VRAM...");
+  if (statusCallback) statusCallback("Preparing floor texture...");
+
+  // Wait for the floor's material to have a loaded texture
+  // The 2K texture (366KB) should load almost instantly since it was preloaded
+  let attempts = 0;
+  const maxAttempts = 30; // 3 seconds max wait (2K texture is tiny)
+
+  while (attempts < maxAttempts) {
+    const mesh = floor.getObject3D("mesh");
+    if (mesh && mesh.material && mesh.material.map && mesh.material.map.image) {
+      // Texture is loaded!
+      const texture = mesh.material.map;
+
+      if (statusCallback) statusCallback("Uploading texture to GPU...");
+      console.log("[GPU] Floor texture loaded, uploading to VRAM...");
+
+      // Force texture upload to GPU - this is what causes lag
+      // Doing it during loading screen prevents stutter
+      try {
+        renderer.initTexture(texture);
+      } catch (e) {
+        // Fallback: render a frame to force upload
+        console.log("[GPU] initTexture not available, using render fallback");
+      }
+
+      // Force a render to ensure texture is compiled into shader
+      const camera = document.querySelector("a-camera");
+      if (camera && camera.components.camera) {
+        renderer.render(scene.object3D, camera.components.camera.camera);
+      }
+
+      console.log("[GPU] Floor texture uploaded to VRAM");
+      break;
+    }
+
+    attempts++;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (attempts >= maxAttempts) {
+    console.warn("[GPU] Timeout waiting for floor texture to load");
+  }
+
+  // Also upload any other textures that might be in the scene
+  if (statusCallback) statusCallback("Uploading materials to GPU...");
+
+  scene.object3D.traverse((obj) => {
+    if (obj.material) {
+      const materials = Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material];
+      materials.forEach((mat) => {
+        try {
+          if (mat.map && mat.map.image) {
+            renderer.initTexture(mat.map);
+          }
+          if (mat.normalMap && mat.normalMap.image) {
+            renderer.initTexture(mat.normalMap);
+          }
+          if (mat.roughnessMap && mat.roughnessMap.image) {
+            renderer.initTexture(mat.roughnessMap);
+          }
+        } catch (e) {
+          // Ignore - not all textures may be ready
+        }
+      });
+    }
+  });
+
+  console.log("[GPU] All available textures uploaded to VRAM");
+
+  // Give GPU time to process the uploads
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+/**
+ * Realistic furniture scale configuration.
+ * OBJ models are authored at different scales, so we normalize them
+ * to produce realistic real-world dimensions in the A-Frame scene (meters).
+ * These override the data-scale="1 1 1" from the HTML.
+ */
+const FURNITURE_SCALES = {
+  // Beds - should be large (~2m long, ~1.5m wide, ~0.5m mattress height)
+  bed1: "2.5 1.5 2.0",
+  bed2: "2.5 1.5 2.0",
+  // Chairs - standard dining/desk chair (~0.45m wide, ~0.9m tall)
+  chair1: "1.2 1.2 1.2",
+  chair2: "1.2 1.2 1.2",
+  // Center tables - coffee/center table (~1m wide, ~0.45m tall)
+  center_table1: "1.5 1.5 1.5",
+  center_table2: "1.5 1.5 1.5",
+  // Desks - office/study desk (~1.2m wide, ~0.75m tall)
+  desk1: "1.5 1.5 1.5",
+  desk2: "1.5 1.5 1.5",
+  // Mirrors - wall-mounted (~0.5m wide, ~1m tall)
+  mirror1: "1 1 1",
+  mirror2: "1 1 1",
+  // Shelves - bookshelf/display (~0.8m wide, ~1.5m tall)
+  shelf1: "1.3 1.3 1.3",
+  shelf2: "1.3 1.3 1.3",
+  // Wardrobes - large (~1.2m wide, ~2m tall)
+  wardrobe1: "1 1 1",
+  wardrobe2: "1 1 1",
+  wardrobe3: "1 1 1",
+};
+
+/**
+ * Furniture material configuration - gives each item type a distinct look
+ * instead of applying the same generic wood texture to everything.
+ */
+const FURNITURE_MATERIALS = {
+  // Beds - soft fabric-like appearance
+  bed1: { color: "#8B7355", roughness: 0.95, metalness: 0.0, mode: "color" },
+  bed2: { color: "#A0522D", roughness: 0.95, metalness: 0.0, mode: "color" },
+  // Chairs - polished wood
+  chair1: { color: "#DEB887", roughness: 0.6, metalness: 0.05, mode: "wood" },
+  chair2: { color: "#D2691E", roughness: 0.55, metalness: 0.05, mode: "wood" },
+  // Center tables - rich wood grain
+  center_table1: {
+    color: "#8B4513",
+    roughness: 0.5,
+    metalness: 0.08,
+    mode: "wood",
+  },
+  center_table2: {
+    color: "#A0522D",
+    roughness: 0.45,
+    metalness: 0.1,
+    mode: "wood",
+  },
+  // Desks - modern laminate
+  desk1: { color: "#D2B48C", roughness: 0.4, metalness: 0.12, mode: "wood" },
+  desk2: { color: "#BC8F8F", roughness: 0.35, metalness: 0.15, mode: "wood" },
+  // Mirrors - handled separately via mode: "mirror"
+  mirror1: {
+    color: "#d9d9d9",
+    roughness: 0.08,
+    metalness: 0.85,
+    mode: "mirror",
+  },
+  mirror2: {
+    color: "#d9d9d9",
+    roughness: 0.08,
+    metalness: 0.85,
+    mode: "mirror",
+  },
+  // Shelves - light natural wood
+  shelf1: { color: "#F5DEB3", roughness: 0.7, metalness: 0.03, mode: "wood" },
+  shelf2: { color: "#FAEBD7", roughness: 0.65, metalness: 0.03, mode: "wood" },
+  // Wardrobes - darker finish
+  wardrobe1: {
+    color: "#654321",
+    roughness: 0.5,
+    metalness: 0.05,
+    mode: "wood",
+  },
+  wardrobe2: {
+    color: "#3E2723",
+    roughness: 0.55,
+    metalness: 0.05,
+    mode: "wood",
+  },
+  wardrobe3: {
+    color: "#5D4037",
+    roughness: 0.45,
+    metalness: 0.08,
+    mode: "wood",
+  },
+};
+
+/**
+ * Get the textured-model attribute string for a given model key.
+ * Uses per-item colors/materials so each furniture type looks distinct.
+ * Wood-type items still get the wood texture for grain detail; others use flat color.
+ */
+function getFurnitureMaterialAttr(modelKey) {
+  const mat = FURNITURE_MATERIALS[modelKey];
+  if (!mat) {
+    // Fallback for unknown items - warm wood
+    return `src: asset/textures/wood2k.jpg; repeat: 2 2; color: #D2B48C; roughness: 0.7; metalness: 0.05`;
+  }
+  if (mat.mode === "mirror") {
+    return `mode: mirror`;
+  }
+  if (mat.mode === "wood") {
+    // Wood items get the texture for grain + tinted color
+    return `src: asset/textures/wood2k.jpg; repeat: 2 2; color: ${mat.color}; roughness: ${mat.roughness}; metalness: ${mat.metalness}`;
+  }
+  // Color-only items (beds, fabric) - no texture, just material color
+  return `color: ${mat.color}; roughness: ${mat.roughness}; metalness: ${mat.metalness}`;
+}
+
+/**
+ * GPU Warmup - Pre-compile shaders to prevent stutter on first render
+ * This runs invisible renders to force WebGL shader compilation
+ */
+function warmupGPU() {
+  const scene = document.querySelector("a-scene");
+  if (!scene || !scene.renderer) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const renderer = scene.renderer;
+    const threeScene = scene.object3D;
+    const camera = document.querySelector("a-camera");
+    if (!camera || !camera.components.camera) {
+      resolve();
+      return;
+    }
+    const threeCamera = camera.components.camera.camera;
+
+    // Force render passes to compile all shaders
+    console.log("[GPU Warmup] Starting shader compilation...");
+
+    let warmupFrames = 0;
+    const maxFrames = 5; // Light warmup - enough to compile shaders without causing lag
+
+    function warmupFrame() {
+      if (warmupFrames < maxFrames) {
+        // Force material updates on all objects
+        if (warmupFrames === 0) {
+          threeScene.traverse((obj) => {
+            if (obj.material) {
+              obj.material.needsUpdate = true;
+            }
+          });
+        }
+
+        renderer.render(threeScene, threeCamera);
+        warmupFrames++;
+        requestAnimationFrame(warmupFrame);
+      } else {
+        console.log("[GPU Warmup] Shader compilation complete");
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(warmupFrame);
+  });
+}
 
 // Register wall outline component
 AFRAME.registerComponent("wall-outline", {
@@ -803,10 +1095,10 @@ function startWallVisibilityUpdater() {
   const scene = document.querySelector("a-scene");
   if (scene) {
     const startUpdater = () => {
-      // Delay initial start to let scene stabilize
+      // Delay initial start to let GPU stabilize and shaders compile
       setTimeout(() => {
-        _wallVisibilityInterval = setInterval(updateWallVisibility, 300); // 300ms for better performance
-      }, 1000);
+        _wallVisibilityInterval = setInterval(updateWallVisibility, 500); // 500ms for better initial performance
+      }, 2000); // Increased delay from 1000ms to 2000ms
     };
 
     if (scene.hasLoaded) {
@@ -827,9 +1119,9 @@ function createBlenderGrid() {
     scene.object3D.remove(existingGrid);
   }
 
-  // Create a large grid
-  const size = 200;
-  const divisions = 200;
+  // Create a large grid - reduced from 200x200 to 100x100 for better performance
+  const size = 100;
+  const divisions = 100;
   const colorCenterLine = 0x22ff00;
   const colorGrid = 0xb1b3b1;
 
@@ -1194,25 +1486,21 @@ function handleDrop(e) {
   // Get model URL from Supabase Storage or local path
   const modelUrl = getModelUrl(draggedItem.model);
   furnitureEl.setAttribute("cached-obj-model", "src", modelUrl);
-  furnitureEl.setAttribute("scale", draggedItem.scale);
+  furnitureEl.setAttribute(
+    "scale",
+    FURNITURE_SCALES[draggedItem.model] || draggedItem.scale,
+  );
   furnitureEl.setAttribute(
     "draggable-furniture",
     `roomWidth: ${roomWidth}; roomLength: ${roomLength}; wallHeight: ${wallHeight}; objectWidth: 1.5; objectLength: 1.5; wallThickness: 0.1`,
   );
   furnitureEl.setAttribute("clickable-furniture", "");
 
-  // Apply a default texture/material so OBJ models aren't plain white.
-  if (
-    typeof draggedItem.model === "string" &&
-    draggedItem.model.startsWith("mirror")
-  ) {
-    furnitureEl.setAttribute("textured-model", "mode", "mirror");
-  } else {
-    furnitureEl.setAttribute(
-      "textured-model",
-      `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`,
-    );
-  }
+  // Apply per-item material so each furniture type has a distinct look.
+  furnitureEl.setAttribute(
+    "textured-model",
+    getFurnitureMaterialAttr(draggedItem.model),
+  );
   // Store model key as data attribute for easy retrieval during deletion
   furnitureEl.setAttribute("data-model-key", draggedItem.model);
 
@@ -2338,9 +2626,14 @@ async function restoreRoom(roomData) {
         `${rotation.x} ${rotation.y} ${rotation.z}`,
       );
 
-      // Handle scale
-      const scale = itemData.scale || { x: 1, y: 1, z: 1 };
-      furnitureEl.setAttribute("scale", `${scale.x} ${scale.y} ${scale.z}`);
+      // Handle scale – prefer the per-item config so old saves also get corrected sizes
+      const configScale = FURNITURE_SCALES[itemData.model_key];
+      if (configScale) {
+        furnitureEl.setAttribute("scale", configScale);
+      } else {
+        const scale = itemData.scale || { x: 1, y: 1, z: 1 };
+        furnitureEl.setAttribute("scale", `${scale.x} ${scale.y} ${scale.z}`);
+      }
 
       furnitureEl.setAttribute("data-model-key", itemData.model_key);
 
@@ -2369,17 +2662,11 @@ async function restoreRoom(roomData) {
       );
       furnitureEl.setAttribute("clickable-furniture", "");
 
-      if (
-        typeof itemData.model_key === "string" &&
-        itemData.model_key.startsWith("mirror")
-      ) {
-        furnitureEl.setAttribute("textured-model", "mode", "mirror");
-      } else {
-        furnitureEl.setAttribute(
-          "textured-model",
-          `src: asset/textures/wood4k.png; repeat: 2 2; color: #ffffff; roughness: 0.9; metalness: 0.05`,
-        );
-      }
+      // Apply per-item material so each furniture type has a distinct look.
+      furnitureEl.setAttribute(
+        "textured-model",
+        getFurnitureMaterialAttr(itemData.model_key),
+      );
 
       // Create a promise that resolves when model loads or rejects on error/timeout
       const modelLoadPromise = new Promise((resolve) => {
@@ -2747,19 +3034,56 @@ window.addEventListener("load", async function () {
     }
 
     LoadingController.updateStatus("Finalizing...");
+    LoadingController.updateProgress(70);
+
+    // 2K texture (366KB) loads nearly instantly - no need for artificial delays
+    LoadingController.updateStatus("Preparing textures...");
+    LoadingController.updateProgress(80);
+
+    // Pre-upload textures to GPU (this is what causes lag - do it during loading screen)
+    LoadingController.updateStatus("Uploading textures to GPU...");
+    await preUploadTexturesToGPU((status) =>
+      LoadingController.updateStatus(status),
+    );
+
     LoadingController.updateProgress(90);
 
-    // Short delay to let GPU stabilize, then hide overlay
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        LoadingController.hide();
+    // GPU Warmup - pre-compile shaders to prevent stutter
+    LoadingController.updateStatus("Compiling shaders...");
+    await warmupGPU();
 
-        // Show welcome dialog after loading is complete
-        setTimeout(() => {
-          showWelcomeDialog();
-        }, 600);
-      });
+    LoadingController.updateProgress(98);
+    LoadingController.updateStatus("Almost ready...");
+
+    // Wait for a couple frames so the GPU finishes any pending work
+    await new Promise((resolve) => {
+      let stableFrames = 0;
+      const requiredStableFrames = 3; // Quick stabilization check
+
+      function checkStability() {
+        stableFrames++;
+        if (stableFrames >= requiredStableFrames) {
+          resolve();
+        } else {
+          requestAnimationFrame(checkStability);
+        }
+      }
+
+      requestAnimationFrame(checkStability);
     });
+
+    LoadingController.updateProgress(100);
+    LoadingController.updateStatus("Ready!");
+
+    // Final delay before hiding overlay
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    LoadingController.hide();
+
+    // Show welcome dialog after loading is complete
+    setTimeout(() => {
+      showWelcomeDialog();
+    }, 600);
   }
 
   if (scene.hasLoaded) {
