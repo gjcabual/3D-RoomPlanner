@@ -631,7 +631,7 @@
     indicator.id = "background-preload-indicator";
     indicator.innerHTML = `
       <div class="bg-preload-text">
-        <span class="bg-preload-icon">📦</span>
+        <span class="bg-preload-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span>
         <span class="bg-preload-label">Loading furniture models...</span>
         <span class="bg-preload-count" id="bg-preload-count">0/${state.backgroundTotal}</span>
       </div>

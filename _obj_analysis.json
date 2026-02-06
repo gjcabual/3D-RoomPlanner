@@ -1,0 +1,34 @@
+[
+  {
+    "file": "bed1.obj",
+    "fileSizeMB": "50.25",
+    "groups": [],
+    "objects": [
+      "o model"
+    ],
+    "materials": {
+      "mtllib": [],
+      "usemtl": []
+    },
+    "vertexCount": 249633,
+    "faceCount": 499303,
+    "normalCount": 300663,
+    "texCoordCount": 263923
+  },
+  {
+    "file": "bed2.obj",
+    "fileSizeMB": "50.13",
+    "groups": [],
+    "objects": [
+      "o model"
+    ],
+    "materials": {
+      "mtllib": [],
+      "usemtl": []
+    },
+    "vertexCount": 249346,
+    "faceCount": 498698,
+    "normalCount": 299757,
+    "texCoordCount": 263268
+  }
+]

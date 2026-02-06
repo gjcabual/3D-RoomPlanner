@@ -401,6 +401,17 @@
     // Worker is no longer needed – free its resources
     terminateWorker();
 
+    // Generate 3D thumbnails NOW (before marking complete) so icons
+    // are ready the instant the panel is visible.  Uses idle callbacks
+    // internally so it won't block the main thread.
+    if (window.furnitureThumbnails && typeof window.furnitureThumbnails.generate === 'function') {
+      try {
+        await window.furnitureThumbnails.generate();
+      } catch (e) {
+        console.warn('[AssetPreloader] Thumbnail generation error:', e);
+      }
+    }
+
     preloadState.isPreloading = false;
     preloadState.isComplete = true;
 

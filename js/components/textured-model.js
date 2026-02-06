@@ -87,6 +87,59 @@
     };
   };
 
+  /**
+   * Apply per-vertex colors to a bed mesh based on each vertex's
+   * normalised Y-position inside the mesh bounding box.
+   *   top  ~30% → pillow colour (light cream / white)
+   *   mid  ~40% → mattress colour (configured body colour)
+   *   low  ~30% → frame / base (darker wood-like tone)
+   *
+   * Because the bed OBJ is a single mesh with no groups we
+   * colour vertices directly via a `color` buffer attribute and
+   * set `vertexColors = true` on the material.
+   */
+  function applyBedVertexColors(mesh, mattressColor, pillowColor, frameColor) {
+    const geom = mesh.geometry;
+    if (!geom || !geom.attributes.position) return;
+
+    // Compute bounding box so we can normalise Y
+    geom.computeBoundingBox();
+    const bb = geom.boundingBox;
+    const minY = bb.min.y;
+    const rangeY = bb.max.y - minY || 1;
+
+    const pos = geom.attributes.position;
+    const count = pos.count;
+    const colors = new Float32Array(count * 3);
+
+    const cPillow = new THREE.Color(pillowColor);
+    const cMattress = new THREE.Color(mattressColor);
+    const cFrame = new THREE.Color(frameColor);
+
+    for (let i = 0; i < count; i++) {
+      const y = pos.getY(i);
+      const t = (y - minY) / rangeY; // 0 = bottom, 1 = top
+
+      let c;
+      if (t > 0.72) {
+        // Upper region → pillow
+        c = cPillow;
+      } else if (t > 0.3) {
+        // Middle region → mattress body
+        c = cMattress;
+      } else {
+        // Lower region → bed frame
+        c = cFrame;
+      }
+
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+
+    geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  }
+
   AFRAME.registerComponent("textured-model", {
     schema: {
       // If src is empty, we still apply a non-white standard material.
@@ -95,7 +148,10 @@
       color: { type: "color", default: "#ffffff" },
       roughness: { type: "number", default: 0.85 },
       metalness: { type: "number", default: 0.05 },
-      mode: { type: "string", default: "wood" }, // 'wood' | 'mirror'
+      mode: { type: "string", default: "wood" }, // 'wood' | 'mirror' | 'bed'
+      // Bed-specific: pillow & frame accent colours
+      pillowColor: { type: "color", default: "#F5F0E8" },
+      frameColor: { type: "color", default: "#6B4226" },
     },
 
     init() {
@@ -113,15 +169,26 @@
       const meshRoot = this.el.getObject3D("mesh") || this.el.object3D;
       if (!meshRoot) return;
 
+      // Count actual meshes before committing
+      let meshCount = 0;
+      meshRoot.traverse((n) => {
+        if (n.isMesh) meshCount++;
+      });
+
+      // No meshes yet — model hasn't loaded; leave _applied false so
+      // the model-loaded listener can retry.
+      if (meshCount === 0) return;
+
       // Avoid re-applying every tick; allow re-apply if component data changes by resetting _applied.
       if (this._applied) return;
       this._applied = true;
 
       const mode = (this.data.mode || "wood").toLowerCase();
       const useMirror = mode === "mirror";
+      const useBed = mode === "bed";
 
       let texture = null;
-      if (!useMirror && this.data.src) {
+      if (!useMirror && !useBed && this.data.src) {
         texture = await loadTexture(this.data.src);
         if (texture) {
           texture.wrapS = THREE.RepeatWrapping;
@@ -131,6 +198,28 @@
           texture.anisotropy = 4;
           texture.needsUpdate = true;
         }
+      }
+
+      // ── Bed mode: per-vertex colouring ───────────────────────
+      if (useBed) {
+        const mattressColor = this.data.color;
+        const pillowColor = this.data.pillowColor;
+        const frameColor = this.data.frameColor;
+
+        meshRoot.traverse((node) => {
+          if (!node.isMesh) return;
+
+          applyBedVertexColors(node, mattressColor, pillowColor, frameColor);
+
+          node.material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: this.data.roughness,
+            metalness: this.data.metalness,
+          });
+          node.castShadow = true;
+          node.receiveShadow = true;
+        });
+        return;
       }
 
       const baseMaterial = getSharedMaterial(mode, texture, {

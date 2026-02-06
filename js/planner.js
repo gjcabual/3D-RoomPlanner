@@ -179,6 +179,48 @@ async function preUploadTexturesToGPU(statusCallback) {
 }
 
 /**
+ * SVG icon map for furniture items in subcategory panels.
+ * Replaces emojis with clear, recognizable furniture silhouettes (HCI best practice).
+ */
+const FURNITURE_SVG_ICONS = {
+  center_table1: `<svg width="40" height="36" viewBox="0 0 40 36" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="32" height="4" rx="2" fill="#9ca3af"/><rect x="7" y="12" width="2.5" height="18" rx="1" fill="#6b7280"/><rect x="30.5" y="12" width="2.5" height="18" rx="1" fill="#6b7280"/><rect x="15" y="12" width="2" height="14" rx="1" fill="#6b7280"/><rect x="23" y="12" width="2" height="14" rx="1" fill="#6b7280"/></svg>`,
+  center_table2: `<svg width="40" height="36" viewBox="0 0 40 36" xmlns="http://www.w3.org/2000/svg"><ellipse cx="20" cy="10" rx="16" ry="3" fill="#9ca3af"/><rect x="7" y="10" width="2.5" height="20" rx="1" fill="#6b7280"/><rect x="30.5" y="10" width="2.5" height="20" rx="1" fill="#6b7280"/><rect x="18.5" y="10" width="3" height="20" rx="1" fill="#6b7280"/></svg>`,
+  chair1: `<svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="24" height="3" rx="1.5" fill="#9ca3af"/><rect x="7" y="7" width="2.5" height="14" rx="1" fill="#6b7280"/><rect x="26.5" y="7" width="2.5" height="14" rx="1" fill="#6b7280"/><rect x="6" y="20" width="24" height="4" rx="2" fill="#9ca3af"/><rect x="7" y="24" width="2.5" height="12" rx="1" fill="#6b7280"/><rect x="26.5" y="24" width="2.5" height="12" rx="1" fill="#6b7280"/></svg>`,
+  chair2: `<svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg"><path d="M8 4 Q18 0 28 4 L28 7 L8 7 Z" fill="#9ca3af"/><rect x="8" y="7" width="2.5" height="14" rx="1" fill="#6b7280"/><rect x="25.5" y="7" width="2.5" height="14" rx="1" fill="#6b7280"/><rect x="7" y="20" width="22" height="4" rx="2" fill="#9ca3af"/><rect x="8" y="24" width="2.5" height="12" rx="1" fill="#6b7280"/><rect x="25.5" y="24" width="2.5" height="12" rx="1" fill="#6b7280"/></svg>`,
+  bed1: `<svg width="42" height="32" viewBox="0 0 42 32" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="14" width="38" height="10" rx="2" fill="#9ca3af"/><rect x="2" y="4" width="10" height="10" rx="2" fill="#d1d5db"/><rect x="3" y="24" width="3" height="6" rx="1" fill="#6b7280"/><rect x="36" y="24" width="3" height="6" rx="1" fill="#6b7280"/><rect x="2" y="2" width="4" height="12" rx="1" fill="#6b7280"/><rect x="36" y="12" width="4" height="4" rx="1" fill="#6b7280"/></svg>`,
+  bed2: `<svg width="42" height="32" viewBox="0 0 42 32" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="14" width="38" height="10" rx="2" fill="#7B8EA0"/><rect x="3" y="6" width="8" height="8" rx="2" fill="#d1d5db"/><rect x="13" y="6" width="8" height="8" rx="2" fill="#d1d5db"/><rect x="3" y="24" width="3" height="6" rx="1" fill="#6b7280"/><rect x="36" y="24" width="3" height="6" rx="1" fill="#6b7280"/><rect x="2" y="2" width="38" height="3" rx="1" fill="#6b7280"/></svg>`,
+  desk1: `<svg width="40" height="34" viewBox="0 0 40 34" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="34" height="3" rx="1.5" fill="#9ca3af"/><rect x="5" y="11" width="2.5" height="18" rx="1" fill="#6b7280"/><rect x="32.5" y="11" width="2.5" height="18" rx="1" fill="#6b7280"/><rect x="28" y="11" width="7" height="12" rx="1" fill="#4b5563" opacity="0.5"/><rect x="14" y="2" width="10" height="6" rx="1" fill="#6b7280" opacity="0.4"/><rect x="16" y="3" width="6" height="4" rx="0.5" fill="#9ca3af" opacity="0.6"/></svg>`,
+  desk2: `<svg width="40" height="34" viewBox="0 0 40 34" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="34" height="3" rx="1.5" fill="#9ca3af"/><rect x="5" y="11" width="7" height="16" rx="1" fill="#4b5563" opacity="0.5"/><rect x="28" y="11" width="7" height="16" rx="1" fill="#4b5563" opacity="0.5"/><rect x="5" y="27" width="2.5" height="4" rx="1" fill="#6b7280"/><rect x="32.5" y="27" width="2.5" height="4" rx="1" fill="#6b7280"/></svg>`,
+  mirror1: `<svg width="28" height="40" viewBox="0 0 28 40" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="20" height="30" rx="3" fill="none" stroke="#9ca3af" stroke-width="2.5"/><rect x="7" y="6" width="14" height="24" rx="2" fill="#d1d5db" opacity="0.4"/><line x1="9" y1="8" x2="14" y2="28" stroke="white" stroke-width="0.8" opacity="0.3"/></svg>`,
+  mirror2: `<svg width="28" height="40" viewBox="0 0 28 40" xmlns="http://www.w3.org/2000/svg"><ellipse cx="14" cy="18" rx="10" ry="14" fill="none" stroke="#9ca3af" stroke-width="2.5"/><ellipse cx="14" cy="18" rx="7" ry="11" fill="#d1d5db" opacity="0.4"/><line x1="10" y1="8" x2="13" y2="28" stroke="white" stroke-width="0.8" opacity="0.3"/></svg>`,
+  shelf1: `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2" width="2" height="32" rx="1" fill="#6b7280"/><rect x="31" y="2" width="2" height="32" rx="1" fill="#6b7280"/><rect x="3" y="6" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="3" y="16" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="3" y="26" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="7" y="2" width="4" height="3.5" rx="0.5" fill="#d1d5db" opacity="0.5"/><rect x="13" y="10" width="5" height="5.5" rx="0.5" fill="#d1d5db" opacity="0.5"/><rect x="22" y="20" width="6" height="5.5" rx="0.5" fill="#d1d5db" opacity="0.5"/></svg>`,
+  shelf2: `<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2" width="2" height="32" rx="1" fill="#6b7280"/><rect x="31" y="2" width="2" height="32" rx="1" fill="#6b7280"/><rect x="3" y="6" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="3" y="16" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="3" y="26" width="30" height="2" rx="1" fill="#9ca3af"/><rect x="8" y="10" width="8" height="5.5" rx="0.5" fill="#d1d5db" opacity="0.5"/><rect x="20" y="2" width="5" height="3.5" rx="0.5" fill="#d1d5db" opacity="0.5"/></svg>`,
+  wardrobe1: `<svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2" width="30" height="34" rx="2" fill="#6b7280"/><line x1="18" y1="2" x2="18" y2="36" stroke="#4b5563" stroke-width="1.5"/><circle cx="15" cy="19" r="1.5" fill="#d1d5db"/><circle cx="21" cy="19" r="1.5" fill="#d1d5db"/><rect x="5" y="36" width="3" height="3" rx="1" fill="#4b5563"/><rect x="28" y="36" width="3" height="3" rx="1" fill="#4b5563"/></svg>`,
+  wardrobe2: `<svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2" width="30" height="34" rx="2" fill="#5a6370"/><line x1="18" y1="2" x2="18" y2="36" stroke="#3e4550" stroke-width="1.5"/><rect x="14" y="16" width="2" height="6" rx="1" fill="#d1d5db"/><rect x="20" y="16" width="2" height="6" rx="1" fill="#d1d5db"/><rect x="5" y="36" width="3" height="3" rx="1" fill="#4b5563"/><rect x="28" y="36" width="3" height="3" rx="1" fill="#4b5563"/></svg>`,
+  wardrobe3: `<svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2" width="30" height="34" rx="2" fill="#6b7280"/><line x1="12" y1="2" x2="12" y2="36" stroke="#4b5563" stroke-width="1"/><line x1="24" y1="2" x2="24" y2="36" stroke="#4b5563" stroke-width="1"/><circle cx="10" cy="19" r="1" fill="#d1d5db"/><circle cx="18" cy="19" r="1" fill="#d1d5db"/><circle cx="26" cy="19" r="1" fill="#d1d5db"/><rect x="5" y="36" width="3" height="3" rx="1" fill="#4b5563"/><rect x="28" y="36" width="3" height="3" rx="1" fill="#4b5563"/></svg>`,
+};
+
+/**
+ * Get the icon HTML for a given model key.
+ * Prefers a rendered 3D thumbnail (from furniture-thumbnails.js) for 100% accuracy.
+ * Falls back to SVG silhouette if thumbnail isn't ready yet.
+ */
+function getFurnitureIconHTML(modelKey) {
+  // Try 3D-rendered thumbnail first
+  if (window.furnitureThumbnails) {
+    const url = window.furnitureThumbnails.getURL(modelKey);
+    if (url) {
+      return `<img src="${url}" alt="${modelKey}" draggable="false">`;
+    }
+  }
+  // Fallback: SVG silhouette
+  if (FURNITURE_SVG_ICONS[modelKey]) {
+    return FURNITURE_SVG_ICONS[modelKey];
+  }
+  return `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="24" height="24" rx="3" fill="#6b7280" opacity="0.6"/><rect x="8" y="8" width="16" height="16" rx="2" fill="#9ca3af" opacity="0.4"/></svg>`;
+}
+
+/**
  * Realistic furniture scale configuration.
  * OBJ models are authored at different scales, so we normalize them
  * to produce realistic real-world dimensions in the A-Frame scene (meters).
@@ -214,9 +256,23 @@ const FURNITURE_SCALES = {
  * instead of applying the same generic wood texture to everything.
  */
 const FURNITURE_MATERIALS = {
-  // Beds - soft fabric-like appearance
-  bed1: { color: "#8B7355", roughness: 0.95, metalness: 0.0, mode: "color" },
-  bed2: { color: "#A0522D", roughness: 0.95, metalness: 0.0, mode: "color" },
+  // Beds – per-vertex coloured: mattress body (color), pillow, frame
+  bed1: {
+    color: "#7B8EA0",
+    pillowColor: "#F5F0E8",
+    frameColor: "#5C3A1E",
+    roughness: 0.92,
+    metalness: 0.0,
+    mode: "bed",
+  },
+  bed2: {
+    color: "#8B6E5A",
+    pillowColor: "#FFFAF0",
+    frameColor: "#4A2C17",
+    roughness: 0.92,
+    metalness: 0.0,
+    mode: "bed",
+  },
   // Chairs - polished wood
   chair1: { color: "#DEB887", roughness: 0.6, metalness: 0.05, mode: "wood" },
   chair2: { color: "#D2691E", roughness: 0.55, metalness: 0.05, mode: "wood" },
@@ -287,11 +343,15 @@ function getFurnitureMaterialAttr(modelKey) {
   if (mat.mode === "mirror") {
     return `mode: mirror`;
   }
+  if (mat.mode === "bed") {
+    // Bed items get per-vertex colouring: mattress body, pillow, frame
+    return `mode: bed; color: ${mat.color}; pillowColor: ${mat.pillowColor || "#F5F0E8"}; frameColor: ${mat.frameColor || "#6B4226"}; roughness: ${mat.roughness}; metalness: ${mat.metalness}`;
+  }
   if (mat.mode === "wood") {
     // Wood items get the texture for grain + tinted color
     return `src: asset/textures/wood2k.jpg; repeat: 2 2; color: ${mat.color}; roughness: ${mat.roughness}; metalness: ${mat.metalness}`;
   }
-  // Color-only items (beds, fabric) - no texture, just material color
+  // Color-only items - no texture, just material color
   return `color: ${mat.color}; roughness: ${mat.roughness}; metalness: ${mat.metalness}`;
 }
 
@@ -353,7 +413,7 @@ AFRAME.registerComponent("wall-outline", {
 
     const geometry = new THREE.BoxGeometry(w, h, d);
     const edges = new THREE.EdgesGeometry(geometry);
-    const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const material = new THREE.LineBasicMaterial({ color: 0x8a8580 });
     const line = new THREE.LineSegments(edges, material);
     line.name = "outline";
     el.object3D.add(line);
@@ -960,6 +1020,10 @@ function createRoomWalls(width, length, wallHeight = 3) {
     },
   ];
 
+  // Wall material: warm cream plaster for walls, soft warm white for ceiling
+  const wallMat = "color: #EDEAE6; roughness: 0.98; metalness: 0.0";
+  const ceilingMat = "color: #F5F4F2; roughness: 1.0; metalness: 0.0";
+
   walls.forEach((wall, i) => {
     const wallEl = document.createElement("a-box");
     wallEl.setAttribute("position", wall.pos);
@@ -967,17 +1031,50 @@ function createRoomWalls(width, length, wallHeight = 3) {
     wallEl.setAttribute("width", w);
     wallEl.setAttribute("height", h);
     wallEl.setAttribute("depth", d);
-    // Removed separate color attribute to avoid conflicts
-    // Removed transparent: true to fix visual glitches
-    wallEl.setAttribute(
-      "material",
-      "color: #9d9d9d; roughness: 0.1; metalness: 0.5; envMapIntensity: 1.0",
-    );
+    // Index 4 = ceiling, rest are walls
+    wallEl.setAttribute("material", i === 4 ? ceilingMat : wallMat);
     wallEl.setAttribute("shadow", "cast: true; receive: true");
     wallEl.setAttribute("class", "room-wall");
     wallEl.setAttribute("data-wall-index", i);
     wallEl.setAttribute("wall-outline", "");
     wallsContainer.appendChild(wallEl);
+  });
+
+  // Add subtle baseboard strip along each wall base
+  const baseboardDefs = [
+    {
+      pos: `0 0.04 ${-length / 2 + wallThickness / 2 + 0.01}`,
+      w: width,
+      d: 0.02,
+    },
+    {
+      pos: `0 0.04 ${length / 2 - wallThickness / 2 - 0.01}`,
+      w: width,
+      d: 0.02,
+    },
+    {
+      pos: `${-width / 2 + wallThickness / 2 + 0.01} 0.04 0`,
+      w: 0.02,
+      d: length,
+    },
+    {
+      pos: `${width / 2 - wallThickness / 2 - 0.01} 0.04 0`,
+      w: 0.02,
+      d: length,
+    },
+  ];
+  baseboardDefs.forEach((bb) => {
+    const el = document.createElement("a-box");
+    el.setAttribute("position", bb.pos);
+    el.setAttribute("width", bb.w);
+    el.setAttribute("height", "0.08");
+    el.setAttribute("depth", bb.d);
+    el.setAttribute(
+      "material",
+      "color: #DAD6D0; roughness: 0.85; metalness: 0.0",
+    );
+    el.setAttribute("class", "room-baseboard");
+    wallsContainer.appendChild(el);
   });
 
   // Start wall visibility update loop
@@ -1122,8 +1219,8 @@ function createBlenderGrid() {
   // Create a large grid - reduced from 200x200 to 100x100 for better performance
   const size = 100;
   const divisions = 100;
-  const colorCenterLine = 0x22ff00;
-  const colorGrid = 0xb1b3b1;
+  const colorCenterLine = 0xa09890;
+  const colorGrid = 0x908880;
 
   const gridHelper = new THREE.GridHelper(
     size,
@@ -1132,7 +1229,20 @@ function createBlenderGrid() {
     colorGrid,
   );
   gridHelper.name = "blender-grid";
-  gridHelper.position.y = -0.1; // Lowered further to prevent z-fighting with floor
+  gridHelper.position.y = -0.13; // Sits on reflective ground plane, below room floor
+
+  // Very subtle grid lines for clean studio look
+  if (Array.isArray(gridHelper.material)) {
+    gridHelper.material.forEach((m) => {
+      m.transparent = true;
+      m.opacity = 0.25;
+      m.depthWrite = false;
+    });
+  } else {
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.25;
+    gridHelper.material.depthWrite = false;
+  }
 
   scene.object3D.add(gridHelper);
 }
@@ -1153,7 +1263,8 @@ function togglePanel() {
       panel.classList.add("open");
     }
     if (toggle) {
-      toggle.innerHTML = "✕";
+      toggle.innerHTML =
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
       toggle.style.left = "310px";
     }
   } else {
@@ -1161,7 +1272,8 @@ function togglePanel() {
       panel.classList.remove("open");
     }
     if (toggle) {
-      toggle.innerHTML = "📦";
+      toggle.innerHTML =
+        '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
       toggle.style.left = "20px";
     }
     // Hide resize panel if open
@@ -1621,6 +1733,14 @@ function handleDrop(e) {
         if (!hit) return;
         const dist = camPos.distanceTo(ip);
         if (!isFinite(dist) || dist <= 0.001) return;
+
+        // Only accept walls the camera is looking AT.
+        // The camera direction and the wall's inward normal should
+        // point roughly toward each other (negative dot product)
+        // so we reject walls that are behind the camera.
+        const toWall = new THREE.Vector3().subVectors(ip, camPos).normalize();
+        if (toWall.dot(camDir) < 0.1) return; // wall is behind or beside camera
+
         hits.push({ wall: w.name, point: ip.clone(), dist });
       });
 
@@ -1751,8 +1871,8 @@ function renderCost() {
       <div class="cost-item-right">
         <div class="cost-item-total">${peso(lineTotal)}</div>
         <div class="cost-item-actions">
-          <button class="cost-source-toggle" data-model="${key}" data-item-name="${item.name}" title="View Sources">🔗</button>
-          <button class="cost-item-remove" data-model="${key}" title="Remove">✕</button>
+          <button class="cost-source-toggle" data-model="${key}" data-item-name="${item.name}" title="View Sources"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button class="cost-item-remove" data-model="${key}" title="Remove"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>
       </div>
     `;
@@ -1991,7 +2111,7 @@ function showCenterTableSubcategory() {
   const centerTableContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>🍽️ Center Table Options</h3>
+      <h3>Center Table Options</h3>
       <small>Choose a center table style</small>
     </div>
     <div class="model-category">
@@ -2002,7 +2122,7 @@ function showCenterTableSubcategory() {
           data-model="center_table1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon">${getFurnitureIconHTML("center_table1")}</span>
           <div class="model-name">${table1Name}</div>
         </div>
         <div
@@ -2011,7 +2131,7 @@ function showCenterTableSubcategory() {
           data-model="center_table2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🍽️</span>
+          <span class="model-icon">${getFurnitureIconHTML("center_table2")}</span>
           <div class="model-name">${table2Name}</div>
         </div>
       </div>
@@ -2042,7 +2162,7 @@ function showWardrobeSubcategory() {
   const wardrobeContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>👔 Wardrobe Options</h3>
+      <h3>Wardrobe Options</h3>
       <small>Choose a wardrobe style</small>
     </div>
     <div class="model-category">
@@ -2053,7 +2173,7 @@ function showWardrobeSubcategory() {
           data-model="wardrobe1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">👔</span>
+          <span class="model-icon">${getFurnitureIconHTML("wardrobe1")}</span>
           <div class="model-name">${wardrobe1Name}</div>
         </div>
         <div
@@ -2062,7 +2182,7 @@ function showWardrobeSubcategory() {
           data-model="wardrobe2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">👔</span>
+          <span class="model-icon">${getFurnitureIconHTML("wardrobe2")}</span>
           <div class="model-name">${wardrobe2Name}</div>
         </div>
         <div
@@ -2071,7 +2191,7 @@ function showWardrobeSubcategory() {
           data-model="wardrobe3"
           data-scale="1 1 1"
         >
-          <span class="model-icon">👔</span>
+          <span class="model-icon">${getFurnitureIconHTML("wardrobe3")}</span>
           <div class="model-name">${wardrobe3Name}</div>
         </div>
       </div>
@@ -2100,7 +2220,7 @@ function showBedSubcategory() {
   const bedContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>🛏️ Bed Options</h3>
+      <h3>Bed Options</h3>
       <small>Choose a bed style</small>
     </div>
     <div class="model-category">
@@ -2111,7 +2231,7 @@ function showBedSubcategory() {
           data-model="bed1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon">${getFurnitureIconHTML("bed1")}</span>
           <div class="model-name">${bed1Name}</div>
         </div>
         <div
@@ -2120,7 +2240,7 @@ function showBedSubcategory() {
           data-model="bed2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🛏️</span>
+          <span class="model-icon">${getFurnitureIconHTML("bed2")}</span>
           <div class="model-name">${bed2Name}</div>
         </div>
       </div>
@@ -2146,7 +2266,7 @@ function showChairSubcategory() {
   const chairContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>🪑 Chair Options</h3>
+      <h3>Chair Options</h3>
       <small>Choose a chair style</small>
     </div>
     <div class="model-category">
@@ -2157,7 +2277,7 @@ function showChairSubcategory() {
           data-model="chair1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon">${getFurnitureIconHTML("chair1")}</span>
           <div class="model-name">${chair1Name}</div>
         </div>
         <div
@@ -2166,7 +2286,7 @@ function showChairSubcategory() {
           data-model="chair2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪑</span>
+          <span class="model-icon">${getFurnitureIconHTML("chair2")}</span>
           <div class="model-name">${chair2Name}</div>
         </div>
       </div>
@@ -2192,7 +2312,7 @@ function showDeskSubcategory() {
   const deskContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>💻 Desk Options</h3>
+      <h3>Desk Options</h3>
       <small>Choose a desk style</small>
     </div>
     <div class="model-category">
@@ -2203,7 +2323,7 @@ function showDeskSubcategory() {
           data-model="desk1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon">${getFurnitureIconHTML("desk1")}</span>
           <div class="model-name">${desk1Name}</div>
         </div>
         <div
@@ -2212,7 +2332,7 @@ function showDeskSubcategory() {
           data-model="desk2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">💻</span>
+          <span class="model-icon">${getFurnitureIconHTML("desk2")}</span>
           <div class="model-name">${desk2Name}</div>
         </div>
       </div>
@@ -2238,7 +2358,7 @@ function showMirrorSubcategory() {
   const mirrorContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>🪞 Mirror Options</h3>
+      <h3>Mirror Options</h3>
       <small>Choose a mirror style</small>
     </div>
     <div class="model-category">
@@ -2249,7 +2369,7 @@ function showMirrorSubcategory() {
           data-model="mirror1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon">${getFurnitureIconHTML("mirror1")}</span>
           <div class="model-name">${mirror1Name}</div>
         </div>
         <div
@@ -2258,7 +2378,7 @@ function showMirrorSubcategory() {
           data-model="mirror2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">🪞</span>
+          <span class="model-icon">${getFurnitureIconHTML("mirror2")}</span>
           <div class="model-name">${mirror2Name}</div>
         </div>
       </div>
@@ -2284,7 +2404,7 @@ function showShelfSubcategory() {
   const shelfContent = `
     <div class="panel-header">
       <button onclick="goBackToMainPanel()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f5; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">← Back</button>
-      <h3>📦 Shelf Options</h3>
+      <h3>Shelf Options</h3>
       <small>Choose a shelf style</small>
     </div>
     <div class="model-category">
@@ -2295,7 +2415,7 @@ function showShelfSubcategory() {
           data-model="shelf1"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon">${getFurnitureIconHTML("shelf1")}</span>
           <div class="model-name">${shelf1Name}</div>
         </div>
         <div
@@ -2304,7 +2424,7 @@ function showShelfSubcategory() {
           data-model="shelf2"
           data-scale="1 1 1"
         >
-          <span class="model-icon">📦</span>
+          <span class="model-icon">${getFurnitureIconHTML("shelf2")}</span>
           <div class="model-name">${shelf2Name}</div>
         </div>
       </div>
@@ -2333,6 +2453,10 @@ function goBackToMainPanel() {
       // Re-initialize drag and drop
       initializeDragAndDrop();
       updateSubcategoryUI();
+      // Re-apply 3D thumbnails (original HTML has SVG placeholders)
+      if (window.furnitureThumbnails) {
+        window.furnitureThumbnails.refresh();
+      }
     }
   }
 }
@@ -2878,37 +3002,38 @@ function showWelcomeDialog() {
 
   const welcomeContent = `
     <div class="welcome-dialog-content">
-      <h2 class="welcome-title">Welcome to 3D Room Planner! 🎉</h2>
+      <h2 class="welcome-title">Welcome to 3D Room Planner</h2>
       <p class="welcome-subtitle">Your room: ${width}M × ${length}M × ${height}M</p>
       
       <div class="welcome-section">
-        <h3>🎮 Controls</h3>
+        <h3>Controls</h3>
         <ul>
-          <li><strong>W/A/S/D</strong> → Move around</li>
-          <li><strong>Q</strong> → Move Up | <strong>E</strong> → Move Down</li>
-          <li><strong>Mouse</strong> → Look around</li>
+          <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> — Move around</li>
+          <li><kbd>Q</kbd> Move Up &nbsp;|&nbsp; <kbd>E</kbd> Move Down</li>
+          <li><kbd>Space</kbd> Fly Up &nbsp;|&nbsp; <kbd>Shift</kbd> Fly Down</li>
+          <li><strong>Mouse</strong> — Look around</li>
         </ul>
       </div>
 
       <div class="welcome-section">
-        <h3>🍽️ Furniture</h3>
+        <h3>Furniture</h3>
         <ul>
-          <li><strong>📦</strong> Click panel button to open library</li>
-          <li><strong>🖱️</strong> Drag furniture into your room</li>
-          <li><strong>🖱️</strong> Click an item to show more options</li>
+          <li>Click the panel button to open the library</li>
+          <li>Drag furniture into your room</li>
+          <li>Click an item to show more options</li>
         </ul>
       </div>
 
       <div class="welcome-section">
-        <h3>📊 Cost Board</h3>
+        <h3>Cost Board</h3>
         <ul>
-          <li><strong>💰</strong> View costs and total in the cost panel</li>
-          <li><strong>👀</strong> Walk around to view from different angles</li>
+          <li>View costs and total in the cost panel</li>
+          <li>Walk around to view from different angles</li>
         </ul>
       </div>
 
       <div class="welcome-tip">
-        💡 <strong>Tip:</strong> Hover over the <strong>❔</strong> button anytime to see these instructions again!
+        <strong>Tip:</strong> Hover over the <strong>?</strong> button anytime to see these instructions again.
       </div>
     </div>
   `;
