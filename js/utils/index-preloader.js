@@ -1,37 +1,37 @@
 // index-preloader.js
-// Shows loading screen on first load and preloads ALL assets
-// (models, textures, components, scripts) so the planner loads instantly.
+// Shows a loading screen on first visit and preloads ALL assets —
+// scripts, CSS, components, textures, AND 3D models.
+// Parsed OBJ geometry is stored in IndexedDB so the planner page
+// restores models near-instantly on every subsequent visit.
 
 (() => {
   "use strict";
 
-  // TWO-PHASE LOADING STRATEGY:
-  // Phase 1: Load essential assets fast (scripts, CSS, components) - show page quickly
-  // Phase 2: Background preload 3D models while user reads/interacts - ready when needed
+  // ── Asset lists ────────────────────────────────────────────────────
 
-  // All 3D models to background-preload (loaded AFTER page is shown)
+  // 3D models — downloaded + parsed via Web Worker + persisted to IndexedDB
   const ALL_MODELS = [
-    "asset/models/desk1.obj", // 12.59 MB - smallest, load first
-    "asset/models/wardrobe_modern.obj", // 19.51 MB
-    "asset/models/shelf2.obj", // 29.22 MB
-    "asset/models/wardrobe_openframe.obj", // 31.62 MB
-    "asset/models/desk2.obj", // 35.35 MB
-    "asset/models/center_table2.obj", // 39.99 MB
-    "asset/models/wardrobe_traditional.obj", // 41.49 MB
-    "asset/models/shelf1.obj", // 41.79 MB
-    "asset/models/center_table1.obj", // 43.59 MB
-    "asset/models/mirror1.obj", // 48.55 MB
-    "asset/models/bed2.obj", // 50.13 MB
-    "asset/models/chair2.obj", // 50.13 MB
-    "asset/models/bed1.obj", // 50.25 MB
-    "asset/models/chair1.obj", // 50.72 MB
-    "asset/models/mirror2.obj", // 51.69 MB
+    "asset/models/desk1.obj",
+    "asset/models/desk2.obj",
+    "asset/models/wardrobe_modern.obj",
+    "asset/models/shelf2.obj",
+    "asset/models/wardrobe_openframe.obj",
+    "asset/models/center_table2.obj",
+    "asset/models/wardrobe_traditional.obj",
+    "asset/models/shelf1.obj",
+    "asset/models/center_table1.obj",
+    "asset/models/mirror1.obj",
+    "asset/models/bed2.obj",
+    "asset/models/chair2.obj",
+    "asset/models/bed1.obj",
+    "asset/models/chair1.obj",
+    "asset/models/mirror2.obj",
   ];
 
-  // Textures to preload (compressed JPG - only 366KB)
+  // Textures
   const ALL_TEXTURES = ["asset/textures/wood2k.jpg"];
 
-  // HTML components to preload (for faster planner UI)
+  // HTML components
   const ALL_COMPONENTS = [
     "components/side-panel.html",
     "components/resize-panel.html",
@@ -43,13 +43,9 @@
     "components/profile-circle.html",
   ];
 
-  // Planner page to prefetch
   const ALL_PAGES = ["planner.html"];
-
-  // CSS files to prefetch
   const ALL_CSS = ["css/planner.css", "css/components.css", "css/dialog.css"];
 
-  // External libraries to prefetch (these are heavy and cause lag)
   const ALL_EXTERNAL_SCRIPTS = [
     "https://aframe.io/releases/1.5.0/aframe.min.js",
     "https://cdn.tailwindcss.com",
@@ -57,7 +53,6 @@
     "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
   ];
 
-  // Local JS files to prefetch
   const ALL_LOCAL_SCRIPTS = [
     "js/components/movement.js",
     "js/components/floor-resize.js",
@@ -83,17 +78,114 @@
     "js/planner.js",
   ];
 
-  // Preload state
+  // ── IndexedDB — same DB as asset-preloader.js so planner reads it ──
+  const IDB_NAME = "RoomPlannerAssets";
+  const IDB_STORE = "models";
+  const IDB_VERSION = 1;
+  let _idb = null;
+
+  function openIDB() {
+    if (_idb) return Promise.resolve(_idb);
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          for (const name of db.objectStoreNames) db.deleteObjectStore(name);
+          db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => {
+          _idb = req.result;
+          resolve(_idb);
+        };
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  function getIDBModel(key) {
+    return openIDB()
+      .then((db) => {
+        if (!db) return null;
+        return new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, "readonly");
+          const req = tx.objectStore(IDB_STORE).get(key);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      })
+      .catch(() => null);
+  }
+
+  function setIDBModel(key, data) {
+    return openIDB()
+      .then((db) => {
+        if (!db) return;
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(data, key);
+      })
+      .catch(() => {});
+  }
+
+  // ── OBJ Parser Web Worker ─────────────────────────────────────────
+  let objWorker = null;
+  let workerIdCounter = 0;
+  const pendingJobs = new Map();
+
+  function getWorker() {
+    if (objWorker) return objWorker;
+    try {
+      objWorker = new Worker("js/workers/obj-parser-worker.js");
+      objWorker.onmessage = (e) => {
+        const { id, url, cacheKey, meshes, error } = e.data;
+        const job = pendingJobs.get(id);
+        if (!job) return;
+        pendingJobs.delete(id);
+        if (error) {
+          job.resolve(null);
+          return;
+        }
+        const hasGeo =
+          meshes && meshes.some((m) => m.positions && m.positions.length > 0);
+        if (!hasGeo) {
+          job.resolve(null);
+          return;
+        }
+        job.resolve({ key: cacheKey || url, meshes });
+      };
+      objWorker.onerror = () => {
+        for (const [, job] of pendingJobs) job.resolve(null);
+        pendingJobs.clear();
+      };
+    } catch {
+      objWorker = null;
+    }
+    return objWorker;
+  }
+
+  function parseWithWorker(url, text) {
+    const worker = getWorker();
+    if (!worker) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const id = ++workerIdCounter;
+      pendingJobs.set(id, { resolve });
+      worker.postMessage({
+        id,
+        url: new URL(url, location.href).href,
+        cacheKey: url,
+        text,
+      });
+    });
+  }
+
+  // ── State ──────────────────────────────────────────────────────────
   const state = {
     isLoading: true,
     totalAssets: 0,
     loadedAssets: 0,
     errors: [],
-    // Phase 2: Background preloading state
-    backgroundPreloading: false,
-    backgroundComplete: false,
-    backgroundTotal: 0,
-    backgroundLoaded: 0,
   };
 
   /**
@@ -121,7 +213,7 @@
           </div>
         </div>
         
-        <p class="loading-status" id="loading-status">Loading furniture models...</p>
+        <p class="loading-status" id="loading-status">Preparing resources...</p>
         <div class="loading-progress-bar">
           <div class="loading-progress-fill" id="loading-progress-fill"></div>
         </div>
@@ -474,38 +566,30 @@
   }
 
   /**
-   * PHASE 1: Preload essential assets (scripts, CSS, components, textures) - fast!
-   * Textures are now compressed JPGs (366KB + 1.5MB) so they load in Phase 1.
-   * Only heavy 3D models are deferred to Phase 2 (background).
+   * Preload ALL assets: scripts, CSS, components, textures, AND 3D models.
+   * Models are downloaded, parsed via Web Worker, and stored in IndexedDB
+   * so the planner page loads them near-instantly.
    */
   async function preloadAllAssets() {
-    // Phase 1: Essential assets INCLUDING textures (small JPGs now)
+    // ── Phase 1: lightweight assets (scripts, CSS, components, textures)
     const essentialAssets = [
-      ...ALL_TEXTURES, // Textures first! (366KB + 1.5MB = fast)
+      ...ALL_TEXTURES,
       ...ALL_EXTERNAL_SCRIPTS,
       ...ALL_LOCAL_SCRIPTS,
       ...ALL_COMPONENTS,
       ...ALL_PAGES,
       ...ALL_CSS,
     ];
-    state.totalAssets = essentialAssets.length;
+
+    // Total = essentials + models
+    state.totalAssets = essentialAssets.length + ALL_MODELS.length;
     state.loadedAssets = 0;
 
     console.log(
-      `[Preloader] Phase 1: Loading ${state.totalAssets} essential assets...`,
-    );
-    console.log(
-      `  - ${ALL_TEXTURES.length} textures (compressed JPGs - fast!)`,
-    );
-    console.log(`  - ${ALL_EXTERNAL_SCRIPTS.length} external libraries`);
-    console.log(`  - ${ALL_LOCAL_SCRIPTS.length} scripts`);
-    console.log(`  - ${ALL_COMPONENTS.length} components`);
-    console.log(`  - ${ALL_CSS.length} stylesheets`);
-    console.log(
-      `  - 3D models (${ALL_MODELS.length}) will load in background after page shows`,
+      `[Preloader] Loading ${state.totalAssets} assets (${essentialAssets.length} essential + ${ALL_MODELS.length} models)...`,
     );
 
-    // Load assets with concurrency limit to avoid overwhelming the browser
+    // Load essentials with concurrency
     const concurrency = 6;
     let index = 0;
 
@@ -528,16 +612,93 @@
       }
     };
 
-    // Start concurrent loaders
     const workers = [];
     for (let i = 0; i < concurrency; i++) {
       workers.push(loadNext());
     }
-
     await Promise.all(workers);
 
     console.log(
-      `[Preloader] Phase 1 Complete: ${state.loadedAssets}/${state.totalAssets} essential assets loaded`,
+      `[Preloader] Essential assets done. Loading ${ALL_MODELS.length} 3D models...`,
+    );
+
+    // ── Phase 2: 3D models — download + parse + store in IndexedDB ──
+    // Check which models are already in IDB (from a previous visit)
+    let idbHits = 0;
+    const modelsToLoad = [];
+    await Promise.all(
+      ALL_MODELS.map(async (url) => {
+        const cached = await getIDBModel(url);
+        if (cached) {
+          idbHits++;
+          state.loadedAssets++;
+          updateProgress(
+            state.loadedAssets,
+            state.totalAssets,
+            "Restoring cached models...",
+          );
+        } else {
+          modelsToLoad.push(url);
+        }
+      }),
+    );
+
+    if (idbHits > 0) {
+      console.log(`[Preloader] ${idbHits} models restored from cache`);
+    }
+
+    if (modelsToLoad.length > 0) {
+      // Download all uncached models in parallel, parse via worker
+      await Promise.all(
+        modelsToLoad.map(async (url) => {
+          try {
+            updateProgress(
+              state.loadedAssets,
+              state.totalAssets,
+              `Downloading ${url.split("/").pop()}...`,
+            );
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const objText = await response.text();
+
+            // Parse via Web Worker (off main thread)
+            const result = await parseWithWorker(url, objText);
+            if (result && result.meshes) {
+              // Store pre-parsed geometry in IndexedDB
+              const idbCopy = result.meshes.map((m) => ({
+                positions: m.positions ? new Float32Array(m.positions) : null,
+                normals: m.normals ? new Float32Array(m.normals) : null,
+                uvs: m.uvs ? new Float32Array(m.uvs) : null,
+              }));
+              await setIDBModel(result.key, idbCopy);
+            } else {
+              state.errors.push(url);
+            }
+          } catch (e) {
+            state.errors.push(url);
+          }
+          state.loadedAssets++;
+          updateProgress(
+            state.loadedAssets,
+            state.totalAssets,
+            `Loading models... (${state.loadedAssets}/${state.totalAssets})`,
+          );
+        }),
+      );
+
+      // Terminate worker — no longer needed
+      if (objWorker) {
+        objWorker.terminate();
+        objWorker = null;
+      }
+    }
+
+    // ── Done ─────────────────────────────────────────────────────────
+    const elapsed = Math.round(performance.now());
+    console.log(
+      `[Preloader] Complete: ${state.loadedAssets}/${state.totalAssets} assets loaded in ${elapsed}ms` +
+        (idbHits > 0 ? ` (${idbHits} models from cache)` : " (first load)"),
     );
     if (state.errors.length > 0) {
       console.warn(
@@ -546,222 +707,12 @@
       );
     }
 
-    // Mark Phase 1 as complete - show page immediately!
     state.isLoading = false;
     updateProgress(state.totalAssets, state.totalAssets, "Ready!");
 
-    // Small delay before hiding to show 100%
     setTimeout(() => {
       hideLoadingScreen();
-      // Start Phase 2: Background preload 3D models while user interacts
-      startBackgroundPreload();
     }, 300);
-  }
-
-  /**
-   * PHASE 2: Background preload 3D models only
-   * Textures are already loaded in Phase 1 (compressed JPGs).
-   * Runs quietly after page is shown - user can interact while this happens.
-   */
-  async function startBackgroundPreload() {
-    const heavyAssets = [...ALL_MODELS]; // Only models - textures done in Phase 1
-    if (heavyAssets.length === 0) return;
-
-    state.backgroundPreloading = true;
-    state.backgroundTotal = heavyAssets.length;
-    state.backgroundLoaded = 0;
-
-    console.log(
-      `[Preloader] Phase 2: Background loading ${heavyAssets.length} 3D assets...`,
-    );
-
-    // Show subtle background loading indicator
-    showBackgroundLoadingIndicator();
-
-    // Load with lower concurrency to not slow down user interaction
-    const concurrency = 2; // Lower than phase 1 to be less intrusive
-    let index = 0;
-
-    const loadNext = async () => {
-      while (index < heavyAssets.length) {
-        const currentIndex = index++;
-        const url = heavyAssets[currentIndex];
-        const success = await preloadAsset(url);
-
-        state.backgroundLoaded++;
-        if (!success) state.errors.push(url);
-
-        // Update background progress indicator
-        updateBackgroundProgress();
-
-        const assetName = url.split("/").pop();
-        console.log(
-          `[Preloader] Background: ${state.backgroundLoaded}/${state.backgroundTotal} - ${assetName}`,
-        );
-
-        // Small delay between loads to prevent frame drops
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-    };
-
-    // Start concurrent loaders
-    const workers = [];
-    for (let i = 0; i < concurrency; i++) {
-      workers.push(loadNext());
-    }
-
-    await Promise.all(workers);
-
-    state.backgroundPreloading = false;
-    state.backgroundComplete = true;
-    hideBackgroundLoadingIndicator();
-
-    console.log(
-      `[Preloader] Phase 2 Complete: All ${state.backgroundTotal} 3D assets cached!`,
-    );
-    console.log(`[Preloader] Furniture will now load instantly when dragged.`);
-  }
-
-  /**
-   * Show a subtle progress indicator for background loading
-   */
-  function showBackgroundLoadingIndicator() {
-    // Create a subtle bottom bar that shows background loading progress
-    const indicator = document.createElement("div");
-    indicator.id = "background-preload-indicator";
-    indicator.innerHTML = `
-      <div class="bg-preload-text">
-        <span class="bg-preload-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span>
-        <span class="bg-preload-label">Loading furniture models...</span>
-        <span class="bg-preload-count" id="bg-preload-count">0/${state.backgroundTotal}</span>
-      </div>
-      <div class="bg-preload-bar">
-        <div class="bg-preload-fill" id="bg-preload-fill"></div>
-      </div>
-    `;
-
-    const style = document.createElement("style");
-    style.id = "background-preload-styles";
-    style.textContent = `
-      #background-preload-indicator {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: rgba(10, 10, 10, 0.9);
-        border: 1px solid rgba(255, 140, 0, 0.3);
-        border-radius: 12px;
-        padding: 12px 16px;
-        z-index: 9999;
-        font-family: system-ui, -apple-system, sans-serif;
-        min-width: 220px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        animation: slideIn 0.3s ease;
-      }
-      
-      @keyframes slideIn {
-        from { transform: translateX(100px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-      
-      @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100px); opacity: 0; }
-      }
-      
-      .bg-preload-text {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
-        color: #fff;
-        font-size: 13px;
-      }
-      
-      .bg-preload-icon {
-        font-size: 16px;
-      }
-      
-      .bg-preload-label {
-        flex: 1;
-        color: rgba(255, 255, 255, 0.8);
-      }
-      
-      .bg-preload-count {
-        color: #FF8C00;
-        font-weight: 600;
-        font-size: 12px;
-      }
-      
-      .bg-preload-bar {
-        height: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        overflow: hidden;
-      }
-      
-      .bg-preload-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, #FF8C00, #FFA500);
-        border-radius: 2px;
-        transition: width 0.3s ease;
-      }
-      
-      #background-preload-indicator.complete {
-        border-color: rgba(34, 197, 94, 0.5);
-      }
-      
-      #background-preload-indicator.complete .bg-preload-fill {
-        background: linear-gradient(90deg, #22c55e, #4ade80);
-      }
-      
-      #background-preload-indicator.hiding {
-        animation: slideOut 0.3s ease forwards;
-      }
-    `;
-
-    document.head.appendChild(style);
-    document.body.appendChild(indicator);
-  }
-
-  /**
-   * Update background loading progress
-   */
-  function updateBackgroundProgress() {
-    const fill = document.getElementById("bg-preload-fill");
-    const count = document.getElementById("bg-preload-count");
-    const indicator = document.getElementById("background-preload-indicator");
-
-    if (fill && count) {
-      const percent = (state.backgroundLoaded / state.backgroundTotal) * 100;
-      fill.style.width = `${percent}%`;
-      count.textContent = `${state.backgroundLoaded}/${state.backgroundTotal}`;
-
-      // Show complete state
-      if (state.backgroundLoaded >= state.backgroundTotal && indicator) {
-        indicator.classList.add("complete");
-        const label = indicator.querySelector(".bg-preload-label");
-        if (label) label.textContent = "All furniture ready!";
-      }
-    }
-  }
-
-  /**
-   * Hide background loading indicator
-   */
-  function hideBackgroundLoadingIndicator() {
-    const indicator = document.getElementById("background-preload-indicator");
-    if (indicator) {
-      // Show complete state for a moment
-      setTimeout(() => {
-        indicator.classList.add("hiding");
-        setTimeout(() => {
-          indicator.remove();
-          const style = document.getElementById("background-preload-styles");
-          if (style) style.remove();
-        }, 300);
-      }, 2000); // Show "complete" for 2 seconds before hiding
-    }
   }
 
   /**
@@ -786,16 +737,5 @@
   window.IndexPreloader = {
     getState: () => ({ ...state }),
     isComplete: () => !state.isLoading,
-    isBackgroundComplete: () => state.backgroundComplete,
-    getBackgroundProgress: () => ({
-      loading: state.backgroundPreloading,
-      complete: state.backgroundComplete,
-      loaded: state.backgroundLoaded,
-      total: state.backgroundTotal,
-      percent:
-        state.backgroundTotal > 0
-          ? Math.round((state.backgroundLoaded / state.backgroundTotal) * 100)
-          : 0,
-    }),
   };
 })();
