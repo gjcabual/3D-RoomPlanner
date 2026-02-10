@@ -13,6 +13,16 @@ AFRAME.registerComponent("clickable-furniture", {
       function (evt) {
         console.log("Furniture clicked:", el.id);
 
+        // Block interaction when camera is outside the room
+        if (window._cameraInsideRoom === false) {
+          if (typeof window.showRoomToast === "function") {
+            window.showRoomToast(
+              "Move inside the room to interact with furniture",
+            );
+          }
+          return;
+        }
+
         // Only handle selection if not dragging
         if (
           !this.el.components["draggable-furniture"] ||

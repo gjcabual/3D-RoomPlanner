@@ -262,16 +262,16 @@ const FURNITURE_SCALES = {
 const FURNITURE_MATERIALS = {
   // Beds – per-vertex coloured: mattress body (color), pillow, frame
   bed1: {
-    color: "#7B8EA0",
-    pillowColor: "#F5F0E8",
+    color: "#A8C4D8",
+    pillowColor: "#F0EDE6",
     frameColor: "#5C3A1E",
     roughness: 0.92,
     metalness: 0.0,
     mode: "bed",
   },
   bed2: {
-    color: "#8B6E5A",
-    pillowColor: "#FFFAF0",
+    color: "#C4A882",
+    pillowColor: "#FFF8F0",
     frameColor: "#4A2C17",
     roughness: 0.92,
     metalness: 0.0,
@@ -1141,6 +1141,9 @@ function updateWallVisibility() {
     cameraPos.z <= roomLength / 2 - margin &&
     cameraPos.y < roomHeight; // Must be below the roof
 
+  // Track outside-room state for furniture interaction blocking
+  window._cameraInsideRoom = isInside;
+
   if (isInside) {
     // Show all walls if inside
     walls.forEach((wall) => wall.setAttribute("material", "opacity", 1.0));
@@ -1216,6 +1219,110 @@ function startWallVisibilityUpdater() {
     }
   }
 }
+
+/**
+ * Show a smooth slide-up toast notification
+ */
+let _toastTimeout = null;
+function showRoomToast(message) {
+  let toast = document.getElementById("room-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "room-toast";
+    document.body.appendChild(toast);
+  }
+
+  // Clear any existing dismiss timer
+  if (_toastTimeout) {
+    clearTimeout(_toastTimeout);
+    _toastTimeout = null;
+  }
+
+  toast.textContent = message;
+  // Reset animation by removing class, forcing reflow, then re-adding
+  toast.classList.remove("show");
+  void toast.offsetWidth;
+  toast.classList.add("show");
+
+  // Auto-dismiss after 3.5 seconds
+  _toastTimeout = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 3500);
+}
+
+/**
+ * Teleport camera to the center of the room
+ */
+function teleportToRoom() {
+  const cameraRig = document.getElementById("cameraRig");
+  if (!cameraRig) return;
+
+  cameraRig.setAttribute("position", "0 2.6 0");
+
+  // Dismiss toast
+  const toast = document.getElementById("room-toast");
+  if (toast) toast.classList.remove("show");
+
+  window._cameraInsideRoom = true;
+}
+// Make teleportToRoom accessible from HTML onclick
+window.teleportToRoom = teleportToRoom;
+window.showRoomToast = showRoomToast;
+
+// ── Global click interceptor: show toast when clicking furniture from outside ──
+// A-Frame click events don't fire reliably from far away, so we catch it at the
+// canvas level with a raycast against all furniture meshes.
+(function setupOutsideClickInterceptor() {
+  function attach() {
+    const scene = document.querySelector("a-scene");
+    if (!scene) return;
+
+    const doAttach = () => {
+      const canvas = scene.canvas;
+      if (!canvas) return;
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (window._cameraInsideRoom !== false) return;
+
+        // Raycast from click position to see if it hits furniture
+        const camEl = document.querySelector("a-camera");
+        if (!camEl) return;
+        const camera = camEl.getObject3D("camera");
+        if (!camera) return;
+
+        const mouse = new THREE.Vector2(
+          (e.clientX / window.innerWidth) * 2 - 1,
+          -(e.clientY / window.innerHeight) * 2 + 1,
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const container = document.getElementById("furniture-container");
+        if (!container || !container.object3D) return;
+
+        const meshes = [];
+        container.object3D.traverse((n) => {
+          if (n.isMesh) meshes.push(n);
+        });
+        if (meshes.length === 0) return;
+
+        const hits = raycaster.intersectObjects(meshes, false);
+        if (hits.length > 0) {
+          showRoomToast("Move inside the room to interact with furniture!");
+        }
+      });
+    };
+
+    if (scene.hasLoaded) doAttach();
+    else scene.addEventListener("loaded", doAttach);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attach);
+  } else {
+    attach();
+  }
+})();
 
 function createBlenderGrid() {
   const scene = document.querySelector("a-scene");

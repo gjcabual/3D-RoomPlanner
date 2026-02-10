@@ -697,6 +697,16 @@ AFRAME.registerComponent("draggable-furniture", {
 
   onMouseDown: function (e) {
     if (e.detail.intersection) {
+      // Block interaction when the camera is outside the room
+      if (window._cameraInsideRoom === false) {
+        if (typeof window.showRoomToast === "function") {
+          window.showRoomToast(
+            "Move inside the room to interact with furniture",
+          );
+        }
+        return;
+      }
+
       // If we were auto-snapping back to last valid position, stop that now.
       // This prevents cancelled tweens from leaving stale feedback colors.
       this._cancelActiveTween();

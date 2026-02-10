@@ -90,9 +90,10 @@
   /**
    * Apply per-vertex colors to a bed mesh based on each vertex's
    * normalised Y-position inside the mesh bounding box.
-   *   top  ~30% → pillow colour (light cream / white)
-   *   mid  ~40% → mattress colour (configured body colour)
-   *   low  ~30% → frame / base (darker wood-like tone)
+   * Uses smooth gradient blending between regions for a natural look:
+   *   top  → pillow colour (light cream / white)
+   *   mid  → mattress colour (configured body colour)
+   *   low  → frame / base (darker wood-like tone)
    *
    * Because the bed OBJ is a single mesh with no groups we
    * colour vertices directly via a `color` buffer attribute and
@@ -115,26 +116,54 @@
     const cPillow = new THREE.Color(pillowColor);
     const cMattress = new THREE.Color(mattressColor);
     const cFrame = new THREE.Color(frameColor);
+    const cBlend = new THREE.Color();
+
+    // Region boundaries with smooth blend zones
+    const frameEnd = 0.25; // Frame region ends
+    const frameBlend = 0.35; // Frame→Mattress blend finishes
+    const mattressEnd = 0.68; // Mattress region ends
+    const mattressBlend = 0.78; // Mattress→Pillow blend finishes
 
     for (let i = 0; i < count; i++) {
       const y = pos.getY(i);
       const t = (y - minY) / rangeY; // 0 = bottom, 1 = top
 
-      let c;
-      if (t > 0.72) {
-        // Upper region → pillow
-        c = cPillow;
-      } else if (t > 0.3) {
-        // Middle region → mattress body
-        c = cMattress;
+      let r, g, b;
+
+      if (t <= frameEnd) {
+        // Pure frame region
+        r = cFrame.r;
+        g = cFrame.g;
+        b = cFrame.b;
+      } else if (t <= frameBlend) {
+        // Smooth blend: frame → mattress
+        const blend = (t - frameEnd) / (frameBlend - frameEnd);
+        const s = blend * blend * (3 - 2 * blend); // smoothstep
+        r = cFrame.r + (cMattress.r - cFrame.r) * s;
+        g = cFrame.g + (cMattress.g - cFrame.g) * s;
+        b = cFrame.b + (cMattress.b - cFrame.b) * s;
+      } else if (t <= mattressEnd) {
+        // Pure mattress region
+        r = cMattress.r;
+        g = cMattress.g;
+        b = cMattress.b;
+      } else if (t <= mattressBlend) {
+        // Smooth blend: mattress → pillow
+        const blend = (t - mattressEnd) / (mattressBlend - mattressEnd);
+        const s = blend * blend * (3 - 2 * blend); // smoothstep
+        r = cMattress.r + (cPillow.r - cMattress.r) * s;
+        g = cMattress.g + (cPillow.g - cMattress.g) * s;
+        b = cMattress.b + (cPillow.b - cMattress.b) * s;
       } else {
-        // Lower region → bed frame
-        c = cFrame;
+        // Pure pillow region
+        r = cPillow.r;
+        g = cPillow.g;
+        b = cPillow.b;
       }
 
-      colors[i * 3] = c.r;
-      colors[i * 3 + 1] = c.g;
-      colors[i * 3 + 2] = c.b;
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = g;
+      colors[i * 3 + 2] = b;
     }
 
     geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
