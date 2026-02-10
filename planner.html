@@ -339,14 +339,6 @@
             <p>Prices update as you add or remove items</p>
           </div>
         </div>
-        <p
-          id="room-info"
-          style="
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-          "
-        ></p>
       </div>
     </div>
 
@@ -1719,6 +1711,17 @@
           Save Dimensions
         </button>
       </div>
+    </div>
+
+    <!-- Room Dimensions Badge -->
+    <div id="room-info-badge">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="room-info-icon">
+        <rect x="2" y="4" width="12" height="9" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        <line x1="2" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+        <line x1="6" y1="4" x2="6" y2="13" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+        <path d="M5 2.5L8 1L11 2.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span id="room-info"></span>
     </div>
 
     <!-- Drop Indicator -->

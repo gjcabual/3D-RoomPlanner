@@ -369,8 +369,11 @@
     // Collect all assets to preload
     const modelUrls = getModelUrlsToPreload();
     const textureUrls = [...PRELOAD_TEXTURES];
+    const componentUrls = [...PRELOAD_COMPONENTS];
 
-    preloadState.totalAssets = modelUrls.length + textureUrls.length;
+    preloadState.totalAssets =
+      modelUrls.length + textureUrls.length + componentUrls.length;
+    preloadState.startTime = performance.now();
     updateProgress();
 
     // Show loading UI if requested
@@ -390,6 +393,14 @@
       updateProgress();
     }
 
+    // Load HTML components (tiny, very fast)
+    for (const url of componentUrls) {
+      const success = await preloadComponent(url);
+      preloadState.loadedAssets++;
+      if (!success) preloadState.errors.push({ type: "component", url });
+      updateProgress();
+    }
+
     // Load models via the Web Worker (off main thread, no jank)
     for (const url of modelUrls) {
       const success = await preloadModel(url);
@@ -404,11 +415,14 @@
     // Generate 3D thumbnails NOW (before marking complete) so icons
     // are ready the instant the panel is visible.  Uses idle callbacks
     // internally so it won't block the main thread.
-    if (window.furnitureThumbnails && typeof window.furnitureThumbnails.generate === 'function') {
+    if (
+      window.furnitureThumbnails &&
+      typeof window.furnitureThumbnails.generate === "function"
+    ) {
       try {
         await window.furnitureThumbnails.generate();
       } catch (e) {
-        console.warn('[AssetPreloader] Thumbnail generation error:', e);
+        console.warn("[AssetPreloader] Thumbnail generation error:", e);
       }
     }
 

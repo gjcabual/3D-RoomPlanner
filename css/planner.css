@@ -295,6 +295,42 @@ kbd {
   transform: translateY(0);
 }
 
+/* ── Room Dimensions Badge (bottom center) ──────────────────── */
+#room-info-badge {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(18, 18, 18, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transition: opacity 0.3s ease;
+}
+
+#room-info-badge .room-info-icon {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+#room-info-badge #room-info {
+  line-height: 1;
+}
+
 /* Cost Estimator Panel */
 #cost-panel {
   width: 100%;
@@ -778,6 +814,12 @@ kbd {
   #instructions .instructions-content {
     width: 280px;
     left: calc(100% + 8px);
+  }
+
+  #room-info-badge {
+    bottom: 12px;
+    font-size: 11px;
+    padding: 5px 12px;
   }
 }
 

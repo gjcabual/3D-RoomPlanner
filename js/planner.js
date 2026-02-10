@@ -1,3 +1,7 @@
+// Disable auto-preload in asset-preloader.js — we'll call it explicitly
+// during the loading screen so everything is cached before the user sees the room.
+window.DISABLE_AUTO_PRELOAD = true;
+
 let draggedItem = null;
 let furnitureCounter = 0;
 let panelOpen = false;
@@ -82,7 +86,7 @@ const LoadingController = {
         );
         this.hide();
       }
-    }, 8000); // 8s fallback - 2K texture loads fast, shouldn't need this
+    }, 120000); // 120s fallback - models may take time to parse on slow connections
   },
 };
 
@@ -951,11 +955,18 @@ function initializeRoom() {
   // Add Blender-like grid
   createBlenderGrid();
 
-  // Update room info
+  // Update room info badge (bottom center)
   const roomInfo = document.getElementById("room-info");
   if (roomInfo) {
-    const heightText = height ? ` × ${height}M` : "";
-    roomInfo.innerHTML = `<strong>Room:</strong> ${width}M × ${length}M${heightText}`;
+    const w = parseFloat(width);
+    const l = parseFloat(length);
+    const h = height ? parseFloat(height) : null;
+    const wFt = (w * 3.28084).toFixed(1);
+    const lFt = (l * 3.28084).toFixed(1);
+    const hFt = h ? (h * 3.28084).toFixed(1) : null;
+    const hText = h ? ` × ${h}m` : "";
+    const hFtText = hFt ? ` × ${hFt} ft` : "";
+    roomInfo.textContent = `${w} × ${l}${hText} m  · ${wFt} × ${lFt}${hFtText} ft`;
   }
 
   // Position camera appropriately
@@ -1520,16 +1531,6 @@ function handleDragStart(e) {
   };
   e.target.classList.add("dragging");
 
-  // Warm up the model download/parse as early as possible.
-  try {
-    const modelUrl = getModelUrl(draggedItem.model);
-    if (typeof window.preloadObjModel === "function") {
-      window.preloadObjModel(modelUrl);
-    }
-  } catch (_) {
-    // no-op
-  }
-
   // Hide the drop indicator when dragging starts
   const dropIndicator = document.getElementById("drop-indicator");
   dropIndicator.classList.remove("show");
@@ -1575,15 +1576,9 @@ function handleDrop(e) {
   // auto-placed on the wall the camera is facing.
   furnitureEl.setAttribute("position", `${dropX} 0 ${dropZ}`);
 
-  // Create placeholder box that shows immediately while model loads
-  const placeholderEl = document.createElement("a-box");
-  placeholderEl.setAttribute("width", "1.5");
-  placeholderEl.setAttribute("height", "0.8");
-  placeholderEl.setAttribute("depth", "1.5");
-  placeholderEl.setAttribute("color", "#FF8C00");
-  placeholderEl.setAttribute("opacity", "0.7");
-  placeholderEl.id = `${furnitureEl.id}-placeholder`;
-  furnitureEl.appendChild(placeholderEl);
+  // Models are fully preloaded during the loading screen, so no placeholder
+  // is needed.  If somehow a model isn't cached (edge case), the
+  // cached-obj-model component will show its own loading spinner.
 
   // Add to scene FIRST so A-Frame can initialize it immediately
   const furnitureContainer = document.getElementById("furniture-container");
@@ -1616,58 +1611,9 @@ function handleDrop(e) {
   // Store model key as data attribute for easy retrieval during deletion
   furnitureEl.setAttribute("data-model-key", draggedItem.model);
 
-  // Set up model loading timeout and error handling
-  let modelLoadTimeout;
-  let modelLoaded = false;
-
-  // Listen for model-loaded event to hide placeholder
-  const onModelLoaded = function () {
-    if (modelLoaded) return; // Prevent duplicate calls
-    modelLoaded = true;
-    clearTimeout(modelLoadTimeout);
-
-    const placeholder = furnitureEl.querySelector(
-      `#${furnitureEl.id}-placeholder`,
-    );
-    if (placeholder) {
-      placeholder.remove();
-    }
-  };
-
-  furnitureEl.addEventListener("model-loaded", onModelLoaded);
-
-  // Set timeout for model loading
-  modelLoadTimeout = setTimeout(() => {
-    if (!modelLoaded) {
-      console.warn(
-        `Model load timeout for ${draggedItem.model} at ${modelUrl}`,
-      );
-      // Keep placeholder visible but make it semi-transparent to indicate loading issue
-      const placeholder = furnitureEl.querySelector(
-        `#${furnitureEl.id}-placeholder`,
-      );
-      if (placeholder) {
-        placeholder.setAttribute("opacity", "0.5");
-        placeholder.setAttribute("color", "#888888");
-        // Optionally show error message
-        console.warn(
-          `Model failed to load within ${MODEL_LOAD_TIMEOUT}ms. Using placeholder.`,
-        );
-      }
-    }
-  }, MODEL_LOAD_TIMEOUT);
-
-  // Listen for model error
+  // Listen for model error (edge case – model wasn't cached)
   furnitureEl.addEventListener("model-error", function (e) {
-    clearTimeout(modelLoadTimeout);
     console.error(`Model load error for ${draggedItem.model}:`, e.detail);
-    const placeholder = furnitureEl.querySelector(
-      `#${furnitureEl.id}-placeholder`,
-    );
-    if (placeholder) {
-      placeholder.setAttribute("opacity", "0.5");
-      placeholder.setAttribute("color", "#FF6B6B");
-    }
   });
 
   // Update cost estimator
@@ -2761,16 +2707,7 @@ async function restoreRoom(roomData) {
 
       furnitureEl.setAttribute("data-model-key", itemData.model_key);
 
-      // Create placeholder
-      const placeholderEl = document.createElement("a-box");
-      placeholderEl.setAttribute("width", "1.5");
-      placeholderEl.setAttribute("height", "0.8");
-      placeholderEl.setAttribute("depth", "1.5");
-      placeholderEl.setAttribute("color", "#FF8C00");
-      placeholderEl.setAttribute("opacity", "0.7");
-      placeholderEl.id = `${furnitureEl.id}-placeholder`;
-      furnitureEl.appendChild(placeholderEl);
-
+      // Models are pre-cached during loading screen, no placeholder needed.
       furnitureContainer.appendChild(furnitureEl);
 
       if (furnitureEl.flushToDOM) {
@@ -2801,14 +2738,7 @@ async function restoreRoom(roomData) {
           if (modelLoaded) return;
           modelLoaded = true;
           clearTimeout(modelLoadTimeout);
-
-          const placeholder = furnitureEl.querySelector(
-            `#${furnitureEl.id}-placeholder`,
-          );
-          if (placeholder) {
-            placeholder.remove();
-          }
-          resolve(); // Resolve on successful load
+          resolve();
         };
 
         furnitureEl.addEventListener("model-loaded", onModelLoaded, {
@@ -2818,18 +2748,11 @@ async function restoreRoom(roomData) {
         // Set timeout for model loading
         modelLoadTimeout = setTimeout(() => {
           if (!modelLoaded) {
-            modelLoaded = true; // Prevent double handling
+            modelLoaded = true;
             console.warn(
               `Model load timeout for ${itemData.model_key} at ${modelUrl}`,
             );
-            const placeholder = furnitureEl.querySelector(
-              `#${furnitureEl.id}-placeholder`,
-            );
-            if (placeholder) {
-              placeholder.setAttribute("opacity", "0.5");
-              placeholder.setAttribute("color", "#888888");
-            }
-            resolve(); // Resolve on timeout (don't block forever)
+            resolve();
           }
         }, MODEL_LOAD_TIMEOUT);
 
@@ -2844,14 +2767,7 @@ async function restoreRoom(roomData) {
               `Model load error for ${itemData.model_key}:`,
               e.detail,
             );
-            const placeholder = furnitureEl.querySelector(
-              `#${furnitureEl.id}-placeholder`,
-            );
-            if (placeholder) {
-              placeholder.setAttribute("opacity", "0.5");
-              placeholder.setAttribute("color", "#FF6B6B");
-            }
-            resolve(); // Resolve on error (don't block forever)
+            resolve();
           },
           { once: true },
         );
@@ -3133,12 +3049,44 @@ window.addEventListener("load", async function () {
 
   async function onSceneLoaded() {
     LoadingController.updateStatus("Building room...");
-    LoadingController.updateProgress(30);
+    LoadingController.updateProgress(10);
 
     initializeRoom();
 
-    LoadingController.updateStatus("Loading furniture...");
-    LoadingController.updateProgress(50);
+    // ── UNIFIED ASSET PRELOAD ────────────────────────────────────────
+    // Load ALL 3D models, textures, and thumbnails DURING the loading
+    // screen so every drag-and-drop is instant when the user enters.
+    LoadingController.updateStatus("Loading furniture models...");
+    LoadingController.updateProgress(15);
+
+    if (
+      window.AssetPreloader &&
+      typeof window.AssetPreloader.preloadAll === "function"
+    ) {
+      console.log(
+        "[Planner] Starting unified asset preload during loading screen...",
+      );
+      await window.AssetPreloader.preloadAll({
+        showProgress: false, // We use our own LoadingController
+        onProgress: (info) => {
+          // Map asset preload progress to 15-75% of loading bar
+          const assetPercent = info.progress || 0;
+          const mapped = 15 + Math.round(assetPercent * 0.6); // 15% → 75%
+          LoadingController.updateProgress(mapped);
+          LoadingController.updateStatus(
+            `Loading furniture models... (${info.loaded}/${info.total})`,
+          );
+        },
+      });
+      console.log("[Planner] All assets preloaded successfully.");
+    } else {
+      console.warn(
+        "[Planner] AssetPreloader not available, skipping unified preload.",
+      );
+    }
+
+    LoadingController.updateStatus("Restoring room...");
+    LoadingController.updateProgress(78);
 
     // Auto-restore room state after room is initialized
     const saved = localStorage.getItem("currentRoomState");
@@ -3158,23 +3106,16 @@ window.addEventListener("load", async function () {
       restoreWorkspaceState();
     }
 
-    LoadingController.updateStatus("Finalizing...");
-    LoadingController.updateProgress(70);
-
-    // 2K texture (366KB) loads nearly instantly - no need for artificial delays
-    LoadingController.updateStatus("Preparing textures...");
-    LoadingController.updateProgress(80);
-
     // Pre-upload textures to GPU (this is what causes lag - do it during loading screen)
     LoadingController.updateStatus("Uploading textures to GPU...");
+    LoadingController.updateProgress(82);
     await preUploadTexturesToGPU((status) =>
       LoadingController.updateStatus(status),
     );
 
-    LoadingController.updateProgress(90);
-
     // GPU Warmup - pre-compile shaders to prevent stutter
     LoadingController.updateStatus("Compiling shaders...");
+    LoadingController.updateProgress(90);
     await warmupGPU();
 
     LoadingController.updateProgress(98);
@@ -3183,7 +3124,7 @@ window.addEventListener("load", async function () {
     // Wait for a couple frames so the GPU finishes any pending work
     await new Promise((resolve) => {
       let stableFrames = 0;
-      const requiredStableFrames = 3; // Quick stabilization check
+      const requiredStableFrames = 3;
 
       function checkStability() {
         stableFrames++;
