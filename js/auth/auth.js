@@ -4,7 +4,7 @@ function getSupabaseClient() {
   const client = window.supabaseClient || window.supabase;
   if (!client || !client.auth) {
     console.error(
-      "[auth] Supabase client not initialized (missing window.supabaseClient/window.supabase.auth)."
+      "[auth] Supabase client not initialized (missing window.supabaseClient/window.supabase.auth).",
     );
     return null;
   }
@@ -194,4 +194,32 @@ function onAuthStateChange(callback) {
       // no-op
     }
   };
+}
+
+/**
+ * Sign in with Google OAuth
+ * Redirects to Google sign-in page, then back to the current page.
+ * @returns {Promise<Object>} - {success: boolean, error: string}
+ */
+async function signInWithGoogle() {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase)
+      return { success: false, error: "Supabase client not initialized" };
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/planner.html",
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }

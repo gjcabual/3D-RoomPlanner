@@ -174,26 +174,26 @@ body {
   position: fixed;
   left: 20px;
   bottom: 30px;
-  background: rgba(15, 15, 15, 0.456);
+  background: linear-gradient(135deg, #343434 0%, #181818 100%);
   color: #f5f5f5;
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   cursor: pointer;
   z-index: 1600;
   font-size: 1.4em;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(10px);
 }
 
 #panel-toggle:hover {
-  transform: scale(1.1) rotate(180deg); /* Unique animation: rotate */
+  transform: scale(1.1) rotate(180deg);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
@@ -205,7 +205,7 @@ body {
 
 #hud-stack {
   position: fixed;
-  top: 80px;
+  top: 20px;
   right: 20px;
   width: 320px;
   display: flex;
@@ -213,6 +213,33 @@ body {
   gap: 12px;
   z-index: 1200;
   align-items: flex-end;
+}
+
+/* Profile/Login Button - overrides profile.css for planner layout */
+#profile-circle {
+  position: relative;
+  top: auto;
+  right: auto;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #343434 0%, #181818 100%);
+  flex-shrink: 0;
+}
+
+#profile-circle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+#profile-user-icon {
+  display: none;
+}
+
+#profile-circle.logged-out #profile-user-icon {
+  display: block;
+}
+
+#profile-circle.logged-out #profile-initials {
+  display: none;
 }
 
 /* Instructions Hover Panel - Upper Left */
@@ -312,7 +339,11 @@ kbd {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   color: rgba(255, 255, 255, 0.7);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.3px;
@@ -353,17 +384,18 @@ kbd {
 }
 
 #cost-panel.collapsed {
-  width: 50px;
-  max-height: 50px;
-  border-radius: 25px;
+  width: 48px;
+  max-height: 48px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
 #cost-panel.collapsed .cost-header {
   padding: 0;
-  height: 50px;
+  height: 48px;
   min-width: 0;
   width: 100%;
+  border-radius: 12px;
 }
 
 #cost-panel:hover {
@@ -827,18 +859,17 @@ kbd {
 .resize-dimension-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.8em;
-  font-weight: 500;
   margin-bottom: 12px;
   transition: all 0.2s ease;
-  letter-spacing: 0.3px;
 }
 
 .resize-dimension-btn:hover {
