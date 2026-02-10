@@ -107,7 +107,7 @@
   font-weight: 500;
   cursor: pointer;
   margin-top: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   transition: all 0.2s ease;
   letter-spacing: 0.3px;
   font-family: inherit;
@@ -209,16 +209,20 @@
 
 #auth-error {
   color: #ff6b6b;
-  margin-top: 8px;
   font-size: 13px;
-  min-height: 18px;
+}
+
+#auth-error:not(:empty) {
+  margin-top: 8px;
 }
 
 #auth-success {
   color: #69db7c;
-  margin-top: 8px;
   font-size: 13px;
-  min-height: 18px;
+}
+
+#auth-success:not(:empty) {
+  margin-top: 8px;
 }
 
 /* User Info */
