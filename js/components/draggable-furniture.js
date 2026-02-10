@@ -172,12 +172,10 @@ AFRAME.registerComponent("draggable-furniture", {
   finalizePlacement: function () {
     // Restore original materials/textures after a successful drop.
     this._applyFeedbackToMeshes("reset");
-    this.el.setAttribute("material", "emissive", this.defaultEmissive);
-    this.el.setAttribute(
-      "material",
-      "emissiveIntensity",
-      this.defaultEmissiveIntensity,
-    );
+    // Note: We no longer set A-Frame's material component here because it
+    // conflicts with the custom materials applied by textured-model.
+    // The _applyFeedbackToMeshes("reset") already restores emissive values
+    // from the per-mesh snapshot.
     this._setPlacementState("placed");
   },
 
@@ -579,26 +577,17 @@ AFRAME.registerComponent("draggable-furniture", {
 
   setFeedback: function (kind) {
     // Apply feedback at mesh-material level (works for loaded OBJ/GLTF models).
-    // Keep entity-level material attributes too (helps primitives / some setups).
+    // We only use per-mesh material tinting to avoid A-Frame's material
+    // component conflicting with textured-model's custom materials.
     if (kind === "drag") {
-      this.el.setAttribute("material", "emissive", "#00ff00");
-      this.el.setAttribute("material", "emissiveIntensity", "0.9");
       this._applyFeedbackToMeshes("drag");
       return;
     }
     if (kind === "error") {
-      this.el.setAttribute("material", "emissive", "#ff0000");
-      this.el.setAttribute("material", "emissiveIntensity", "1.25");
       this._applyFeedbackToMeshes("error");
       return;
     }
     // reset
-    this.el.setAttribute("material", "emissive", this.defaultEmissive);
-    this.el.setAttribute(
-      "material",
-      "emissiveIntensity",
-      this.defaultEmissiveIntensity,
-    );
     this._applyFeedbackToMeshes("reset");
   },
 
@@ -804,13 +793,18 @@ AFRAME.registerComponent("draggable-furniture", {
         visibleCandidates.length > 0 ? visibleCandidates : candidates;
       sortedCandidates.sort((a, b) => a.dist - b.dist);
 
-      // Prefer sticking to the current wall while dragging, if available.
+      // Pick the closest visible wall. Only prefer the current wall if the
+      // mouse ray is nearly parallel to the target wall (avoids jumpiness
+      // at wall corners) AND the current wall is close to the best hit.
       let chosen = sortedCandidates[0];
-      if (this.currentWall) {
+      if (this.currentWall && sortedCandidates.length > 1) {
         const sameWall = sortedCandidates.find(
           (c) => c.wall === this.currentWall,
         );
-        if (sameWall) chosen = sameWall;
+        // Only stick to current wall if it's within 1.5x the distance of the best
+        if (sameWall && sameWall.dist < chosen.dist * 1.5) {
+          chosen = sameWall;
+        }
       }
 
       this.currentWall = chosen.wall;
@@ -825,7 +819,8 @@ AFRAME.registerComponent("draggable-furniture", {
         `0 ${this.getWallRotationY(chosen.wall)} 0`,
       );
 
-      // Real-time validity: mirrors can still overlap other placed objects.
+      // When wall changes, re-apply drag feedback so the tint stays
+      // consistent and the material snapshot isn't lost
       this.updatePlacementFeedback();
       return;
     }

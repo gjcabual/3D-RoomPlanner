@@ -1441,7 +1441,8 @@ function showResizeDimensionPanel() {
   // Show resize dimension panel
   resizePanel.classList.add("open");
 
-  // Load current dimensions if available
+  // Load current dimensions if available (stored in meters, display in feet)
+  const FT_PER_M = 3.28084;
   const width = localStorage.getItem("roomWidth") || "";
   const length = localStorage.getItem("roomLength") || "";
   const height = localStorage.getItem("roomHeight") || "";
@@ -1450,9 +1451,16 @@ function showResizeDimensionPanel() {
   const lengthInput = document.getElementById("room-length-input");
   const heightInput = document.getElementById("room-height-input");
 
-  if (widthInput) widthInput.value = width;
-  if (lengthInput) lengthInput.value = length;
-  if (heightInput) heightInput.value = height;
+  if (widthInput)
+    widthInput.value = width ? (parseFloat(width) * FT_PER_M).toFixed(1) : "";
+  if (lengthInput)
+    lengthInput.value = length
+      ? (parseFloat(length) * FT_PER_M).toFixed(1)
+      : "";
+  if (heightInput)
+    heightInput.value = height
+      ? (parseFloat(height) * FT_PER_M).toFixed(1)
+      : "";
 }
 
 function saveRoomDimensions() {
@@ -1460,11 +1468,11 @@ function saveRoomDimensions() {
   const lengthInput = document.getElementById("room-length-input");
   const heightInput = document.getElementById("room-height-input");
 
-  const width = parseFloat(widthInput?.value);
-  const length = parseFloat(lengthInput?.value);
-  const height = parseFloat(heightInput?.value);
+  const widthFt = parseFloat(widthInput?.value);
+  const lengthFt = parseFloat(lengthInput?.value);
+  const heightFt = parseFloat(heightInput?.value);
 
-  if (!width || !length || width <= 0 || length <= 0) {
+  if (!widthFt || !lengthFt || widthFt <= 0 || lengthFt <= 0) {
     showDialog(
       "Please enter valid width and length values (greater than 0).",
       "Invalid Dimensions",
@@ -1472,10 +1480,17 @@ function saveRoomDimensions() {
     return;
   }
 
-  // Save to localStorage
+  // Convert feet to meters for internal storage
+  const M_PER_FT = 0.3048;
+  const width = +(widthFt * M_PER_FT).toFixed(2);
+  const length = +(lengthFt * M_PER_FT).toFixed(2);
+  const height =
+    heightFt && heightFt > 0 ? +(heightFt * M_PER_FT).toFixed(2) : null;
+
+  // Save to localStorage (in meters)
   localStorage.setItem("roomWidth", width.toString());
   localStorage.setItem("roomLength", length.toString());
-  if (height && height > 0) {
+  if (height) {
     localStorage.setItem("roomHeight", height.toString());
   }
 
@@ -1788,55 +1803,95 @@ function handleDrop(e) {
         if (!isFinite(dist) || dist <= 0.001) return;
 
         // Only accept walls the camera is looking AT.
-        // The camera direction and the wall's inward normal should
-        // point roughly toward each other (negative dot product)
-        // so we reject walls that are behind the camera.
         const toWall = new THREE.Vector3().subVectors(ip, camPos).normalize();
         if (toWall.dot(camDir) < 0.1) return; // wall is behind or beside camera
+
+        // Only accept hits whose intersection is within the wall bounds
+        // (not far outside the room)
+        const withinX = ip.x >= -innerX - 0.5 && ip.x <= innerX + 0.5;
+        const withinZ = ip.z >= -innerZ - 0.5 && ip.z <= innerZ + 0.5;
+        if (!withinX || !withinZ) return;
 
         hits.push({ wall: w.name, point: ip.clone(), dist });
       });
 
+      // Determine best wall: if camera is outside, prefer the wall
+      // closest to the camera rather than the ray hit
+      const isOutside =
+        camPos.x < -roomWidth / 2 ||
+        camPos.x > roomWidth / 2 ||
+        camPos.z < -roomLength / 2 ||
+        camPos.z > roomLength / 2 ||
+        camPos.y > wallHeight;
+
+      let chosenWall = null;
+
       if (hits.length > 0) {
         hits.sort((a, b) => a.dist - b.dist);
-        const chosen = hits[0];
+        chosenWall = hits[0];
+      }
+
+      // If outside and no good hit (or the hit is the far wall),
+      // pick the wall nearest to the camera
+      if (isOutside && (!chosenWall || chosenWall.dist > roomWidth)) {
+        const wallDistances = [
+          { name: "south", dist: Math.abs(camPos.z - innerZ) },
+          { name: "north", dist: Math.abs(camPos.z + innerZ) },
+          { name: "east", dist: Math.abs(camPos.x - innerX) },
+          { name: "west", dist: Math.abs(camPos.x + innerX) },
+        ];
+        wallDistances.sort((a, b) => a.dist - b.dist);
+        const nearest = wallDistances[0].name;
+        chosenWall = {
+          wall: nearest,
+          point: new THREE.Vector3(0, wallHeight / 2, 0),
+          dist: wallDistances[0].dist,
+        };
+      }
+
+      if (chosenWall) {
+        const chosen = chosenWall;
+        const wallName = chosen.wall || chosen.name;
         // Clamp similarly to draggable-furniture.clampMirrorToWall
-        const defaultHalfX = 0.75; // approximate half width
+        const defaultHalfX = 0.75;
         const defaultHalfZ = 0.75;
         const halfAlongWall =
-          chosen.wall === "north" || chosen.wall === "south"
+          wallName === "north" || wallName === "south"
             ? defaultHalfX
             : defaultHalfZ;
         const halfY = 0.5;
         const minY = 0 + halfY;
         const maxY =
           (parseFloat(localStorage.getItem("roomHeight")) || 3) - halfY;
-        const clampedY = Math.max(minY, Math.min(maxY, chosen.point.y));
+        // Place at mid-height of wall rather than ray intersection Y
+        // to avoid mirrors appearing near ceiling/floor
+        const targetY = Math.min(wallHeight * 0.45, maxY);
+        const clampedY = Math.max(minY, Math.min(maxY, targetY));
 
         let pos = { x: 0, y: clampedY, z: 0 };
-        if (chosen.wall === "north" || chosen.wall === "south") {
+        if (wallName === "north" || wallName === "south") {
           const minX = -innerX + halfAlongWall;
           const maxX = innerX - halfAlongWall;
           const clampedX = Math.max(minX, Math.min(maxX, chosen.point.x));
-          const z = chosen.wall === "north" ? -innerZ + 0.02 : innerZ - 0.02;
+          const z = wallName === "north" ? -innerZ + 0.02 : innerZ - 0.02;
           pos.x = clampedX;
           pos.z = z;
         } else {
           const minZ = -innerZ + halfAlongWall;
           const maxZ = innerZ - halfAlongWall;
           const clampedZ = Math.max(minZ, Math.min(maxZ, chosen.point.z));
-          const x = chosen.wall === "west" ? -innerX + 0.02 : innerX - 0.02;
+          const x = wallName === "west" ? -innerX + 0.02 : innerX - 0.02;
           pos.x = x;
           pos.z = clampedZ;
         }
 
         furnitureEl.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
         const rotY =
-          chosen.wall === "north"
+          wallName === "north"
             ? 0
-            : chosen.wall === "south"
+            : wallName === "south"
               ? 180
-              : chosen.wall === "west"
+              : wallName === "west"
                 ? -90
                 : 90;
         furnitureEl.setAttribute("rotation", `0 ${rotY} 0`);
