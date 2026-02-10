@@ -3056,7 +3056,7 @@ window.addEventListener("load", async function () {
     // ── UNIFIED ASSET PRELOAD ────────────────────────────────────────
     // Load ALL 3D models, textures, and thumbnails DURING the loading
     // screen so every drag-and-drop is instant when the user enters.
-    LoadingController.updateStatus("Loading furniture models...");
+    LoadingController.updateStatus("Preparing furniture models...");
     LoadingController.updateProgress(15);
 
     if (
@@ -3066,6 +3066,7 @@ window.addEventListener("load", async function () {
       console.log(
         "[Planner] Starting unified asset preload during loading screen...",
       );
+      let lastLoaded = 0;
       await window.AssetPreloader.preloadAll({
         showProgress: false, // We use our own LoadingController
         onProgress: (info) => {
@@ -3073,9 +3074,17 @@ window.addEventListener("load", async function () {
           const assetPercent = info.progress || 0;
           const mapped = 15 + Math.round(assetPercent * 0.6); // 15% → 75%
           LoadingController.updateProgress(mapped);
-          LoadingController.updateStatus(
-            `Loading furniture models... (${info.loaded}/${info.total})`,
-          );
+          // Show fast status for cached loads, detailed for first load
+          if (info.loaded !== lastLoaded) {
+            lastLoaded = info.loaded;
+            if (assetPercent > 80 && info.loaded >= info.total - 2) {
+              LoadingController.updateStatus("Almost ready...");
+            } else {
+              LoadingController.updateStatus(
+                `Loading furniture models... (${info.loaded}/${info.total})`,
+              );
+            }
+          }
         },
       });
       console.log("[Planner] All assets preloaded successfully.");

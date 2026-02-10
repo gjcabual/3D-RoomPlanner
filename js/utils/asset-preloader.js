@@ -56,6 +56,73 @@
   // Component cache for HTML components
   const COMPONENT_CACHE = new Map();
 
+  // ── IndexedDB persistent cache ─────────────────────────────────────
+  // Stores pre-parsed model geometry (Float32Arrays) so subsequent page
+  // loads skip both network fetch AND worker parsing — near-instant.
+  const IDB_NAME = "RoomPlannerAssets";
+  const IDB_STORE = "models";
+  const IDB_VERSION = 1; // Bump to invalidate all cached models
+  let _idb = null;
+
+  async function openIDB() {
+    if (_idb) return _idb;
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          for (const name of db.objectStoreNames) db.deleteObjectStore(name);
+          db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => {
+          _idb = req.result;
+          resolve(_idb);
+        };
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  async function getIDBModel(key) {
+    try {
+      const db = await openIDB();
+      if (!db) return null;
+      return new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readonly");
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async function setIDBModel(key, meshBuffers) {
+    try {
+      const db = await openIDB();
+      if (!db) return;
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(meshBuffers, key);
+    } catch {
+      /* silent */
+    }
+  }
+
+  async function clearIDBCache() {
+    try {
+      const db = await openIDB();
+      if (!db) return;
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).clear();
+      console.log("[AssetPreloader] IndexedDB cache cleared");
+    } catch {
+      /* silent */
+    }
+  }
+
   // ── Web Worker management ──────────────────────────────────────────
   let objWorker = null;
   let workerIdCounter = 0;
@@ -101,6 +168,14 @@
         if (typeof window.injectObjWorkerResult === "function") {
           window.injectObjWorkerResult(cacheKey || url, meshes);
         }
+
+        // Persist to IndexedDB so next page load skips download + parse
+        const idbCopy = meshes.map((m) => ({
+          positions: m.positions ? new Float32Array(m.positions) : null,
+          normals: m.normals ? new Float32Array(m.normals) : null,
+          uvs: m.uvs ? new Float32Array(m.uvs) : null,
+        }));
+        setIDBModel(cacheKey || url, idbCopy);
 
         job.resolve(true);
       };
@@ -404,9 +479,11 @@
     // Start ALL model downloads simultaneously.
     // The browser will use up to 6 concurrent connections.
     // As each download finishes, we send it to the worker for parsing.
+    // On subsequent loads, IndexedDB provides pre-parsed geometry instantly.
+    let idbHits = 0;
     const modelPromises = modelUrls.map(async (url) => {
       try {
-        // Skip if already cached
+        // Skip if already in memory cache
         if (
           typeof window.isObjModelCached === "function" &&
           window.isObjModelCached(url)
@@ -416,7 +493,19 @@
           return;
         }
 
-        // Fetch on main thread (parallel downloads)
+        // Check IndexedDB persistent cache (skips download + parsing)
+        const cached = await getIDBModel(url);
+        if (cached) {
+          if (typeof window.injectObjWorkerResult === "function") {
+            window.injectObjWorkerResult(url, cached);
+          }
+          idbHits++;
+          preloadState.loadedAssets++;
+          updateProgress();
+          return;
+        }
+
+        // Not cached — fetch on main thread (parallel downloads)
         const response = await fetch(toAbsoluteUrl(url));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const objText = await response.text();
@@ -458,8 +547,10 @@
       errors: preloadState.errors,
     };
 
+    const elapsed = Math.round(performance.now() - preloadState.startTime);
     console.log(
-      `[AssetPreloader] Preload complete: ${result.loaded}/${result.total} assets loaded`,
+      `[AssetPreloader] Preload complete: ${result.loaded}/${result.total} assets loaded in ${elapsed}ms` +
+        (idbHits > 0 ? ` (${idbHits} from cache)` : " (first load)"),
     );
     if (result.errors.length > 0) {
       console.warn(
@@ -682,6 +773,7 @@
     getState: getPreloadState,
     showLoading: showLoadingUI,
     hideLoading: hideLoadingUI,
+    clearCache: clearIDBCache,
   };
 
   // Auto-preload when DOM is ready (can be disabled by setting window.DISABLE_AUTO_PRELOAD = true)
