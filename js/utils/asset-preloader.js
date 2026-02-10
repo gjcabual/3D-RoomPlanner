@@ -153,9 +153,10 @@
 
   /**
    * Preload a single OBJ model using the Web Worker (off main thread).
+   * If objText is provided, skips the fetch and sends text directly to the worker.
    * Falls back to main-thread OBJLoader if the worker is unavailable.
    */
-  function preloadModel(modelPath) {
+  function preloadModel(modelPath, objText) {
     // Skip if already in the OBJ cache
     if (
       typeof window.isObjModelCached === "function" &&
@@ -167,19 +168,17 @@
     const worker = getObjWorker();
 
     if (worker) {
-      // ── Worker path (zero main-thread blocking) ──
-      // Send absolute URL so the worker's fetch() resolves correctly
-      // (worker base URL differs from page base URL).
-      // Also send the original relative path as cacheKey so it matches
-      // what cached-obj-model.js will look up later.
       return new Promise((resolve) => {
         const id = ++workerIdCounter;
         pendingWorkerJobs.set(id, { resolve });
-        worker.postMessage({
+        const msg = {
           id,
           url: toAbsoluteUrl(modelPath),
           cacheKey: modelPath,
-        });
+        };
+        // If text is provided, pass it to skip the worker's fetch
+        if (objText) msg.text = objText;
+        worker.postMessage(msg);
       });
     }
 
@@ -382,49 +381,67 @@
     }
 
     // PERFORMANCE: Models are parsed in a Web Worker – zero main-thread blocking.
-    // We still send them sequentially to the worker to avoid saturating
-    // the network / memory, but none of this blocks the UI.
+    // We download ALL models in parallel on the main thread (browser uses
+    // 6 concurrent connections), then send each to the worker for parsing
+    // as soon as it arrives.  This eliminates the sequential download bottleneck.
 
-    // Load textures first (small, stays on main thread – instant)
-    for (const url of textureUrls) {
-      const success = await preloadTexture(url);
-      preloadState.loadedAssets++;
-      if (!success) preloadState.errors.push({ type: "texture", url });
-      updateProgress();
-    }
+    // Load textures + components in parallel (tiny, near-instant)
+    const smallAssetPromises = [
+      ...textureUrls.map(async (url) => {
+        const success = await preloadTexture(url);
+        preloadState.loadedAssets++;
+        if (!success) preloadState.errors.push({ type: "texture", url });
+        updateProgress();
+      }),
+      ...componentUrls.map(async (url) => {
+        const success = await preloadComponent(url);
+        preloadState.loadedAssets++;
+        if (!success) preloadState.errors.push({ type: "component", url });
+        updateProgress();
+      }),
+    ];
 
-    // Load HTML components (tiny, very fast)
-    for (const url of componentUrls) {
-      const success = await preloadComponent(url);
-      preloadState.loadedAssets++;
-      if (!success) preloadState.errors.push({ type: "component", url });
-      updateProgress();
-    }
+    // Start ALL model downloads simultaneously.
+    // The browser will use up to 6 concurrent connections.
+    // As each download finishes, we send it to the worker for parsing.
+    const modelPromises = modelUrls.map(async (url) => {
+      try {
+        // Skip if already cached
+        if (
+          typeof window.isObjModelCached === "function" &&
+          window.isObjModelCached(url)
+        ) {
+          preloadState.loadedAssets++;
+          updateProgress();
+          return;
+        }
 
-    // Load models via the Web Worker (off main thread, no jank)
-    for (const url of modelUrls) {
-      const success = await preloadModel(url);
-      preloadState.loadedAssets++;
-      if (!success) preloadState.errors.push({ type: "model", url });
-      updateProgress();
-    }
+        // Fetch on main thread (parallel downloads)
+        const response = await fetch(toAbsoluteUrl(url));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const objText = await response.text();
+
+        // Send to worker for parsing (off main thread)
+        const success = await preloadModel(url, objText);
+        preloadState.loadedAssets++;
+        if (!success) preloadState.errors.push({ type: "model", url });
+        updateProgress();
+      } catch (e) {
+        preloadState.loadedAssets++;
+        preloadState.errors.push({ type: "model", url });
+        updateProgress();
+      }
+    });
+
+    // Wait for everything to finish
+    await Promise.all([...smallAssetPromises, ...modelPromises]);
 
     // Worker is no longer needed – free its resources
     terminateWorker();
 
-    // Generate 3D thumbnails NOW (before marking complete) so icons
-    // are ready the instant the panel is visible.  Uses idle callbacks
-    // internally so it won't block the main thread.
-    if (
-      window.furnitureThumbnails &&
-      typeof window.furnitureThumbnails.generate === "function"
-    ) {
-      try {
-        await window.furnitureThumbnails.generate();
-      } catch (e) {
-        console.warn("[AssetPreloader] Thumbnail generation error:", e);
-      }
-    }
+    // DEFERRED: 3D thumbnails are generated AFTER the loading screen hides.
+    // The SVG fallback icons are already clear and usable, so the user
+    // can interact immediately while thumbnails render in the background.
 
     preloadState.isPreloading = false;
     preloadState.isComplete = true;

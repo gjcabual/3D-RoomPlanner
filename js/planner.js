@@ -3108,43 +3108,35 @@ window.addEventListener("load", async function () {
 
     // Pre-upload textures to GPU (this is what causes lag - do it during loading screen)
     LoadingController.updateStatus("Uploading textures to GPU...");
-    LoadingController.updateProgress(82);
+    LoadingController.updateProgress(85);
     await preUploadTexturesToGPU((status) =>
       LoadingController.updateStatus(status),
     );
 
     // GPU Warmup - pre-compile shaders to prevent stutter
     LoadingController.updateStatus("Compiling shaders...");
-    LoadingController.updateProgress(90);
+    LoadingController.updateProgress(95);
     await warmupGPU();
-
-    LoadingController.updateProgress(98);
-    LoadingController.updateStatus("Almost ready...");
-
-    // Wait for a couple frames so the GPU finishes any pending work
-    await new Promise((resolve) => {
-      let stableFrames = 0;
-      const requiredStableFrames = 3;
-
-      function checkStability() {
-        stableFrames++;
-        if (stableFrames >= requiredStableFrames) {
-          resolve();
-        } else {
-          requestAnimationFrame(checkStability);
-        }
-      }
-
-      requestAnimationFrame(checkStability);
-    });
 
     LoadingController.updateProgress(100);
     LoadingController.updateStatus("Ready!");
 
-    // Final delay before hiding overlay
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Single frame wait for GPU to flush
+    await new Promise((resolve) => requestAnimationFrame(resolve));
 
     LoadingController.hide();
+
+    // DEFERRED: Generate 3D thumbnails after loading screen is gone.
+    // SVG icons are already visible and clear, thumbnails replace them
+    // progressively in the background.
+    setTimeout(() => {
+      if (
+        window.furnitureThumbnails &&
+        typeof window.furnitureThumbnails.generate === "function"
+      ) {
+        window.furnitureThumbnails.generate().catch(() => {});
+      }
+    }, 1000);
 
     // Show welcome dialog after loading is complete
     setTimeout(() => {

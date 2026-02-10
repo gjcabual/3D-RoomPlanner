@@ -67,6 +67,23 @@
     <link rel="stylesheet" href="css/dialog.css" />
     <!-- Preload floor texture ASAP - browser starts downloading before JS even parses -->
     <link rel="preload" href="asset/textures/wood2k.jpg" as="image" />
+    <!-- Prefetch OBJ models early so downloads start before JS finishes loading.
+         The browser will open up to 6 parallel connections immediately. -->
+    <link rel="prefetch" href="asset/models/bed1.obj" />
+    <link rel="prefetch" href="asset/models/bed2.obj" />
+    <link rel="prefetch" href="asset/models/center_table1.obj" />
+    <link rel="prefetch" href="asset/models/center_table2.obj" />
+    <link rel="prefetch" href="asset/models/chair1.obj" />
+    <link rel="prefetch" href="asset/models/chair2.obj" />
+    <link rel="prefetch" href="asset/models/desk1.obj" />
+    <link rel="prefetch" href="asset/models/desk2.obj" />
+    <link rel="prefetch" href="asset/models/mirror1.obj" />
+    <link rel="prefetch" href="asset/models/mirror2.obj" />
+    <link rel="prefetch" href="asset/models/shelf1.obj" />
+    <link rel="prefetch" href="asset/models/shelf2.obj" />
+    <link rel="prefetch" href="asset/models/wardrobe_modern.obj" />
+    <link rel="prefetch" href="asset/models/wardrobe_traditional.obj" />
+    <link rel="prefetch" href="asset/models/wardrobe_openframe.obj" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
