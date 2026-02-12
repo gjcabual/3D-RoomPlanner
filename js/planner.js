@@ -241,8 +241,8 @@ const FURNITURE_SCALES = {
   center_table1: "1.5 1.5 1.5",
   center_table2: "1.5 1.5 1.5",
   // Desks - office/study desk (~1.2m wide, ~0.75m tall)
-  desk1: "1.5 1.5 1.5",
-  desk2: "1.5 1.5 1.5",
+  desk1: "1.2 1.2 0.95",
+  desk2: "1.2 1.2 0.95",
   // Mirrors - wall-mounted (~0.5m wide, ~1m tall)
   mirror1: "1 1 1",
   mirror2: "1 1 1",
@@ -815,23 +815,18 @@ async function loadItemsAndPrices() {
       });
     }
 
-    // Apply dummy prices for items without prices or if using fallbacks
+    // Apply dummy prices ONLY for items that have no database prices
     Object.keys(ITEM_METADATA).forEach((key) => {
-      if (
-        typeof PRICE_LIST[key] === "undefined" ||
-        PRICE_LIST[key] === 0 ||
-        useFallbacks
-      ) {
-        // Use dummy price if available, otherwise default to 0
+      const hasDbPrice =
+        typeof PRICE_LIST[key] !== "undefined" && PRICE_LIST[key] > 0;
+      const hasDbSources =
+        ITEM_PRICE_SOURCES[key] && ITEM_PRICE_SOURCES[key].length > 0;
+
+      // Only use dummy/fallback prices if we got NOTHING from the database for this item
+      if (!hasDbPrice && !hasDbSources) {
         if (DUMMY_PRICES[key]) {
           PRICE_LIST[key] = DUMMY_PRICES[key].estimatedPrice;
-          // Only set sources if we don't have any from database
-          if (
-            !ITEM_PRICE_SOURCES[key] ||
-            ITEM_PRICE_SOURCES[key].length === 0
-          ) {
-            ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
-          }
+          ITEM_PRICE_SOURCES[key] = [...DUMMY_PRICES[key].sources];
         } else {
           PRICE_LIST[key] = 0;
         }
