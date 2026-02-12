@@ -3081,7 +3081,7 @@ function showWelcomeDialog() {
   const welcomeContent = `
     <div class="welcome-dialog-content">
       <h2 class="welcome-title">Welcome to 3D Room Planner</h2>
-      <p class="welcome-subtitle">Your room: ${width}M × ${length}M × ${height}M</p>
+      <p class="welcome-subtitle">Your room: ${width}ft × ${length}ft × ${height}ft</p>
       
       <div class="welcome-section">
         <h3>Controls</h3>
