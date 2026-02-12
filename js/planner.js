@@ -956,12 +956,16 @@ function initializeRoom() {
     const w = parseFloat(width);
     const l = parseFloat(length);
     const h = height ? parseFloat(height) : null;
-    const wFt = (w * 3.28084).toFixed(1);
-    const lFt = (l * 3.28084).toFixed(1);
-    const hFt = h ? (h * 3.28084).toFixed(1) : null;
-    const hText = h ? ` × ${h}m` : "";
-    const hFtText = hFt ? ` × ${hFt} ft` : "";
-    roomInfo.textContent = `${w} × ${l}${hText} m  · ${wFt} × ${lFt}${hFtText} ft`;
+    const FT = 3.28084;
+    const wFt = (w * FT).toFixed(1);
+    const lFt = (l * FT).toFixed(1);
+    const hFt = h ? (h * FT).toFixed(1) : null;
+    const wM = w.toFixed(1);
+    const lM = l.toFixed(1);
+    const hM = h ? h.toFixed(1) : null;
+    const hTextM = hM ? ` × ${hM}` : "";
+    const hTextFt = hFt ? ` × ${hFt}` : "";
+    roomInfo.textContent = `${wM} × ${lM}${hTextM} m  ·  ${wFt} × ${lFt}${hTextFt} ft`;
   }
 
   // Position camera appropriately

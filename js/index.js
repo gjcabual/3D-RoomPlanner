@@ -25,16 +25,25 @@ function startPlanner() {
     height > 20
   ) {
     showDialog(
-      "Please enter dimensions between 1M and 20M",
+      "Please enter dimensions between 1ft and 20ft",
       "Validation Error",
     );
     return;
   }
 
-  // Store dimensions in localStorage for the planner page
-  localStorage.setItem("roomWidth", width);
-  localStorage.setItem("roomLength", length);
-  localStorage.setItem("roomHeight", height);
+  // Convert feet to meters for internal storage (planner uses meters)
+  const M_PER_FT = 0.3048;
+  const widthM = +(width * M_PER_FT).toFixed(2);
+  const lengthM = +(length * M_PER_FT).toFixed(2);
+  const heightM = +(height * M_PER_FT).toFixed(2);
+
+  localStorage.setItem("roomWidth", widthM);
+  localStorage.setItem("roomLength", lengthM);
+  localStorage.setItem("roomHeight", heightM);
+
+  // Clear old saved room state so it doesn't override the new dimensions
+  localStorage.removeItem("currentRoomState");
+  localStorage.removeItem("workspaceState");
 
   // Navigate directly to planner - loading is handled there
   window.location.href = "planner.html";
