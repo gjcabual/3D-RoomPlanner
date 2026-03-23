@@ -1997,7 +1997,18 @@ function renderCost() {
   const totalEl = document.getElementById("cost-total");
   if (totalEl) totalEl.textContent = peso(total);
   const totalDisplay = document.getElementById("cost-total-display");
-  if (totalDisplay) totalDisplay.textContent = peso(total);
+  if (totalDisplay) {
+    totalDisplay.textContent = peso(total);
+    const budget = parseFloat(localStorage.getItem("projectBudget")) || 0;
+    const budgetDisplay = document.getElementById("cost-budget-display");
+    if (budgetDisplay) budgetDisplay.textContent = peso(budget);
+
+    if (budget > 0 && total > budget) {
+      totalDisplay.style.color = "#ff4444"; // Red color
+    } else {
+      totalDisplay.style.color = ""; // Default color
+    }
+  }
 }
 
 // Remove one instance of an item by modelKey (remove last placed instance)
@@ -3296,6 +3307,10 @@ window.addEventListener("load", async function () {
 
     LoadingController.hide();
 
+    if (typeof displayOmittedItemsNotification === "function") {
+      setTimeout(() => displayOmittedItemsNotification(), 500);
+    }
+
     // DEFERRED: Generate 3D thumbnails after loading screen is gone.
     // SVG icons are already visible and clear, thumbnails replace them
     // progressively in the background.
@@ -3451,3 +3466,89 @@ window.showChairSubcategory = showChairSubcategory;
 window.showDeskSubcategory = showDeskSubcategory;
 window.showMirrorSubcategory = showMirrorSubcategory;
 window.showShelfSubcategory = showShelfSubcategory;
+
+// Feature: Display omitted items notification
+function displayOmittedItemsNotification() {
+  const omittedStr = localStorage.getItem("omittedItems");
+  if (!omittedStr) return;
+
+  try {
+    const omittedItems = JSON.parse(omittedStr);
+    if (!Array.isArray(omittedItems) || omittedItems.length === 0) return;
+
+    // Find right edge HUD stack to append to
+    const hudStack = document.getElementById("hud-stack") || document.body;
+
+    const panel = document.createElement("div");
+    panel.id = "omitted-items-panel";
+    panel.className = "panel";
+    panel.style.cssText = `
+      position: relative;
+      margin-top: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      opacity: 0;
+      transform: translateX(20px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      /* Minimalist specific overrides overriding base panel where needed */
+      background: var(--color-bg-panel, rgba(20, 20, 20, 0.95));
+      border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.08));
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    `;
+
+    const itemList = omittedItems
+      .map(
+        (item) => `
+      <li style="margin-bottom: 6px; display: flex; align-items: center; color: #d1d5db;">
+        <span style="color: #ef4444; margin-right: 8px; font-size: 14px;">•</span> 
+        <span style="font-size: 13px;">${item}</span>
+      </li>
+    `,
+      )
+      .join("");
+
+    panel.innerHTML = `
+      <button onclick="this.parentElement.style.opacity='0'; this.parentElement.style.transform='translateX(20px)'; setTimeout(() => this.parentElement.remove(), 400)" 
+              style="position: absolute; top: 12px; right: 12px; background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 50%; transition: all 0.2s;"
+              onmouseover="this.style.color='white'; this.style.background='rgba(255,255,255,0.1)'"
+              onmouseout="this.style.color='rgba(255,255,255,0.4)'; this.style.background='none'">
+        ✕
+      </button>
+      <div style="display: flex; align-items: center; margin-bottom: 14px; gap: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <h3 style="margin: 0; font-size: 14px; color: #f3f4f6; font-weight: 600; letter-spacing: 0.3px;">Space Constraint</h3>
+      </div>
+      <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #9ca3af; line-height: 1.45;">These budget items couldn't fit and were omitted to prevent overlapping:</p>
+      <ul style="margin: 0 0 14px 0; padding: 0 0 0 4px; list-style: none;">
+        ${itemList}
+      </ul>
+      <div style="font-size: 12px; color: #8b92a2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; display: flex; gap: 6px; align-items: flex-start;">
+        <span style="font-size: 13px;">💡</span> 
+        <i style="line-height: 1.4;">Tip: Increase room dimensions significantly to fit the full premium set.</i>
+      </div>
+    `;
+
+    hudStack.appendChild(panel);
+
+    // Trigger entry animation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        panel.style.opacity = "1";
+        panel.style.transform = "translateX(0)";
+      });
+    });
+
+    // Clear so it doesn't show again on simple page refresh
+    localStorage.removeItem("omittedItems");
+  } catch (e) {
+    console.error("Error parsing omitted items", e);
+  }
+}
+
+window.displayOmittedItemsNotification = displayOmittedItemsNotification;

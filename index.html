@@ -7,7 +7,10 @@
     <!-- Design Tokens -->
     <link rel="stylesheet" href="css/variables.css" />
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -52,55 +55,110 @@
         <span class="title-3d">3D</span>
         <span class="title-room">ROOM PLANNER</span>
       </h1>
-      <p class="subtitle">Enter your room dimensions to get started</p>
+      <p class="subtitle">Set your room dimensions and budget to get started</p>
 
-      <div class="room-visualization">
-        <!-- 3D Wireframe Cube -->
-        <div class="wireframe-cube">
-          <div class="cube-face cube-front"></div>
-          <div class="cube-face cube-back"></div>
-          <div class="cube-face cube-right"></div>
-          <div class="cube-face cube-left"></div>
-          <div class="cube-face cube-top"></div>
-          <div class="cube-face cube-bottom"></div>
+      <div class="split-layout">
+        <!-- Left Side: Dimensions -->
+        <div class="dimension-section">
+          <div class="room-visualization">
+            <!-- 3D Wireframe Cube -->
+            <div class="wireframe-cube">
+              <div class="cube-face cube-front"></div>
+              <div class="cube-face cube-back"></div>
+              <div class="cube-face cube-right"></div>
+              <div class="cube-face cube-left"></div>
+              <div class="cube-face cube-top"></div>
+              <div class="cube-face cube-bottom"></div>
+            </div>
+
+            <!-- Dimension Inputs positioned around the cube -->
+            <div class="dimension-inputs-wrapper">
+              <div class="dimension-input-group dimension-width">
+                <label class="dimension-label">W:</label>
+                <input
+                  type="number"
+                  id="room-width"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+
+              <div class="dimension-input-group dimension-length">
+                <label class="dimension-label">L:</label>
+                <input
+                  type="number"
+                  id="room-length"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+
+              <div class="dimension-input-group dimension-height">
+                <label class="dimension-label">H:</label>
+                <input
+                  type="number"
+                  id="room-height"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Dimension Inputs positioned around the cube -->
-        <div class="dimension-inputs-wrapper">
-          <div class="dimension-input-group dimension-width">
-            <label class="dimension-label">W:</label>
+        <div class="vertical-divider"></div>
+
+        <!-- Right Side: Budget & Recommendations -->
+        <div class="budget-section">
+          <div class="budget-input-container">
+            <label
+              class="dimension-label"
+              style="display: block; margin-bottom: 8px"
+              >Project Budget (&#8369;):</label
+            >
             <input
               type="number"
-              id="room-width"
+              id="project-budget"
               class="dimension-input"
-              placeholder="ft"
+              style="
+                width: 180px;
+                text-align: center;
+                font-size: 1.2rem;
+                padding: 10px;
+              "
+              placeholder="e.g. 50000"
               min="1"
-              max="20"
             />
           </div>
 
-          <div class="dimension-input-group dimension-length">
-            <label class="dimension-label">L:</label>
-            <input
-              type="number"
-              id="room-length"
-              class="dimension-input"
-              placeholder="ft"
-              min="1"
-              max="20"
-            />
-          </div>
-
-          <div class="dimension-input-group dimension-height">
-            <label class="dimension-label">H:</label>
-            <input
-              type="number"
-              id="room-height"
-              class="dimension-input"
-              placeholder="ft"
-              min="1"
-              max="20"
-            />
+          <div class="recommendation-wrapper" id="recommendation-wrapper">
+            <p class="recommendation-title">Recommended Template</p>
+            <div class="recommendation-preview" id="recommendation-content">
+              <div class="recommendation-placeholder">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.4)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                  ></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Enter budget to see recommendations</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

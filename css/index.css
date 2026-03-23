@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -6,9 +7,9 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   background: #0a0a0a;
   min-height: 100vh;
   display: flex;
@@ -28,7 +29,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
@@ -40,23 +41,13 @@ body::before {
   position: relative;
   z-index: 1;
   text-align: center;
-  max-width: 550px;
+  max-width: 850px;
   width: 100%;
   padding: 20px 25px;
   margin: 0 auto;
   box-sizing: border-box;
   max-height: calc(100vh - 20px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.main-title {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    overflow-y: auto;
   gap: 3px;
   margin-bottom: 8px;
 }
@@ -114,7 +105,8 @@ body::before {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotateX(-20deg) rotateY(45deg) translateY(0);
   }
   50% {
@@ -700,3 +692,102 @@ body::before {
     margin-top: 4px;
   }
 }
+
+/* Split Layout Setup */
+.split-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  width: 100%;
+  margin-bottom: 25px;
+}
+
+.dimension-section, .budget-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.vertical-divider {
+  width: 1px;
+  height: 250px;
+  background-color: rgba(255, 255, 255, 0.15);
+  margin: 0 10px;
+}
+
+.budget-input-container {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.recommendation-wrapper {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 15px;
+  width: 100%;
+  max-width: 250px;
+  margin-top: 10px;
+}
+
+.recommendation-title {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.recommendation-preview {
+  width: 100%;
+  height: 160px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.recommendation-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+  gap: 10px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.recommendation-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: fadeIn 0.5s forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .split-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .vertical-divider {
+    width: 80%;
+    height: 1px;
+    margin: 5px 0;
+  }
+}
+. i n t r o - c o n t a i n e r : : - w e b k i t - s c r o l l b a r   {   w i d t h :   0 p x ;   } 
+ 
+ 

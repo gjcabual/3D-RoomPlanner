@@ -1210,7 +1210,10 @@ kbd {
 /* Responsive */
 @media (max-width: 768px) {
   #cost-panel {
-    display: none;
+    bottom: 20px;
+    right: 10px;
+    left: auto;
+    width: 250px;
   }
   #side-panel {
     width: 100vw;

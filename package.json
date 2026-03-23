@@ -1,0 +1,32 @@
+{
+  "name": "3d-roomplanner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "postinstall": "node -e \"const fs=require('fs');fs.mkdirSync('vendor',{recursive:true});fs.copyFileSync('node_modules/aframe/dist/aframe-v1.5.0.min.js','vendor/aframe.min.js');fs.copyFileSync('node_modules/@supabase/supabase-js/dist/umd/supabase.js','vendor/supabase.min.js');fs.copyFileSync('node_modules/html2canvas/dist/html2canvas.min.js','vendor/html2canvas.min.js');console.log('Vendor files copied.')\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gjcabual/3D-RoomPlanner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/gjcabual/3D-RoomPlanner/issues"
+  },
+  "homepage": "https://github.com/gjcabual/3D-RoomPlanner#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "aframe": "^1.5.0",
+    "html2canvas": "^1.4.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

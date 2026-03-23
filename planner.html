@@ -6,7 +6,10 @@
     <!-- Design Tokens -->
     <link rel="stylesheet" href="css/variables.css" />
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -84,11 +87,12 @@
     <link rel="prefetch" href="asset/models/wardrobe_modern.obj" />
     <link rel="prefetch" href="asset/models/wardrobe_traditional.obj" />
     <link rel="prefetch" href="asset/models/wardrobe_openframe.obj" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="/vendor/supabase.min.js"></script>
+    <script src="/vendor/html2canvas.min.js"></script>
+    <script src="/vendor/aframe.min.js"></script>
     <!-- A-Frame Components -->
     <script src="js/components/movement.js"></script>
+    <script src="js/components/virtual-joystick.js"></script>
     <script src="js/components/floor-resize.js"></script>
     <script src="js/components/smart-placement.js"></script>
     <script src="js/components/textured-model.js"></script>

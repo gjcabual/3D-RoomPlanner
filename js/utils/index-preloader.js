@@ -47,10 +47,10 @@
   const ALL_CSS = ["css/planner.css", "css/components.css", "css/dialog.css"];
 
   const ALL_EXTERNAL_SCRIPTS = [
-    "https://aframe.io/releases/1.5.0/aframe.min.js",
+    "/vendor/aframe.min.js",
     "https://cdn.tailwindcss.com",
-    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
-    "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+    "/vendor/supabase.min.js",
+    "/vendor/html2canvas.min.js",
   ];
 
   const ALL_LOCAL_SCRIPTS = [
