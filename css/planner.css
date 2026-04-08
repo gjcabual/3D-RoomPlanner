@@ -867,6 +867,19 @@ kbd {
   margin-bottom: 12px;
 }
 
+.cost-budget-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  font-size: 0.92em;
+  font-weight: 600;
+  color: rgba(245, 245, 245, 0.75);
+}
+
+.cost-budget-row span:last-child {
+  color: #c6e1ff;
+}
+
 .cost-save-row {
   display: flex;
   align-items: center;
@@ -908,6 +921,132 @@ kbd {
 
 .save-notification.show {
   opacity: 1;
+}
+
+.space-constraint-panel {
+  width: 100%;
+  background: rgba(15, 15, 15, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.space-constraint-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0;
+  background: linear-gradient(135deg, #40311a 0%, #1f1a12 100%);
+  color: #f5f5f5;
+  cursor: pointer;
+  text-align: left;
+}
+
+.space-constraint-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.space-constraint-title {
+  font-size: 0.92em;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.space-constraint-subtitle {
+  font-size: 0.74em;
+  color: rgba(245, 245, 245, 0.7);
+}
+
+.space-constraint-count {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76em;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.space-constraint-chevron {
+  font-size: 0.78em;
+  color: rgba(245, 245, 245, 0.7);
+  transition: transform 0.2s ease;
+}
+
+.space-constraint-panel.collapsed .space-constraint-chevron {
+  transform: rotate(-90deg);
+}
+
+.space-constraint-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  opacity: 1;
+  transition:
+    max-height 0.22s ease,
+    opacity 0.18s ease,
+    padding 0.22s ease;
+}
+
+.space-constraint-panel.collapsed .space-constraint-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.space-constraint-text {
+  margin: 0;
+  font-size: 0.82em;
+  color: rgba(245, 245, 245, 0.75);
+  line-height: 1.4;
+}
+
+.space-constraint-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.space-constraint-item {
+  font-size: 0.82em;
+  color: #f5f5f5;
+  display: flex;
+  align-items: center;
+}
+
+.space-constraint-item::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-right: 8px;
+  background: #ef4444;
+  flex-shrink: 0;
+}
+
+.space-constraint-tip {
+  margin: 0;
+  font-size: 0.78em;
+  color: rgba(245, 245, 245, 0.62);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
 }
 
 @media (max-width: 768px) {
