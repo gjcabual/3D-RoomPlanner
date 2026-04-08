@@ -327,11 +327,14 @@ document.addEventListener("DOMContentLoaded", function () {
       const minY = 0.8;
       const maxY = Math.max(minY, heightM - 0.5);
       const mirrorY = Math.max(minY, Math.min(maxY, heightM * 0.45));
+      const wallThickness = 0.1;
+      const innerZ = halfL - wallThickness / 2;
+      const mirrorWallOffset = 0.06;
 
       furniture_data.push({
         model_key: key,
-        position: { x: 0, y: mirrorY, z: -halfL + 0.04 },
-        rotation: { x: 0, y: 180, z: 0 },
+        position: { x: 0, y: mirrorY, z: -innerZ + mirrorWallOffset },
+        rotation: { x: 0, y: 0, z: 0 },
         scale: { x: 1, y: 1, z: 1 },
       });
 

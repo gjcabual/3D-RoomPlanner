@@ -1885,6 +1885,7 @@ function handleDrop(e) {
       if (chosenWall) {
         const chosen = chosenWall;
         const wallName = chosen.wall || chosen.name;
+        const mirrorWallOffset = 0.06;
         // Clamp similarly to draggable-furniture.clampMirrorToWall
         const defaultHalfX = 0.75;
         const defaultHalfZ = 0.75;
@@ -1906,14 +1907,20 @@ function handleDrop(e) {
           const minX = -innerX + halfAlongWall;
           const maxX = innerX - halfAlongWall;
           const clampedX = Math.max(minX, Math.min(maxX, chosen.point.x));
-          const z = wallName === "north" ? -innerZ + 0.02 : innerZ - 0.02;
+          const z =
+            wallName === "north"
+              ? -innerZ + mirrorWallOffset
+              : innerZ - mirrorWallOffset;
           pos.x = clampedX;
           pos.z = z;
         } else {
           const minZ = -innerZ + halfAlongWall;
           const maxZ = innerZ - halfAlongWall;
           const clampedZ = Math.max(minZ, Math.min(maxZ, chosen.point.z));
-          const x = wallName === "west" ? -innerX + 0.02 : innerX - 0.02;
+          const x =
+            wallName === "west"
+              ? -innerX + mirrorWallOffset
+              : innerX - mirrorWallOffset;
           pos.x = x;
           pos.z = clampedZ;
         }
@@ -1958,12 +1965,13 @@ function handleDrop(e) {
 
             const eps = 0.08;
             let mirrorWall = "";
-            if (Math.abs(p.z - (-innerZ + 0.02)) <= eps) mirrorWall = "north";
-            else if (Math.abs(p.z - (innerZ - 0.02)) <= eps)
+            if (Math.abs(p.z - (-innerZ + mirrorWallOffset)) <= eps)
+              mirrorWall = "north";
+            else if (Math.abs(p.z - (innerZ - mirrorWallOffset)) <= eps)
               mirrorWall = "south";
-            else if (Math.abs(p.x - (-innerX + 0.02)) <= eps)
+            else if (Math.abs(p.x - (-innerX + mirrorWallOffset)) <= eps)
               mirrorWall = "west";
-            else if (Math.abs(p.x - (innerX - 0.02)) <= eps)
+            else if (Math.abs(p.x - (innerX - mirrorWallOffset)) <= eps)
               mirrorWall = "east";
 
             if (mirrorWall !== wallName) return null;
@@ -2979,16 +2987,67 @@ async function restoreRoom(roomData) {
 
       const furnitureEl = document.createElement("a-entity");
       furnitureEl.id = `furniture-${furnitureCounter++}`;
+      const isMirrorModel =
+        typeof itemData.model_key === "string" &&
+        itemData.model_key.startsWith("mirror");
+
+      let restoredPos = {
+        x: itemData.position.x,
+        y: itemData.position.y,
+        z: itemData.position.z,
+      };
+      let restoredRot = itemData.rotation || { x: 0, y: 0, z: 0 };
+
+      if (isMirrorModel) {
+        const wallThickness = 0.1;
+        const innerX = roomWidth / 2 - wallThickness / 2;
+        const innerZ = roomLength / 2 - wallThickness / 2;
+        const mirrorWallOffset = 0.06;
+        const halfAlongWall = 0.75;
+
+        const wallDistances = [
+          { name: "north", dist: Math.abs(restoredPos.z + innerZ) },
+          { name: "south", dist: Math.abs(restoredPos.z - innerZ) },
+          { name: "west", dist: Math.abs(restoredPos.x + innerX) },
+          { name: "east", dist: Math.abs(restoredPos.x - innerX) },
+        ];
+        wallDistances.sort((a, b) => a.dist - b.dist);
+        const wallName = wallDistances[0].name;
+
+        const minY = 0.5;
+        const maxY = Math.max(minY, wallHeight - 0.5);
+        restoredPos.y = Math.max(minY, Math.min(maxY, restoredPos.y));
+
+        if (wallName === "north" || wallName === "south") {
+          const minX = -innerX + halfAlongWall;
+          const maxX = innerX - halfAlongWall;
+          restoredPos.x = Math.max(minX, Math.min(maxX, restoredPos.x));
+          restoredPos.z =
+            wallName === "north"
+              ? -innerZ + mirrorWallOffset
+              : innerZ - mirrorWallOffset;
+          restoredRot = { x: 0, y: wallName === "north" ? 0 : 180, z: 0 };
+        } else {
+          const minZ = -innerZ + halfAlongWall;
+          const maxZ = innerZ - halfAlongWall;
+          restoredPos.z = Math.max(minZ, Math.min(maxZ, restoredPos.z));
+          restoredPos.x =
+            wallName === "west"
+              ? -innerX + mirrorWallOffset
+              : innerX - mirrorWallOffset;
+          restoredRot = { x: 0, y: wallName === "west" ? -90 : 90, z: 0 };
+        }
+      }
+
       furnitureEl.setAttribute(
         "position",
-        `${itemData.position.x} ${itemData.position.y} ${itemData.position.z}`,
+        `${restoredPos.x} ${restoredPos.y} ${restoredPos.z}`,
       );
 
       // Handle rotation
-      const rotation = itemData.rotation || { x: 0, y: 0, z: 0 };
       furnitureEl.setAttribute(
         "rotation",
-        `${rotation.x} ${rotation.y} ${rotation.z}`,
+        `${restoredRot.x} ${restoredRot.y} ${restoredRot.z}`,
       );
 
       // Handle scale – prefer the per-item config so old saves also get corrected sizes
