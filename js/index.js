@@ -80,6 +80,9 @@ document.addEventListener("DOMContentLoaded", function () {
         : "wardrobe3";
     const shelfKey = isPremium ? "shelf2" : "shelf1";
     const tableKey = isPremium ? "center_table2" : "center_table1";
+    const shelfLabel = shelfKey === "shelf2" ? "Shelf 2" : "Shelf 1";
+    const tableLabel =
+      tableKey === "center_table2" ? "Center Table 2" : "Center Table 1";
 
     const localModelPrices = {
       bed1: 25000,
@@ -102,49 +105,233 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let omitted_items = [];
 
-    // Helper to safely add an item checking bounds and overlaps
-    const pushItem = (key, pos, rot, itemName = "Item") => {
-      // Strict boundary padding to keep inside room edges
-      let padX = 0.8;
-      let padZ = 0.8;
+    // Approximate floor footprints (meters) used for premade conflict checks.
+    const itemFootprints = {
+      bed1: { w: 1.7, d: 1.8 },
+      bed2: { w: 1.75, d: 1.9 },
+      wardrobe1: { w: 1.0, d: 0.7 },
+      wardrobe2: { w: 1.0, d: 0.75 },
+      wardrobe3: { w: 1.0, d: 0.7 },
+      desk1: { w: 1.1, d: 0.65 },
+      desk2: { w: 1.2, d: 0.7 },
+      chair1: { w: 0.85, d: 0.9 },
+      chair2: { w: 0.85, d: 0.9 },
+      shelf1: { w: 1.1, d: 0.6 },
+      shelf2: { w: 1.1, d: 0.6 },
+      center_table1: { w: 1.0, d: 0.7 },
+      center_table2: { w: 1.0, d: 0.7 },
+      table1: { w: 1.0, d: 0.7 },
+    };
 
-      let itemX = pos.x;
-      let itemZ = pos.z;
+    const getFootprint = (key, rot = { x: 0, y: 0, z: 0 }) => {
+      const base = itemFootprints[key] || { w: 0.9, d: 0.9 };
+      const rawY = Number(rot?.y || 0);
+      const snappedY = (((Math.round(rawY / 90) * 90) % 360) + 360) % 360;
+      const isQuarterTurn = snappedY === 90 || snappedY === 270;
+      return isQuarterTurn
+        ? { w: base.d, d: base.w }
+        : { w: base.w, d: base.d };
+    };
 
-      if (itemX > halfW - padX) itemX = halfW - padX;
-      if (itemX < -halfW + padX) itemX = -halfW + padX;
-      if (itemZ > halfL - padZ) itemZ = halfL - padZ;
-      if (itemZ < -halfL + padZ) itemZ = -halfL + padZ;
+    const getBoundaryPadding = (key, rot = { x: 0, y: 0, z: 0 }) => {
+      const fp = getFootprint(key, rot);
+      return {
+        x: fp.w / 2 + 0.06,
+        z: fp.d / 2 + 0.06,
+      };
+    };
 
-      // Check for overlap with existing items
-      let isOverlapping = false;
-      // Allow chairs to be closer to desks, otherwise larger strict radius for beds/wardrobes
-      let minDist = 1.4;
-      if (key.includes("chair")) minDist = 0.6;
-      else if (key.includes("desk")) minDist = 1.0;
+    const clampPosToBounds = (x, z, padX, padZ) => ({
+      x: Math.max(-halfW + padX, Math.min(halfW - padX, x)),
+      z: Math.max(-halfL + padZ, Math.min(halfL - padZ, z)),
+    });
+
+    const isInsideBounds = (x, z, padX, padZ) => {
+      return (
+        x <= halfW - padX &&
+        x >= -halfW + padX &&
+        z <= halfL - padZ &&
+        z >= -halfL + padZ
+      );
+    };
+
+    const isOverlappingAt = (key, rot, x, z) => {
+      const footprint = getFootprint(key, rot);
 
       for (let existing of furniture_data) {
-        let dx = existing.position.x - itemX;
-        let dz = existing.position.z - itemZ;
-        let dist = Math.sqrt(dx * dx + dz * dz);
-        if (dist < minDist) {
-          isOverlapping = true;
-          break;
+        const existingFp = getFootprint(
+          existing.model_key,
+          existing.rotation || { x: 0, y: 0, z: 0 },
+        );
+
+        const dx = Math.abs(existing.position.x - x);
+        const dz = Math.abs(existing.position.z - z);
+
+        let clearance = 0.11;
+        const chairDeskPair =
+          (key.includes("chair") && existing.model_key.includes("desk")) ||
+          (key.includes("desk") && existing.model_key.includes("chair"));
+        if (chairDeskPair) clearance = 0.08;
+        else if (
+          key.includes("chair") ||
+          existing.model_key.includes("chair")
+        ) {
+          clearance = 0.1;
+        }
+
+        const involvesLargeItem =
+          key.includes("bed") ||
+          existing.model_key.includes("bed") ||
+          key.includes("wardrobe") ||
+          existing.model_key.includes("wardrobe") ||
+          key.includes("shelf") ||
+          existing.model_key.includes("shelf");
+        if (involvesLargeItem) {
+          clearance = Math.max(clearance, 0.13);
+        }
+
+        const chairLargePair =
+          (key.includes("chair") &&
+            (existing.model_key.includes("bed") ||
+              existing.model_key.includes("wardrobe") ||
+              existing.model_key.includes("shelf"))) ||
+          (existing.model_key.includes("chair") &&
+            (key.includes("bed") ||
+              key.includes("wardrobe") ||
+              key.includes("shelf")));
+        if (chairLargePair) {
+          clearance = Math.max(clearance, 0.2);
+        }
+
+        const allowedX = (footprint.w + existingFp.w) / 2 + clearance;
+        const allowedZ = (footprint.d + existingFp.d) / 2 + clearance;
+
+        if (dx < allowedX && dz < allowedZ) {
+          return true;
         }
       }
 
-      // If overlapping with previously placed higher-priority items, omit it
-      if (isOverlapping) {
+      return false;
+    };
+
+    const buildPlacementCandidates = (key, pos, rot, padX, padZ) => {
+      const clamped = clampPosToBounds(pos.x, pos.z, padX, padZ);
+      const edgeXMin = -halfW + padX;
+      const edgeXMax = halfW - padX;
+      const edgeZMin = -halfL + padZ;
+      const edgeZMax = halfL - padZ;
+
+      const candidates = [];
+
+      // For chairs, first try to seat around any placed desk.
+      if (key.includes("chair")) {
+        const desk = [...furniture_data]
+          .reverse()
+          .find((entry) => String(entry.model_key || "").includes("desk"));
+
+        if (desk) {
+          const chairFp = getFootprint(key, rot);
+          const deskFp = getFootprint(
+            desk.model_key,
+            desk.rotation || { x: 0, y: 0, z: 0 },
+          );
+
+          const seatGap = 0.16;
+          const xOffset = (deskFp.w + chairFp.w) / 2 + seatGap;
+          const zOffset = (deskFp.d + chairFp.d) / 2 + seatGap;
+
+          candidates.push(
+            { x: desk.position.x - xOffset, z: desk.position.z },
+            { x: desk.position.x + xOffset, z: desk.position.z },
+            { x: desk.position.x, z: desk.position.z - zOffset },
+            { x: desk.position.x, z: desk.position.z + zOffset },
+          );
+        }
+      }
+
+      candidates.push(
+        { x: pos.x, z: pos.z },
+        { x: clamped.x, z: clamped.z },
+        { x: edgeXMin, z: edgeZMin },
+        { x: edgeXMax, z: edgeZMin },
+        { x: edgeXMin, z: edgeZMax },
+        { x: edgeXMax, z: edgeZMax },
+        { x: 0, z: edgeZMin },
+        { x: 0, z: edgeZMax },
+        { x: edgeXMin, z: 0 },
+        { x: edgeXMax, z: 0 },
+      );
+
+      if (!key.includes("chair")) {
+        candidates.push({ x: 0, z: 0 });
+      }
+
+      // De-duplicate and prioritize nearest to intended anchor.
+      const unique = [];
+      const seen = new Set();
+      candidates.forEach((c) => {
+        const keyStr = `${c.x.toFixed(3)}_${c.z.toFixed(3)}`;
+        if (!seen.has(keyStr)) {
+          seen.add(keyStr);
+          unique.push(c);
+        }
+      });
+
+      unique.sort((a, b) => {
+        const da = (a.x - pos.x) ** 2 + (a.z - pos.z) ** 2;
+        const db = (b.x - pos.x) ** 2 + (b.z - pos.z) ** 2;
+        return da - db;
+      });
+
+      return unique;
+    };
+
+    // Helper to safely add an item checking bounds and overlaps
+    const pushItem = (key, pos, rot, itemName = "Item") => {
+      const pad = getBoundaryPadding(key, rot);
+      let padX = Math.min(pad.x, Math.max(0.15, halfW - 0.1));
+      let padZ = Math.min(pad.z, Math.max(0.15, halfL - 0.1));
+
+      const candidates = buildPlacementCandidates(key, pos, rot, padX, padZ);
+      let placed = null;
+
+      for (const candidate of candidates) {
+        if (!isInsideBounds(candidate.x, candidate.z, padX, padZ)) continue;
+        if (isOverlappingAt(key, rot, candidate.x, candidate.z)) continue;
+        placed = candidate;
+        break;
+      }
+
+      if (!placed) {
         if (!omitted_items.includes(itemName) && itemName !== "Item") {
           omitted_items.push(itemName);
         }
-        return; // Skip adding this item to the room
+        return;
       }
 
       furniture_data.push({
         model_key: key,
-        position: { x: itemX, y: pos.y, z: itemZ },
+        position: { x: placed.x, y: pos.y, z: placed.z },
         rotation: rot,
+        scale: { x: 1, y: 1, z: 1 },
+      });
+
+      if (localModelPrices[key]) {
+        startingCost += localModelPrices[key];
+      }
+    };
+
+    // Mirrors are wall-mounted, so they should use free wall space
+    // instead of competing with floor area constraints.
+    const pushWallMirror = (key, itemName = "Mirror 1") => {
+      const minY = 0.8;
+      const maxY = Math.max(minY, heightM - 0.5);
+      const mirrorY = Math.max(minY, Math.min(maxY, heightM * 0.45));
+
+      furniture_data.push({
+        model_key: key,
+        position: { x: 0, y: mirrorY, z: -halfL + 0.04 },
+        rotation: { x: 0, y: 180, z: 0 },
         scale: { x: 1, y: 1, z: 1 },
       });
 
@@ -156,7 +343,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 1. Bed (Essential) - Placed in Back Left corner
     pushItem(
       bedKey,
-      { x: -halfW + 1.2, y: 0, z: -halfL + 1.5 },
+      { x: -halfW + 0.55, y: 0, z: -halfL + 0.65 },
       { x: 0, y: 0, z: 0 },
       "Bed",
     );
@@ -164,7 +351,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 2. Wardrobe (Essential) - Placed in Back Right corner
     pushItem(
       wardrobeKey,
-      { x: halfW - 0.8, y: 0, z: -halfL + 0.6 },
+      { x: halfW - 0.45, y: 0, z: -halfL + 0.45 },
       { x: 0, y: -90, z: 0 },
       "Wardrobe",
     );
@@ -173,13 +360,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (roomArea > 7.5) {
       pushItem(
         deskKey,
-        { x: halfW - 0.7, y: 0, z: halfL - 1.2 },
+        { x: halfW - 0.45, y: 0, z: halfL - 0.55 },
         { x: 0, y: -90, z: 0 },
         "Study Desk",
       );
       pushItem(
         chairKey,
-        { x: halfW - 1.5, y: 0, z: halfL - 1.2 },
+        { x: halfW - 0.95, y: 0, z: halfL - 1.3 },
         { x: 0, y: 90, z: 0 },
         "Office Chair",
       );
@@ -193,12 +380,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (roomArea > 10) {
         pushItem(
           shelfKey,
-          { x: -halfW + 0.6, y: 0, z: halfL - 0.6 },
+          { x: -halfW + 0.4, y: 0, z: halfL - 0.4 },
           { x: 0, y: 90, z: 0 },
-          "Bookshelf",
+          shelfLabel,
         );
       } else {
-        omitted_items.push("Bookshelf");
+        omitted_items.push(shelfLabel);
       }
     }
 
@@ -209,24 +396,15 @@ document.addEventListener("DOMContentLoaded", function () {
           tableKey,
           { x: 0, y: 0, z: 0 },
           { x: 0, y: 90, z: 0 },
-          "Center Table",
+          tableLabel,
         );
       } else {
-        omitted_items.push("Center Table");
+        omitted_items.push(tableLabel);
       }
     }
 
     if (isPremium) {
-      if (roomArea > 12) {
-        pushItem(
-          "mirror1",
-          { x: -halfW + 0.5, y: 0, z: 0 },
-          { x: 0, y: 90, z: 0 },
-          "Standing Mirror",
-        );
-      } else {
-        omitted_items.push("Standing Mirror");
-      }
+      pushWallMirror("mirror1", "Mirror 1");
     }
 
     const defaultRoomState = {
