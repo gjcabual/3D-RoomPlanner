@@ -914,7 +914,41 @@ function getItemName(modelKey) {
 const costState = {
   items: {}, // key -> {name, price, qty, unitCost}
   total: 0,
+  baseTotal: 0,
 };
+
+const spaceConstraintState = {
+  isCollapsed: false,
+};
+
+function getProjectBudget() {
+  const budget = parseFloat(localStorage.getItem("projectBudget"));
+  return Number.isFinite(budget) && budget > 0 ? budget : 0;
+}
+
+function buildCostItemsFromFurnitureData(furnitureData) {
+  const items = {};
+  if (!Array.isArray(furnitureData)) return items;
+
+  furnitureData.forEach((entry) => {
+    const modelKey = entry?.model_key;
+    if (!modelKey) return;
+
+    if (!items[modelKey]) {
+      const price = PRICE_LIST[modelKey] || 0;
+      items[modelKey] = {
+        name: getItemName(modelKey),
+        price,
+        qty: 0,
+        unitCost: price,
+      };
+    }
+
+    items[modelKey].qty += 1;
+  });
+
+  return items;
+}
 
 // Initialize the room with dimensions from localStorage
 function initializeRoom() {
@@ -1884,6 +1918,77 @@ function handleDrop(e) {
           pos.z = clampedZ;
         }
 
+        // Distribute mirrors along the selected wall so wall space is used
+        // before occupying floor space visually.
+        const minMirrorGap = 0.9;
+        const isHorizontalWall = wallName === "north" || wallName === "south";
+        const minAlong = isHorizontalWall
+          ? -innerX + halfAlongWall
+          : -innerZ + halfAlongWall;
+        const maxAlong = isHorizontalWall
+          ? innerX - halfAlongWall
+          : innerZ - halfAlongWall;
+        const baseAlong = isHorizontalWall ? pos.x : pos.z;
+
+        const existingMirrorCoords = Array.from(
+          document.querySelectorAll('[data-model-key^="mirror"]'),
+        )
+          .filter((el) => el !== furnitureEl)
+          .map((el) => {
+            const raw = el.getAttribute("position");
+            if (!raw) return null;
+
+            const p =
+              typeof raw === "string"
+                ? (() => {
+                    const [x, y, z] = raw.split(" ").map(Number);
+                    return { x, y, z };
+                  })()
+                : raw;
+
+            if (
+              !p ||
+              typeof p.x !== "number" ||
+              typeof p.z !== "number" ||
+              !Number.isFinite(p.x) ||
+              !Number.isFinite(p.z)
+            ) {
+              return null;
+            }
+
+            const eps = 0.08;
+            let mirrorWall = "";
+            if (Math.abs(p.z - (-innerZ + 0.02)) <= eps) mirrorWall = "north";
+            else if (Math.abs(p.z - (innerZ - 0.02)) <= eps)
+              mirrorWall = "south";
+            else if (Math.abs(p.x - (-innerX + 0.02)) <= eps)
+              mirrorWall = "west";
+            else if (Math.abs(p.x - (innerX - 0.02)) <= eps)
+              mirrorWall = "east";
+
+            if (mirrorWall !== wallName) return null;
+            return isHorizontalWall ? p.x : p.z;
+          })
+          .filter((v) => typeof v === "number" && Number.isFinite(v));
+
+        let resolvedAlong = baseAlong;
+        let attempts = 0;
+        while (
+          attempts < 16 &&
+          existingMirrorCoords.some(
+            (coord) => Math.abs(coord - resolvedAlong) < minMirrorGap,
+          )
+        ) {
+          const dir = attempts % 2 === 0 ? 1 : -1;
+          const ring = Math.floor(attempts / 2) + 1;
+          const candidate = baseAlong + dir * ring * minMirrorGap;
+          resolvedAlong = Math.max(minAlong, Math.min(maxAlong, candidate));
+          attempts += 1;
+        }
+
+        if (isHorizontalWall) pos.x = resolvedAlong;
+        else pos.z = resolvedAlong;
+
         furnitureEl.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
         const rotY =
           wallName === "north"
@@ -1993,22 +2098,40 @@ function renderCost() {
       costItemsList.appendChild(row);
     }
   });
-  costState.total = total; // Total project cost (sum of all line totals)
+  const hasItemizedCosts = Object.keys(costState.items).length > 0;
+  const budget = getProjectBudget();
+
+  let baseTotal =
+    typeof costState.baseTotal === "number" &&
+    Number.isFinite(costState.baseTotal)
+      ? costState.baseTotal
+      : 0;
+
+  // Backward compatibility for existing saved states that may have only `total`.
+  if (!hasItemizedCosts && baseTotal <= 0 && costState.total > 0) {
+    baseTotal = costState.total;
+    costState.baseTotal = baseTotal;
+  }
+
+  const displayTotal = Math.max(0, baseTotal + total);
+
+  costState.total = displayTotal; // Final total shown in the UI
   const totalEl = document.getElementById("cost-total");
-  if (totalEl) totalEl.textContent = peso(total);
+  if (totalEl) totalEl.textContent = peso(displayTotal);
   const totalDisplay = document.getElementById("cost-total-display");
   if (totalDisplay) {
-    totalDisplay.textContent = peso(total);
-    const budget = parseFloat(localStorage.getItem("projectBudget")) || 0;
+    totalDisplay.textContent = peso(displayTotal);
     const budgetDisplay = document.getElementById("cost-budget-display");
     if (budgetDisplay) budgetDisplay.textContent = peso(budget);
 
-    if (budget > 0 && total > budget) {
+    if (budget > 0 && displayTotal > budget) {
       totalDisplay.style.color = "#ff4444"; // Red color
     } else {
       totalDisplay.style.color = ""; // Default color
     }
   }
+
+  renderSpaceConstraintPanel(displayTotal, budget);
 }
 
 // Remove one instance of an item by modelKey (remove last placed instance)
@@ -2965,12 +3088,51 @@ async function restoreRoom(roomData) {
     }
 
     // Restore cost state
-    if (
+    const hasPersistedItems =
       roomData.costState &&
       roomData.costState.items &&
-      typeof roomData.costState.items === "object"
-    ) {
+      typeof roomData.costState.items === "object" &&
+      Object.keys(roomData.costState.items).length > 0;
+
+    if (hasPersistedItems) {
       costState.items = roomData.costState.items;
+
+      const persistedBaseTotal =
+        roomData.costState &&
+        typeof roomData.costState.baseTotal === "number" &&
+        Number.isFinite(roomData.costState.baseTotal)
+          ? roomData.costState.baseTotal
+          : null;
+
+      if (typeof persistedBaseTotal === "number" && persistedBaseTotal > 0) {
+        costState.baseTotal = persistedBaseTotal;
+      } else {
+        // Legacy compatibility:
+        // Old saves stored only itemized totals; infer baseline from budget target.
+        const persistedItemsTotal = Object.values(
+          roomData.costState.items,
+        ).reduce((sum, item) => {
+          const unit = Number(item?.unitCost ?? item?.price ?? 0);
+          const qty = Number(item?.qty ?? 0);
+          return sum + unit * qty;
+        }, 0);
+        const persistedTotal =
+          typeof roomData.costState.total === "number" &&
+          Number.isFinite(roomData.costState.total)
+            ? roomData.costState.total
+            : 0;
+        const budgetTarget = getProjectBudget();
+
+        if (
+          budgetTarget > 0 &&
+          Math.abs(persistedTotal - persistedItemsTotal) < 0.01
+        ) {
+          costState.baseTotal = budgetTarget;
+        } else {
+          costState.baseTotal = 0;
+        }
+      }
+
       costState.total =
         typeof roomData.costState.total === "number"
           ? roomData.costState.total
@@ -2983,9 +3145,30 @@ async function restoreRoom(roomData) {
       if (costPanel && Object.keys(costState.items).length > 0) {
         costPanel.classList.remove("collapsed");
       }
-    } else if (roomData.cost_total) {
-      // If only cost_total is provided, update it
-      costState.total = roomData.cost_total;
+    } else {
+      // Premade-room fallback: rebuild item rows from restored furniture.
+      costState.items = buildCostItemsFromFurnitureData(furnitureData);
+
+      const itemizedTotal = Object.values(costState.items).reduce(
+        (sum, item) => {
+          const unit = Number(item?.unitCost ?? item?.price ?? 0);
+          const qty = Number(item?.qty ?? 0);
+          return sum + unit * qty;
+        },
+        0,
+      );
+
+      const budgetTarget = getProjectBudget();
+      if (budgetTarget > 0) {
+        costState.baseTotal = budgetTarget - itemizedTotal;
+        costState.total = budgetTarget;
+      } else if (typeof roomData.cost_total === "number") {
+        costState.baseTotal = roomData.cost_total - itemizedTotal;
+        costState.total = roomData.cost_total;
+      } else {
+        costState.baseTotal = 0;
+        costState.total = itemizedTotal;
+      }
       renderCost();
     }
 
@@ -3467,88 +3650,223 @@ window.showDeskSubcategory = showDeskSubcategory;
 window.showMirrorSubcategory = showMirrorSubcategory;
 window.showShelfSubcategory = showShelfSubcategory;
 
-// Feature: Display omitted items notification
-function displayOmittedItemsNotification() {
+function getOmittedItemsFromStorage() {
   const omittedStr = localStorage.getItem("omittedItems");
-  if (!omittedStr) return;
+  if (!omittedStr) return [];
 
   try {
     const omittedItems = JSON.parse(omittedStr);
-    if (!Array.isArray(omittedItems) || omittedItems.length === 0) return;
+    if (!Array.isArray(omittedItems)) return [];
 
-    // Find right edge HUD stack to append to
-    const hudStack = document.getElementById("hud-stack") || document.body;
-
-    const panel = document.createElement("div");
-    panel.id = "omitted-items-panel";
-    panel.className = "panel";
-    panel.style.cssText = `
-      position: relative;
-      margin-top: 12px;
-      width: 100%;
-      box-sizing: border-box;
-      opacity: 0;
-      transform: translateX(20px);
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      /* Minimalist specific overrides overriding base panel where needed */
-      background: var(--color-bg-panel, rgba(20, 20, 20, 0.95));
-      border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.08));
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    `;
-
-    const itemList = omittedItems
-      .map(
-        (item) => `
-      <li style="margin-bottom: 6px; display: flex; align-items: center; color: #d1d5db;">
-        <span style="color: #ef4444; margin-right: 8px; font-size: 14px;">•</span> 
-        <span style="font-size: 13px;">${item}</span>
-      </li>
-    `,
-      )
-      .join("");
-
-    panel.innerHTML = `
-      <button onclick="this.parentElement.style.opacity='0'; this.parentElement.style.transform='translateX(20px)'; setTimeout(() => this.parentElement.remove(), 400)" 
-              style="position: absolute; top: 12px; right: 12px; background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 50%; transition: all 0.2s;"
-              onmouseover="this.style.color='white'; this.style.background='rgba(255,255,255,0.1)'"
-              onmouseout="this.style.color='rgba(255,255,255,0.4)'; this.style.background='none'">
-        ✕
-      </button>
-      <div style="display: flex; align-items: center; margin-bottom: 14px; gap: 10px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-        <h3 style="margin: 0; font-size: 14px; color: #f3f4f6; font-weight: 600; letter-spacing: 0.3px;">Space Constraint</h3>
-      </div>
-      <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #9ca3af; line-height: 1.45;">These budget items couldn't fit and were omitted to prevent overlapping:</p>
-      <ul style="margin: 0 0 14px 0; padding: 0 0 0 4px; list-style: none;">
-        ${itemList}
-      </ul>
-      <div style="font-size: 12px; color: #8b92a2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; display: flex; gap: 6px; align-items: flex-start;">
-        <span style="font-size: 13px;">💡</span> 
-        <i style="line-height: 1.4;">Tip: Increase room dimensions significantly to fit the full premium set.</i>
-      </div>
-    `;
-
-    hudStack.appendChild(panel);
-
-    // Trigger entry animation
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        panel.style.opacity = "1";
-        panel.style.transform = "translateX(0)";
-      });
+    const uniqueItems = [];
+    omittedItems.forEach((item) => {
+      if (
+        typeof item === "string" &&
+        item.trim().length > 0 &&
+        !uniqueItems.includes(item)
+      ) {
+        uniqueItems.push(item);
+      }
     });
 
-    // Clear so it doesn't show again on simple page refresh
-    localStorage.removeItem("omittedItems");
-  } catch (e) {
-    console.error("Error parsing omitted items", e);
+    return uniqueItems;
+  } catch (error) {
+    console.error("Error parsing omitted items", error);
+    return [];
   }
+}
+
+function getPlacedModelKeysForConstraint() {
+  const placed = new Set();
+
+  if (costState && costState.items && typeof costState.items === "object") {
+    Object.keys(costState.items).forEach((modelKey) => {
+      const qty = Number(costState.items[modelKey]?.qty || 0);
+      if (qty > 0) placed.add(modelKey);
+    });
+  }
+
+  document.querySelectorAll("[data-model-key]").forEach((el) => {
+    const modelKey = el.getAttribute("data-model-key");
+    if (typeof modelKey === "string" && modelKey.trim().length > 0) {
+      placed.add(modelKey.trim());
+    }
+  });
+
+  return placed;
+}
+
+function getOmittedModelCandidates(itemLabel) {
+  const label = String(itemLabel || "")
+    .trim()
+    .toLowerCase();
+  if (!label) return [];
+
+  if (label.includes("mirror")) return ["mirror1", "mirror2"];
+  if (label.includes("bookshelf") || label.includes("shelf"))
+    return ["shelf1", "shelf2"];
+  if (label.includes("center table") || label.includes("table"))
+    return ["center_table1", "center_table2", "table1"];
+  if (label.includes("desk")) return ["desk1", "desk2"];
+  if (label.includes("chair")) return ["chair1", "chair2"];
+  if (label.includes("wardrobe"))
+    return ["wardrobe1", "wardrobe2", "wardrobe3"];
+  if (label.includes("bed")) return ["bed1", "bed2"];
+
+  return [];
+}
+
+function normalizeOmittedLabel(itemLabel) {
+  const original = String(itemLabel || "").trim();
+  const label = original.toLowerCase();
+  if (!label) return original;
+
+  if (label.includes("standing mirror")) return "Mirrors";
+  if (label.includes("bookshelf")) return "Shelves";
+  return original;
+}
+
+function hasCategoryEntryInMainPanel(categoryKey) {
+  const sidePanel = document.getElementById("side-panel");
+  if (!sidePanel) return true;
+
+  if (sidePanel.querySelector(`.model-item[data-category="${categoryKey}"]`)) {
+    return true;
+  }
+
+  const originalContent = sidePanel.dataset?.originalContent || "";
+  return originalContent.includes(`data-category="${categoryKey}"`);
+}
+
+function getVisibleOmittedItems(omittedItems) {
+  const placedModelKeys = getPlacedModelKeysForConstraint();
+  const visible = [];
+
+  omittedItems.forEach((item) => {
+    const normalizedLabel = normalizeOmittedLabel(item);
+    const candidates = getOmittedModelCandidates(item);
+
+    if (
+      candidates.includes("shelf1") &&
+      candidates.includes("shelf2") &&
+      !hasCategoryEntryInMainPanel("shelf")
+    ) {
+      return;
+    }
+
+    if (
+      candidates.includes("mirror1") &&
+      candidates.includes("mirror2") &&
+      !hasCategoryEntryInMainPanel("mirror")
+    ) {
+      return;
+    }
+
+    const isResolvedByPlacement = candidates.some((modelKey) =>
+      placedModelKeys.has(modelKey),
+    );
+    if (isResolvedByPlacement) return;
+
+    if (!visible.includes(normalizedLabel)) {
+      visible.push(normalizedLabel);
+    }
+  });
+
+  return visible;
+}
+
+function ensureSpaceConstraintPanel() {
+  let panel = document.getElementById("omitted-items-panel");
+  if (panel) return panel;
+
+  const hudStack = document.getElementById("hud-stack") || document.body;
+  panel = document.createElement("div");
+  panel.id = "omitted-items-panel";
+  panel.className = "panel space-constraint-panel hidden";
+  panel.innerHTML = `
+    <button type="button" class="space-constraint-toggle" aria-expanded="true">
+      <span class="space-constraint-title-wrap">
+        <span class="space-constraint-title">Space Constraint</span>
+        <span class="space-constraint-subtitle">Items omitted to avoid overlap</span>
+      </span>
+      <span class="space-constraint-count">0</span>
+      <span class="space-constraint-chevron">v</span>
+    </button>
+    <div class="space-constraint-body">
+      <p class="space-constraint-text">These budget items could not fit and were omitted to prevent overlapping:</p>
+      <ul class="space-constraint-list"></ul>
+      <p class="space-constraint-tip">Tip: Increase room dimensions to fit the full premium set.</p>
+    </div>
+  `;
+
+  const toggleBtn = panel.querySelector(".space-constraint-toggle");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const shouldCollapse = !panel.classList.contains("collapsed");
+      setSpaceConstraintCollapsed(panel, shouldCollapse);
+    });
+  }
+
+  hudStack.appendChild(panel);
+  return panel;
+}
+
+function setSpaceConstraintCollapsed(panel, shouldCollapse) {
+  if (!panel) return;
+
+  panel.classList.toggle("collapsed", shouldCollapse);
+  spaceConstraintState.isCollapsed = shouldCollapse;
+
+  const toggleBtn = panel.querySelector(".space-constraint-toggle");
+  if (toggleBtn) {
+    toggleBtn.setAttribute("aria-expanded", shouldCollapse ? "false" : "true");
+  }
+}
+
+function renderSpaceConstraintPanel(currentTotal = costState.total, budget) {
+  const omittedItems = getVisibleOmittedItems(getOmittedItemsFromStorage());
+  const panel = ensureSpaceConstraintPanel();
+  if (!panel) return;
+
+  if (omittedItems.length === 0) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  panel.classList.remove("hidden");
+
+  const listEl = panel.querySelector(".space-constraint-list");
+  if (listEl) {
+    listEl.innerHTML = "";
+    omittedItems.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "space-constraint-item";
+      li.textContent = item;
+      listEl.appendChild(li);
+    });
+  }
+
+  const countEl = panel.querySelector(".space-constraint-count");
+  if (countEl) {
+    countEl.textContent = String(omittedItems.length);
+  }
+
+  const budgetValue =
+    typeof budget === "number" && Number.isFinite(budget)
+      ? budget
+      : getProjectBudget();
+
+  // Auto-close when total is at or below budget target.
+  if (budgetValue > 0 && currentTotal <= budgetValue) {
+    setSpaceConstraintCollapsed(panel, true);
+  } else {
+    setSpaceConstraintCollapsed(panel, spaceConstraintState.isCollapsed);
+  }
+}
+
+// Feature: Display omitted items notification
+function displayOmittedItemsNotification() {
+  renderSpaceConstraintPanel(costState.total, getProjectBudget());
 }
 
 window.displayOmittedItemsNotification = displayOmittedItemsNotification;
