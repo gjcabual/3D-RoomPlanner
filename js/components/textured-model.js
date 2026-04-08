@@ -52,6 +52,7 @@
         color: new THREE.Color("#d9d9d9"),
         roughness: 0.08,
         metalness: 0.85,
+        side: THREE.DoubleSide,
       });
     } else {
       material = new THREE.MeshStandardMaterial({
