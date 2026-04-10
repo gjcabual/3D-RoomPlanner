@@ -23,15 +23,29 @@ class VirtualJoystick {
   }
 
   init() {
-    // Only initialize on touch devices or small screens
-    if (!("ontouchstart" in window) && window.innerWidth > 768) {
+    // Enable joystick on true touch devices, coarse-pointer devices,
+    // and small viewports (covers Chrome DevTools mobile emulation).
+    const hasTouch =
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      navigator.msMaxTouchPoints > 0;
+    const hasCoarsePointer =
+      typeof window.matchMedia === "function" &&
+      (window.matchMedia("(pointer: coarse)").matches ||
+        window.matchMedia("(any-pointer: coarse)").matches);
+    const isSmallViewport =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(max-width: 1024px)").matches
+        : window.innerWidth <= 1024;
+
+    if (!hasTouch && !hasCoarsePointer && !isSmallViewport) {
       return;
     }
 
     this.container = document.createElement("div");
     this.container.id = "virtual-joystick-base";
     Object.assign(this.container.style, {
-      position: "absolute",
+      position: "fixed",
       bottom: "120px",
       left: "30px",
       width: "100px",
@@ -39,7 +53,7 @@ class VirtualJoystick {
       borderRadius: "50%",
       backgroundColor: "rgba(255, 255, 255, 0.2)",
       border: "2px solid rgba(255, 255, 255, 0.5)",
-      zIndex: "900",
+      zIndex: "1700",
       touchAction: "none",
       display: "flex",
       justifyContent: "center",
