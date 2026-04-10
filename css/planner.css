@@ -1395,6 +1395,11 @@ body.mobile-layout #cost-panel {
   max-width: 100%;
 }
 
+body.mobile-layout #cost-panel.collapsed {
+  width: 48px;
+  max-width: 48px;
+}
+
 body.mobile-layout #cost-panel:hover {
   transform: none;
 }
