@@ -1775,6 +1775,12 @@ body.mobile-layout .drop-indicator {
   pointer-events: none !important;
 }
 
+body.mobile-layout #scene,
+body.mobile-layout #scene canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
 body.mobile-layout #virtual-joystick-base {
   bottom: 120px !important;
   left: 38px !important;

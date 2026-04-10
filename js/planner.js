@@ -206,6 +206,110 @@ function isMobilePlacementMode() {
   );
 }
 
+function ensureMobileTouchLookControls() {
+  const mobileMode = isMobilePlacementMode();
+  const scene = document.getElementById("scene");
+  const camera = document.querySelector("a-camera");
+
+  const applyTouchAction = () => {
+    if (!scene) return;
+
+    scene.style.touchAction = mobileMode ? "none" : "";
+    scene.style.overscrollBehavior = mobileMode ? "none" : "";
+
+    if (scene.canvas) {
+      scene.canvas.style.touchAction = mobileMode ? "none" : "";
+      scene.canvas.style.overscrollBehavior = mobileMode ? "none" : "";
+    }
+  };
+
+  applyTouchAction();
+
+  if (scene && scene.dataset.touchLookBound !== "true") {
+    scene.addEventListener("render-target-loaded", applyTouchAction);
+    scene.dataset.touchLookBound = "true";
+  }
+
+  if (!camera) return;
+
+  // In mobile/devtools emulation, use custom pointer drag fallback for
+  // consistent pitch (up/down) support, then keep native mouse look enabled.
+  camera.setAttribute("look-controls", "touchEnabled", !mobileMode);
+  camera.setAttribute("look-controls", "mouseEnabled", true);
+  camera.setAttribute("look-controls", "pointerLockEnabled", false);
+
+  setupMobileDragLookFallback();
+}
+
+function setupMobileDragLookFallback() {
+  const scene = document.getElementById("scene");
+  const camera = document.querySelector("a-camera");
+  if (!scene || !camera || scene.dataset.mobileDragLookBound === "true") {
+    return;
+  }
+
+  const state = {
+    active: false,
+    pointerId: null,
+    lastX: 0,
+    lastY: 0,
+  };
+
+  const getLookControls = () => camera.components?.["look-controls"];
+
+  const stopDrag = () => {
+    state.active = false;
+    state.pointerId = null;
+  };
+
+  const onPointerDown = (e) => {
+    if (!isMobilePlacementMode()) return;
+
+    state.active = true;
+    state.pointerId = e.pointerId;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+  };
+
+  const onPointerMove = (e) => {
+    if (!state.active || e.pointerId !== state.pointerId) return;
+    if (!isMobilePlacementMode()) {
+      stopDrag();
+      return;
+    }
+
+    const lookControls = getLookControls();
+    if (!lookControls || lookControls.data?.enabled === false) return;
+
+    const dx = e.clientX - state.lastX;
+    const dy = e.clientY - state.lastY;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+
+    const sensitivity = 0.0022;
+    const yawObject = lookControls.yawObject;
+    const pitchObject = lookControls.pitchObject;
+    if (!yawObject || !pitchObject) return;
+
+    yawObject.rotation.y -= dx * sensitivity;
+    pitchObject.rotation.x -= dy * sensitivity;
+
+    const maxPitch = Math.PI / 2 - 0.01;
+    if (pitchObject.rotation.x > maxPitch) pitchObject.rotation.x = maxPitch;
+    if (pitchObject.rotation.x < -maxPitch) pitchObject.rotation.x = -maxPitch;
+
+    e.preventDefault();
+  };
+
+  scene.addEventListener("pointerdown", onPointerDown, { passive: true });
+  window.addEventListener("pointermove", onPointerMove, { passive: false });
+  window.addEventListener("pointerup", stopDrag, true);
+  window.addEventListener("pointercancel", stopDrag, true);
+  window.addEventListener("blur", stopDrag);
+
+  scene.dataset.mobileDragLookBound = "true";
+}
+
 function updateResponsivePlannerMode() {
   const mobileMode = isMobilePlacementMode();
 
@@ -227,6 +331,7 @@ function updateResponsivePlannerMode() {
     }
   }
 
+  ensureMobileTouchLookControls();
   syncInstructionsHelpMode();
 }
 
@@ -3769,6 +3874,8 @@ window.addEventListener("load", async function () {
   const scene = document.querySelector("a-scene");
 
   async function onSceneLoaded() {
+    ensureMobileTouchLookControls();
+
     LoadingController.updateStatus("Building room...");
     LoadingController.updateProgress(10);
 
