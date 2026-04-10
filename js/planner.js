@@ -7,6 +7,49 @@ let furnitureCounter = 0;
 let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
 
+function isMobilePlacementMode() {
+  const hasTouch =
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0 ||
+    navigator.msMaxTouchPoints > 0;
+  const hasCoarsePointer =
+    typeof window.matchMedia === "function" &&
+    (window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(any-pointer: coarse)").matches);
+  const isNarrowViewport =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 900px)").matches
+      : window.innerWidth <= 900;
+
+  return (
+    isNarrowViewport ||
+    hasCoarsePointer ||
+    (hasTouch && window.innerWidth <= 1024)
+  );
+}
+
+function updateResponsivePlannerMode() {
+  const mobileMode = isMobilePlacementMode();
+
+  if (document.body) {
+    document.body.classList.toggle("mobile-layout", mobileMode);
+  }
+
+  const dropIndicator = document.getElementById("drop-indicator");
+  if (dropIndicator && mobileMode) {
+    dropIndicator.classList.remove("show");
+  }
+
+  const toggle = document.getElementById("panel-toggle");
+  if (toggle) {
+    if (panelOpen) {
+      toggle.style.left = mobileMode ? "12px" : "310px";
+    } else {
+      toggle.style.left = mobileMode ? "12px" : "20px";
+    }
+  }
+}
+
 // ============= LOADING OVERLAY CONTROLLER =============
 const LoadingController = {
   overlay: null,
@@ -1025,8 +1068,10 @@ function initializeRoom() {
     const hasFurniture =
       furnitureContainer && furnitureContainer.children.length > 0;
     const dropIndicator = document.getElementById("drop-indicator");
-    if (!hasFurniture && dropIndicator) {
+    if (!hasFurniture && dropIndicator && !isMobilePlacementMode()) {
       dropIndicator.classList.add("show");
+    } else if (dropIndicator) {
+      dropIndicator.classList.remove("show");
     }
     // Note: roomReady event is now dispatched after all async work is complete in window.load handler
   }, 500);
@@ -1400,6 +1445,7 @@ function createBlenderGrid() {
 
 function togglePanel() {
   panelOpen = !panelOpen;
+  const mobileMode = isMobilePlacementMode();
   const panel = document.getElementById("side-panel");
   const toggle = document.getElementById("panel-toggle");
   const resizePanel = document.getElementById("resize-dimension-panel");
@@ -1416,7 +1462,7 @@ function togglePanel() {
     if (toggle) {
       toggle.innerHTML =
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-      toggle.style.left = "310px";
+      toggle.style.left = mobileMode ? "12px" : "310px";
     }
   } else {
     if (panel) {
@@ -1425,7 +1471,7 @@ function togglePanel() {
     if (toggle) {
       toggle.innerHTML =
         '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
-      toggle.style.left = "20px";
+      toggle.style.left = mobileMode ? "12px" : "20px";
     }
     // Hide resize panel if open
     if (resizePanel) {
@@ -1647,23 +1693,49 @@ function toggleCostPanel() {
 }
 
 function initializeDragAndDrop() {
-  // Only enable drag for enabled items (table)
+  updateResponsivePlannerMode();
+  const mobileMode = isMobilePlacementMode();
+
+  // Bind drag/tap handlers only for placeable model cards.
   const enabledItems = document.querySelectorAll(".model-item.enabled");
   const scene = document.getElementById("scene");
   const dropIndicator = document.getElementById("drop-indicator");
 
   enabledItems.forEach((item) => {
-    item.addEventListener("dragstart", handleDragStart);
+    const hasModelKey = !!item.getAttribute("data-model");
+    if (!hasModelKey) return;
+
+    if (item.dataset.dragBound !== "true") {
+      item.addEventListener("dragstart", handleDragStart);
+      item.dataset.dragBound = "true";
+    }
+
+    if (mobileMode) {
+      item.setAttribute("draggable", "false");
+      if (item.dataset.tapBound !== "true") {
+        item.addEventListener("click", handlePaletteItemTapToPlace);
+        item.dataset.tapBound = "true";
+      }
+    } else {
+      item.setAttribute("draggable", "true");
+      if (item.dataset.tapBound === "true") {
+        item.removeEventListener("click", handlePaletteItemTapToPlace);
+        item.dataset.tapBound = "false";
+      }
+    }
   });
 
   // Scene drop events
-  scene.addEventListener("dragover", handleDragOver);
-  scene.addEventListener("drop", handleDrop);
-  scene.addEventListener("dragenter", handleDragEnter);
-  scene.addEventListener("dragleave", handleDragLeave);
+  if (scene && scene.dataset.dropEventsBound !== "true") {
+    scene.addEventListener("dragover", handleDragOver);
+    scene.addEventListener("drop", handleDrop);
+    scene.addEventListener("dragenter", handleDragEnter);
+    scene.addEventListener("dragleave", handleDragLeave);
+    scene.dataset.dropEventsBound = "true";
+  }
 
   // Drop indicator drop events (allow dropping on the indicator itself)
-  if (dropIndicator) {
+  if (dropIndicator && dropIndicator.dataset.dropEventsBound !== "true") {
     dropIndicator.addEventListener("dragover", handleDragOver);
     dropIndicator.addEventListener("drop", handleDrop);
     dropIndicator.addEventListener("dragenter", function (e) {
@@ -1675,16 +1747,50 @@ function initializeDragAndDrop() {
         dropIndicator.classList.remove("show");
       }
     });
+    dropIndicator.dataset.dropEventsBound = "true";
+  }
+
+  if (mobileMode && dropIndicator) {
+    dropIndicator.classList.remove("show");
   }
 }
 
-function handleDragStart(e) {
-  draggedItem = {
-    model: e.target.dataset.model,
-    scale: e.target.dataset.scale,
-    name: e.target.querySelector(".model-name").textContent,
+function getPaletteItemData(modelItem) {
+  if (!modelItem) return null;
+
+  const modelKey = modelItem.getAttribute("data-model");
+  if (!modelKey) return null;
+
+  const nameEl = modelItem.querySelector(".model-name");
+  return {
+    model: modelKey,
+    scale: modelItem.getAttribute("data-scale") || "1 1 1",
+    name: nameEl ? nameEl.textContent : getItemName(modelKey),
   };
-  e.target.classList.add("dragging");
+}
+
+function handlePaletteItemTapToPlace(e) {
+  if (!isMobilePlacementMode()) return;
+
+  const itemData = getPaletteItemData(e.currentTarget);
+  if (!itemData) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  draggedItem = itemData;
+  handleDrop({
+    preventDefault() {},
+  });
+}
+
+function handleDragStart(e) {
+  const modelItem = e.currentTarget || e.target.closest(".model-item");
+  const itemData = getPaletteItemData(modelItem);
+  if (!itemData) return;
+
+  draggedItem = itemData;
+  modelItem.classList.add("dragging");
 
   // Hide the drop indicator when dragging starts
   const dropIndicator = document.getElementById("drop-indicator");
@@ -3424,6 +3530,22 @@ function showWelcomeDialog() {
 
 // Initialize room when page loads
 window.addEventListener("load", async function () {
+  updateResponsivePlannerMode();
+
+  let responsiveUpdateTimer = null;
+  const handleResponsiveViewportChange = () => {
+    if (responsiveUpdateTimer) {
+      clearTimeout(responsiveUpdateTimer);
+    }
+    responsiveUpdateTimer = setTimeout(() => {
+      updateResponsivePlannerMode();
+      initializeDragAndDrop();
+    }, 120);
+  };
+
+  window.addEventListener("resize", handleResponsiveViewportChange);
+  window.addEventListener("orientationchange", handleResponsiveViewportChange);
+
   // Wait for HTML components to load
   if (window.htmlLoader) {
     await window.htmlLoader.ready;
