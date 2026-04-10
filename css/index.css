@@ -47,7 +47,7 @@ body::before {
   margin: 0 auto;
   box-sizing: border-box;
   max-height: calc(100vh - 20px);
-    overflow-y: auto;
+  overflow-y: auto;
   gap: 3px;
   margin-bottom: 8px;
 }
@@ -102,6 +102,8 @@ body::before {
   transform-style: preserve-3d;
   transform: rotateX(-20deg) rotateY(45deg);
   animation: float 6s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
 }
 
 @keyframes float {
@@ -121,6 +123,7 @@ body::before {
   border: 2.5px solid #ffffff;
   background: transparent;
   opacity: 0.9;
+  pointer-events: none;
 }
 
 .cube-front {
@@ -156,9 +159,9 @@ body::before {
 /* Dimension Inputs Wrapper */
 .dimension-inputs-wrapper {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   pointer-events: none;
+  z-index: 5;
 }
 
 .dimension-input-group {
@@ -167,6 +170,7 @@ body::before {
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+  z-index: 6;
 }
 
 .dimension-label {
@@ -209,6 +213,7 @@ body::before {
 }
 
 .dimension-input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
@@ -703,7 +708,8 @@ body::before {
   margin-bottom: 25px;
 }
 
-.dimension-section, .budget-section {
+.dimension-section,
+.budget-section {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -774,7 +780,9 @@ body::before {
 }
 
 @keyframes fadeIn {
-  to { opacity: 1; }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -782,12 +790,79 @@ body::before {
     flex-direction: column;
     gap: 20px;
   }
+
   .vertical-divider {
     width: 80%;
     height: 1px;
     margin: 5px 0;
   }
+
+  .room-visualization {
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .dimension-inputs-wrapper {
+    position: static;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px 18px;
+    pointer-events: auto;
+    z-index: 7;
+  }
+
+  .dimension-input-group {
+    position: static;
+    transform: none !important;
+  }
+
+  .dimension-width,
+  .dimension-height,
+  .dimension-length {
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+  }
+
+  .dimension-width {
+    order: 1;
+  }
+
+  .dimension-height {
+    order: 2;
+  }
+
+  .dimension-length {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dimension-input {
+    min-height: 36px;
+  }
 }
-. i n t r o - c o n t a i n e r : : - w e b k i t - s c r o l l b a r   {   w i d t h :   0 p x ;   } 
- 
- 
+
+@media (max-width: 480px) {
+  .dimension-inputs-wrapper {
+    gap: 8px 12px;
+  }
+
+  .dimension-label {
+    min-width: 22px;
+  }
+}
+.intro-container::-webkit-scrollbar {
+  width: 0px;
+}
