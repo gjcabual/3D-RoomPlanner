@@ -4267,7 +4267,7 @@ function ensureSpaceConstraintPanel() {
         <span class="space-constraint-subtitle">Items omitted to avoid overlap</span>
       </span>
       <span class="space-constraint-count">0</span>
-      <span class="space-constraint-chevron">v</span>
+      <span class="space-constraint-chevron" aria-hidden="true"></span>
     </button>
     <div class="space-constraint-body">
       <p class="space-constraint-text">These budget items could not fit and were omitted to prevent overlapping:</p>
