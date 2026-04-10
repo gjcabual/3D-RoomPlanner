@@ -1397,7 +1397,6 @@ body.mobile-layout #cost-panel {
 
 body.mobile-layout #cost-panel.collapsed {
   width: 48px;
-  max-width: 48px;
 }
 
 body.mobile-layout #cost-panel:hover {
