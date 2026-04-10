@@ -1375,3 +1375,193 @@ kbd {
     padding: 15px;
   }
 }
+
+/* Mobile layout refinements (enabled via body.mobile-layout class) */
+body.mobile-layout #hud-stack {
+  top: 10px;
+  right: 8px;
+  left: auto;
+  width: min(92vw, 340px);
+  gap: 8px;
+  align-items: flex-end;
+}
+
+body.mobile-layout #profile-circle {
+  align-self: flex-end;
+}
+
+body.mobile-layout #cost-panel {
+  width: 100%;
+  max-width: 100%;
+}
+
+body.mobile-layout #cost-panel:hover {
+  transform: none;
+}
+
+body.mobile-layout .cost-header,
+body.mobile-layout .cost-body,
+body.mobile-layout .cost-footer {
+  min-width: 0;
+}
+
+body.mobile-layout .cost-header {
+  padding: 12px 14px;
+}
+
+body.mobile-layout .cost-header h3 {
+  font-size: 0.95em;
+  line-height: 1.2;
+  text-align: left;
+  white-space: normal;
+}
+
+body.mobile-layout .cost-body {
+  height: min(42vh, 250px);
+  max-height: min(42vh, 250px);
+  min-height: 130px;
+  padding: 10px 12px;
+}
+
+body.mobile-layout .cost-footer {
+  padding: 12px;
+}
+
+body.mobile-layout .cost-total-row {
+  font-size: 0.94em;
+}
+
+body.mobile-layout .cost-item {
+  gap: 8px;
+  align-items: flex-start;
+}
+
+body.mobile-layout .cost-item-total {
+  margin-left: 0;
+  font-size: 0.92em;
+}
+
+body.mobile-layout .cost-item-actions {
+  gap: 6px;
+}
+
+body.mobile-layout .cost-save-row {
+  flex-wrap: wrap;
+}
+
+body.mobile-layout .cost-save-btn {
+  width: 100%;
+}
+
+body.mobile-layout #sources-panel {
+  top: 70px;
+  left: 8px;
+  right: 8px;
+  width: auto;
+  max-height: 58vh;
+}
+
+body.mobile-layout .sources-panel-body {
+  padding: 14px;
+}
+
+body.mobile-layout #side-panel {
+  width: min(88vw, 360px);
+  left: -92vw;
+}
+
+body.mobile-layout #side-panel.open {
+  left: 0;
+}
+
+body.mobile-layout #panel-toggle {
+  left: 12px;
+  bottom: 18px;
+  width: 44px;
+  height: 44px;
+}
+
+body.mobile-layout .panel-header {
+  padding: 14px 14px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+body.mobile-layout .model-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+body.mobile-layout .model-item {
+  padding: 10px;
+  min-height: 96px;
+}
+
+body.mobile-layout .model-name {
+  font-size: 0.76em;
+  line-height: 1.2;
+}
+
+body.mobile-layout .model-icon img {
+  width: 52px;
+  height: 52px;
+  margin: 6px auto;
+}
+
+body.mobile-layout #instructions {
+  top: 8px;
+  left: 8px;
+}
+
+body.mobile-layout #instructions .instructions-content {
+  width: min(78vw, 280px);
+  left: calc(100% + 8px);
+}
+
+body.mobile-layout #bottom-center-bar {
+  bottom: 10px;
+  width: calc(100vw - 16px);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+body.mobile-layout #room-info-badge {
+  max-width: 100%;
+  white-space: normal;
+  justify-content: center;
+  text-align: center;
+}
+
+body.mobile-layout #teleport-btn {
+  font-size: 10px;
+}
+
+body.mobile-layout #furniture-control-panel {
+  left: 8px;
+  right: 8px;
+  top: auto;
+  bottom: 86px;
+  transform: none;
+  min-width: 0;
+  width: auto;
+}
+
+body.mobile-layout .drop-indicator {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body.mobile-layout #virtual-joystick-base {
+  bottom: 82px !important;
+  left: 12px !important;
+  width: 90px !important;
+  height: 90px !important;
+}
+
+body.mobile-layout #virtual-joystick-stick {
+  width: 42px !important;
+  height: 42px !important;
+}
