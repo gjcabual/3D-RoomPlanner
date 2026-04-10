@@ -1555,13 +1555,13 @@ body.mobile-layout .drop-indicator {
 }
 
 body.mobile-layout #virtual-joystick-base {
-  bottom: 82px !important;
-  left: 12px !important;
-  width: 90px !important;
-  height: 90px !important;
+  bottom: 120px !important;
+  left: 38px !important;
+  width: 138px !important;
+  height: 138px !important;
 }
 
 body.mobile-layout #virtual-joystick-stick {
-  width: 42px !important;
-  height: 42px !important;
+  width: 72px !important;
+  height: 72px !important;
 }
