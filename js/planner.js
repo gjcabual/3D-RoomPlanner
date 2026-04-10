@@ -6,6 +6,184 @@ let draggedItem = null;
 let furnitureCounter = 0;
 let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
+let instructionsHelpInitialized = false;
+
+function isInstructionsTapMode() {
+  if (document.body?.classList.contains("mobile-layout")) return true;
+  if (typeof window.matchMedia === "function") {
+    if (
+      window.matchMedia("(hover: none)").matches ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(any-pointer: coarse)").matches ||
+      window.matchMedia("(max-width: 1024px)").matches
+    ) {
+      return true;
+    }
+  }
+  return isMobilePlacementMode();
+}
+
+function setInstructionsHelpOpen(isOpen) {
+  const instructions = document.getElementById("instructions");
+  const button = instructions?.querySelector(".instructions-button");
+  if (!instructions || !button) return;
+
+  instructions.classList.toggle("open", !!isOpen);
+  button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function syncSidebarOpenClass() {
+  if (!document.body) return;
+
+  const sidePanel = document.getElementById("side-panel");
+  const resizePanel = document.getElementById("resize-dimension-panel");
+  const sidebarOpen =
+    !!sidePanel?.classList.contains("open") ||
+    !!resizePanel?.classList.contains("open");
+
+  document.body.classList.toggle("sidebar-open", sidebarOpen);
+  if (sidebarOpen) {
+    setInstructionsHelpOpen(false);
+  }
+}
+
+function syncInstructionsHelpMode() {
+  const instructions = document.getElementById("instructions");
+  const button = instructions?.querySelector(".instructions-button");
+  if (!instructions || !button || !document.body) return;
+
+  syncSidebarOpenClass();
+
+  const tapMode = isInstructionsTapMode();
+  if (!tapMode) {
+    setInstructionsHelpOpen(false);
+  } else {
+    button.setAttribute(
+      "aria-expanded",
+      instructions.classList.contains("open") ? "true" : "false",
+    );
+  }
+}
+
+function initializeInstructionsHelp() {
+  if (instructionsHelpInitialized) return;
+
+  let lastTapAt = 0;
+
+  const toggleFromTarget = (target, e) => {
+    const instructions = document.getElementById("instructions");
+    const button = instructions?.querySelector(".instructions-button");
+    if (!instructions || !button) return false;
+    if (target !== button && !button.contains(target)) return false;
+    if (!isInstructionsTapMode()) return false;
+
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    const shouldOpen = !instructions.classList.contains("open");
+    setInstructionsHelpOpen(shouldOpen);
+    lastTapAt = Date.now();
+    return true;
+  };
+
+  const closeIfOutside = (target) => {
+    const instructions = document.getElementById("instructions");
+    if (!instructions || !isInstructionsTapMode()) return;
+    if (!instructions.contains(target)) {
+      setInstructionsHelpOpen(false);
+    }
+  };
+
+  // Capture-phase handlers fire even when other layers interfere with bubbling.
+  document.addEventListener(
+    "pointerup",
+    (e) => {
+      if (Date.now() - lastTapAt < 180) return;
+      const didToggle = toggleFromTarget(e.target, e);
+      if (didToggle) return;
+      closeIfOutside(e.target);
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      // Skip duplicate synthetic events right after pointer handler.
+      if (Date.now() - lastTapAt < 180) return;
+      const didToggle = toggleFromTarget(e.target, e);
+      if (didToggle) return;
+      closeIfOutside(e.target);
+    },
+    { capture: true, passive: false },
+  );
+
+  document.addEventListener("click", (e) => {
+    // Ignore ghost clicks after touch/pointer interactions.
+    if (Date.now() - lastTapAt < 450) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    const didToggle = toggleFromTarget(e.target, e);
+    if (didToggle) return;
+    closeIfOutside(e.target);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      setInstructionsHelpOpen(false);
+    }
+  });
+
+  const setupSidebarObservers = () => {
+    if (typeof MutationObserver !== "function") {
+      syncSidebarOpenClass();
+      return;
+    }
+
+    const sidePanel = document.getElementById("side-panel");
+    const resizePanel = document.getElementById("resize-dimension-panel");
+    if (!sidePanel && !resizePanel) {
+      syncSidebarOpenClass();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      syncSidebarOpenClass();
+    });
+
+    if (sidePanel) {
+      observer.observe(sidePanel, {
+        attributes: true,
+        attributeFilter: ["class", "style"],
+      });
+    }
+
+    if (resizePanel) {
+      observer.observe(resizePanel, {
+        attributes: true,
+        attributeFilter: ["class", "style"],
+      });
+    }
+
+    syncSidebarOpenClass();
+  };
+
+  setupSidebarObservers();
+
+  // Inline fallback hook for environments where delegated handlers are blocked.
+  window.toggleInstructionsHelp = (event) => {
+    const target = event?.currentTarget || event?.target;
+    toggleFromTarget(target, event);
+  };
+
+  instructionsHelpInitialized = true;
+  syncInstructionsHelpMode();
+}
 
 function isMobilePlacementMode() {
   const hasTouch =
@@ -48,6 +226,8 @@ function updateResponsivePlannerMode() {
       toggle.style.left = mobileMode ? "12px" : "20px";
     }
   }
+
+  syncInstructionsHelpMode();
 }
 
 // ============= LOADING OVERLAY CONTROLLER =============
@@ -961,7 +1141,7 @@ const costState = {
 };
 
 const spaceConstraintState = {
-  isCollapsed: false,
+  isCollapsed: true,
 };
 
 function getProjectBudget() {
@@ -3435,6 +3615,9 @@ function showWelcomeDialog() {
   const width = localStorage.getItem("roomWidth") || "?";
   const length = localStorage.getItem("roomLength") || "?";
   const height = localStorage.getItem("roomHeight") || "?";
+  const helpTip = isMobilePlacementMode()
+    ? "Tap the <strong>?</strong> button anytime to open this guide again."
+    : "Hover over the <strong>?</strong> button anytime to see these instructions again.";
 
   const welcomeContent = `
     <div class="welcome-dialog-content">
@@ -3468,9 +3651,7 @@ function showWelcomeDialog() {
         </ul>
       </div>
 
-      <div class="welcome-tip">
-        <strong>Tip:</strong> Hover over the <strong>?</strong> button anytime to see these instructions again.
-      </div>
+      <div class="welcome-tip"><strong>Tip:</strong> ${helpTip}</div>
     </div>
   `;
 
@@ -3530,6 +3711,7 @@ function showWelcomeDialog() {
 
 // Initialize room when page loads
 window.addEventListener("load", async function () {
+  initializeInstructionsHelp();
   updateResponsivePlannerMode();
 
   let responsiveUpdateTimer = null;
@@ -3550,6 +3732,9 @@ window.addEventListener("load", async function () {
   if (window.htmlLoader) {
     await window.htmlLoader.ready;
   }
+
+  // Re-run in case instructions were injected/replaced by component loading.
+  initializeInstructionsHelp();
 
   // Load items and prices from Supabase first
   await loadItemsAndPrices();
@@ -3958,14 +4143,18 @@ function getVisibleOmittedItems(omittedItems) {
 
 function ensureSpaceConstraintPanel() {
   let panel = document.getElementById("omitted-items-panel");
-  if (panel) return panel;
+  if (panel) {
+    panel.classList.remove("panel");
+    return panel;
+  }
 
   const hudStack = document.getElementById("hud-stack") || document.body;
   panel = document.createElement("div");
   panel.id = "omitted-items-panel";
-  panel.className = "panel space-constraint-panel hidden";
+  panel.className = "space-constraint-panel hidden";
   panel.innerHTML = `
     <button type="button" class="space-constraint-toggle" aria-expanded="true">
+      <span class="space-constraint-icon" aria-hidden="true">!</span>
       <span class="space-constraint-title-wrap">
         <span class="space-constraint-title">Space Constraint</span>
         <span class="space-constraint-subtitle">Items omitted to avoid overlap</span>

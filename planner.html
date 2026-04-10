@@ -232,9 +232,19 @@
 
     <!-- Instructions -->
     <div id="instructions">
-      <div
+      <button
+        type="button"
         class="instructions-button"
         aria-label="Help"
+        aria-controls="instructions-help-panel"
+        aria-expanded="false"
+        onpointerdown="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        ontouchstart="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        onpointerup="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        ontouchend="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        onclick="
+          window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)
+        "
         title="Help & Controls"
       >
         <svg
@@ -259,65 +269,135 @@
           />
           <circle cx="12" cy="16.5" r="1" fill="currentColor" />
         </svg>
-      </div>
-      <div class="instructions-content">
-        <div style="margin-bottom: 14px">
-          <div
-            style="
-              font-size: 13px;
-              font-weight: 600;
-              color: rgba(255, 255, 255, 0.5);
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 8px;
-            "
-          >
-            Navigation
+      </button>
+      <div class="instructions-content" id="instructions-help-panel">
+        <div class="instructions-desktop-help">
+          <div style="margin-bottom: 14px">
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Navigation
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>
+                <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Move around
+              </p>
+              <p><kbd>Q</kbd> Move up &nbsp; <kbd>E</kbd> Move down</p>
+              <p><kbd>Space</kbd> Fly up &nbsp; <kbd>Shift</kbd> Fly down</p>
+              <p><kbd>Mouse</kbd> Look around</p>
+            </div>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 5px">
-            <p>
-              <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Move around
-            </p>
-            <p><kbd>Q</kbd> Move up &nbsp; <kbd>E</kbd> Move down</p>
-            <p><kbd>Space</kbd> Fly up &nbsp; <kbd>Shift</kbd> Fly down</p>
-            <p><kbd>Mouse</kbd> Look around</p>
+          <div style="margin-bottom: 14px">
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Build Workflow
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Open the furniture panel from the bottom-left button</p>
+              <p>Drag items into the room</p>
+              <p>Click furniture to rotate or remove</p>
+              <p>Resize room from the side panel when needed</p>
+            </div>
+          </div>
+          <div>
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Budget & Checks
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Use <strong>$</strong> panel for live costs and total</p>
+              <p>Use source icon on each item to view price sources</p>
+              <p>
+                Use <strong>!</strong> panel to review omitted items and spacing
+                limits
+              </p>
+            </div>
           </div>
         </div>
-        <div style="margin-bottom: 14px">
-          <div
-            style="
-              font-size: 13px;
-              font-weight: 600;
-              color: rgba(255, 255, 255, 0.5);
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 8px;
-            "
-          >
-            Furniture
+
+        <div class="instructions-mobile-help">
+          <div style="margin-bottom: 12px">
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Move
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Use the joystick (bottom-left) to move</p>
+              <p>Swipe the screen to look around the room</p>
+            </div>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 5px">
-            <p>Open the side panel to browse items</p>
-            <p>Drag items from the panel into the room</p>
-            <p>Click a placed item for more options</p>
+
+          <div style="margin-bottom: 12px">
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Place Furniture
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Tap grid button (bottom-left) to open furniture library</p>
+              <p>Tap an item card to place it in the room</p>
+              <p>Tap placed furniture to open rotate/remove controls</p>
+            </div>
           </div>
-        </div>
-        <div>
-          <div
-            style="
-              font-size: 13px;
-              font-weight: 600;
-              color: rgba(255, 255, 255, 0.5);
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 8px;
-            "
-          >
-            Cost Estimation
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 5px">
-            <p>View live cost breakdown in the panel</p>
-            <p>Prices update as you add or remove items</p>
+
+          <div>
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Budget & Layout
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Tap <strong>$</strong> for cost details and budget totals</p>
+              <p>
+                Tap <strong>!</strong> for space constraints and omitted items
+              </p>
+              <p>Use <strong>Go inside</strong> to jump back to room view</p>
+            </div>
           </div>
         </div>
       </div>

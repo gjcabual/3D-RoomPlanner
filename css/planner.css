@@ -247,7 +247,8 @@ body {
   position: fixed;
   top: 20px;
   left: 20px;
-  z-index: 1200;
+  z-index: 2600;
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -274,6 +275,10 @@ kbd {
 .instructions-button {
   width: 48px;
   height: 48px;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: manipulation;
   border-radius: 12px;
   background: linear-gradient(135deg, #343434 0%, #181818 100%);
   color: #f5f5f5;
@@ -283,10 +288,15 @@ kbd {
   font-size: 20px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
   cursor: pointer;
   transition:
     transform 0.2s,
     box-shadow 0.2s;
+}
+
+.instructions-mobile-help {
+  display: none;
 }
 
 #instructions:hover .instructions-button {
@@ -320,6 +330,54 @@ kbd {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+#instructions.open .instructions-content {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+body.mobile-layout .instructions-desktop-help {
+  display: none;
+}
+
+body.mobile-layout .instructions-mobile-help {
+  display: block;
+}
+
+body.mobile-layout #instructions:hover .instructions-content {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+}
+
+body.mobile-layout #instructions.open .instructions-content {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 1024px) {
+  .instructions-desktop-help {
+    display: none;
+  }
+
+  .instructions-mobile-help {
+    display: block;
+  }
+
+  #instructions:hover .instructions-content {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+  }
+
+  #instructions.open .instructions-content {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
+  }
 }
 
 /* ── Room Dimensions Badge (bottom center) ──────────────────── */
@@ -931,6 +989,9 @@ kbd {
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .space-constraint-toggle {
@@ -944,6 +1005,21 @@ kbd {
   color: #f5f5f5;
   cursor: pointer;
   text-align: left;
+}
+
+.space-constraint-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78em;
+  font-weight: 800;
+  color: #ffd4d4;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  flex-shrink: 0;
 }
 
 .space-constraint-title-wrap {
@@ -1366,8 +1442,16 @@ kbd {
   #instructions {
     right: 10px;
     left: 10px;
+    width: auto;
     max-width: none;
     top: 60px;
+  }
+
+  #instructions .instructions-content {
+    width: min(86vw, 320px);
+    left: 0;
+    right: auto;
+    top: calc(100% + 8px);
   }
 
   #furniture-control-panel {
@@ -1469,6 +1553,113 @@ body.mobile-layout .sources-panel-body {
   padding: 14px;
 }
 
+body.mobile-layout #omitted-items-panel {
+  width: min(72vw, 286px);
+  max-width: min(72vw, 286px);
+  max-height: min(58vh, 340px);
+  padding: 0;
+  transition:
+    width 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    max-height 0.22s ease,
+    border-radius 0.22s ease;
+}
+
+body.mobile-layout #omitted-items-panel.collapsed {
+  width: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  border-radius: 12px;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-toggle {
+  position: relative;
+  gap: 8px;
+  padding: 9px 10px;
+  min-height: 48px;
+}
+
+body.mobile-layout #omitted-items-panel.collapsed .space-constraint-toggle {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 0.74em;
+}
+
+body.mobile-layout #omitted-items-panel.collapsed .space-constraint-title-wrap,
+body.mobile-layout #omitted-items-panel.collapsed .space-constraint-chevron {
+  display: none;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-title {
+  font-size: 0.84em;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-subtitle {
+  display: none;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-count {
+  min-width: 20px;
+  height: 20px;
+  font-size: 0.7em;
+}
+
+body.mobile-layout #omitted-items-panel.collapsed .space-constraint-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.62em;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-chevron {
+  font-size: 0.72em;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-body {
+  padding: 8px 10px 10px;
+  gap: 7px;
+  max-height: min(34vh, 190px);
+  overflow-y: auto;
+}
+
+body.mobile-layout #omitted-items-panel.collapsed .space-constraint-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-text,
+body.mobile-layout #omitted-items-panel .space-constraint-item {
+  font-size: 0.74em;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-list {
+  gap: 4px;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-item::before {
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+}
+
+body.mobile-layout #omitted-items-panel .space-constraint-tip {
+  font-size: 0.7em;
+  padding-top: 8px;
+}
+
 body.mobile-layout #side-panel {
   width: min(88vw, 360px);
   left: -92vw;
@@ -1515,13 +1706,39 @@ body.mobile-layout .model-icon img {
 }
 
 body.mobile-layout #instructions {
-  top: 8px;
-  left: 8px;
+  display: none !important;
+}
+
+@media (hover: none), (pointer: coarse) {
+  #instructions {
+    display: none !important;
+  }
+}
+
+body.mobile-layout.sidebar-open #instructions {
+  z-index: 1400;
+  pointer-events: none;
+}
+
+body.mobile-layout.sidebar-open #instructions .instructions-content {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(6px) !important;
 }
 
 body.mobile-layout #instructions .instructions-content {
-  width: min(78vw, 280px);
-  left: calc(100% + 8px);
+  width: min(86vw, 320px);
+  max-height: min(68vh, 430px);
+  overflow-y: auto;
+  left: 0;
+  right: auto;
+  top: calc(100% + 8px);
+}
+
+body.mobile-layout #instructions.open .instructions-content {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
 }
 
 body.mobile-layout #bottom-center-bar {

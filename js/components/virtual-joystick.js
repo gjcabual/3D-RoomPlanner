@@ -9,6 +9,7 @@ class VirtualJoystick {
     this.active = false;
     this.isHiddenByConflict = false;
     this.visibilityRaf = null;
+    this.visibilityInterval = null;
     this.conflictObserver = null;
     this.basePosition = { x: 0, y: 0 };
     this.stickPosition = { x: 0, y: 0 };
@@ -182,6 +183,14 @@ class VirtualJoystick {
     const boundCheck = this.scheduleVisibilityCheck.bind(this);
     window.addEventListener("resize", boundCheck);
     window.addEventListener("orientationchange", boundCheck);
+    document.addEventListener("click", boundCheck, true);
+    document.addEventListener("touchend", boundCheck, true);
+    document.addEventListener("transitionend", boundCheck, true);
+
+    // Backup check in case panel state changes bypass observer callbacks.
+    this.visibilityInterval = window.setInterval(() => {
+      this.updateVisibilityFromConflicts();
+    }, 250);
 
     if (typeof MutationObserver === "function") {
       this.conflictObserver = new MutationObserver(() => {
@@ -212,6 +221,7 @@ class VirtualJoystick {
     const sourcesPanel = document.getElementById("sources-panel");
     const controlPanel = document.getElementById("furniture-control-panel");
     const costPanel = document.getElementById("cost-panel");
+    const spaceConstraintPanel = document.getElementById("omitted-items-panel");
 
     const sidePanelOpen = !!sidePanel && sidePanel.classList.contains("open");
     const resizePanelOpen =
@@ -222,6 +232,10 @@ class VirtualJoystick {
     const costPanelExpanded =
       this.isVisibleElement(costPanel) &&
       !costPanel.classList.contains("collapsed");
+    const spaceConstraintExpanded =
+      this.isVisibleElement(spaceConstraintPanel) &&
+      !spaceConstraintPanel.classList.contains("hidden") &&
+      !spaceConstraintPanel.classList.contains("collapsed");
 
     // State-driven rule is more reliable than overlap math for sliding panels.
     const hasConflict =
@@ -229,7 +243,8 @@ class VirtualJoystick {
       resizePanelOpen ||
       sourcesPanelOpen ||
       controlPanelVisible ||
-      costPanelExpanded;
+      costPanelExpanded ||
+      spaceConstraintExpanded;
 
     if (hasConflict === this.isHiddenByConflict) return;
 
