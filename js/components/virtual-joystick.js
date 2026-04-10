@@ -7,6 +7,9 @@ class VirtualJoystick {
     this.container = null;
     this.stick = null;
     this.active = false;
+    this.isHiddenByConflict = false;
+    this.visibilityRaf = null;
+    this.conflictObserver = null;
     this.basePosition = { x: 0, y: 0 };
     this.stickPosition = { x: 0, y: 0 };
     this.maxRadius = 40; // Max distance the stick can move
@@ -59,6 +62,8 @@ class VirtualJoystick {
       justifyContent: "center",
       alignItems: "center",
       pointerEvents: "auto",
+      opacity: "1",
+      transition: "opacity 0.18s ease",
     });
 
     this.stick = document.createElement("div");
@@ -78,7 +83,10 @@ class VirtualJoystick {
     document.body.appendChild(this.container);
 
     this.attachEvents();
-    this.overrideMovement();
+    this.setupConflictAwareVisibility();
+    if (typeof this.overrideMovement === "function") {
+      this.overrideMovement();
+    }
   }
 
   attachEvents() {
@@ -105,6 +113,7 @@ class VirtualJoystick {
   }
 
   handleMouseDown(e) {
+    if (this.isHiddenByConflict) return;
     if (e.target !== this.container && e.target !== this.stick) return;
     e.preventDefault();
     e.stopPropagation();
@@ -131,6 +140,7 @@ class VirtualJoystick {
   }
 
   handleStart(e) {
+    if (this.isHiddenByConflict) return;
     e.preventDefault();
     e.stopPropagation();
     this.active = true;
@@ -153,8 +163,10 @@ class VirtualJoystick {
   }
 
   handleEnd(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     this.active = false;
     this.stick.style.transition = "transform 0.2s ease-out";
     this.stick.style.transform = `translate(0px, 0px)`;
@@ -162,6 +174,98 @@ class VirtualJoystick {
     // Reset keys
     this.keys = { w: false, a: false, s: false, d: false };
     this.updateMovementKeys();
+  }
+
+  setupConflictAwareVisibility() {
+    this.scheduleVisibilityCheck();
+
+    const boundCheck = this.scheduleVisibilityCheck.bind(this);
+    window.addEventListener("resize", boundCheck);
+    window.addEventListener("orientationchange", boundCheck);
+
+    if (typeof MutationObserver === "function") {
+      this.conflictObserver = new MutationObserver(() => {
+        this.scheduleVisibilityCheck();
+      });
+      this.conflictObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["class", "style"],
+        childList: true,
+        subtree: true,
+      });
+    }
+  }
+
+  scheduleVisibilityCheck() {
+    if (this.visibilityRaf) return;
+    this.visibilityRaf = window.requestAnimationFrame(() => {
+      this.visibilityRaf = null;
+      this.updateVisibilityFromConflicts();
+    });
+  }
+
+  updateVisibilityFromConflicts() {
+    if (!this.container) return;
+
+    const sidePanel = document.getElementById("side-panel");
+    const resizePanel = document.getElementById("resize-dimension-panel");
+    const sourcesPanel = document.getElementById("sources-panel");
+    const controlPanel = document.getElementById("furniture-control-panel");
+    const costPanel = document.getElementById("cost-panel");
+
+    const sidePanelOpen = !!sidePanel && sidePanel.classList.contains("open");
+    const resizePanelOpen =
+      !!resizePanel && resizePanel.classList.contains("open");
+    const sourcesPanelOpen =
+      !!sourcesPanel && sourcesPanel.classList.contains("open");
+    const controlPanelVisible = this.isVisibleElement(controlPanel);
+    const costPanelExpanded =
+      this.isVisibleElement(costPanel) &&
+      !costPanel.classList.contains("collapsed");
+
+    // State-driven rule is more reliable than overlap math for sliding panels.
+    const hasConflict =
+      sidePanelOpen ||
+      resizePanelOpen ||
+      sourcesPanelOpen ||
+      controlPanelVisible ||
+      costPanelExpanded;
+
+    if (hasConflict === this.isHiddenByConflict) return;
+
+    this.isHiddenByConflict = hasConflict;
+    this.container.style.opacity = hasConflict ? "0" : "1";
+    this.container.style.pointerEvents = hasConflict ? "none" : "auto";
+
+    // Prevent stuck movement if UI pops over the joystick mid-drag.
+    if (hasConflict && this.active) {
+      this.handleEnd();
+    }
+  }
+
+  isVisibleElement(el) {
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return false;
+    }
+    if (parseFloat(style.opacity || "1") <= 0.01) {
+      return false;
+    }
+
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  isElementOnScreen(el) {
+    if (!this.isVisibleElement(el)) return false;
+    const rect = el.getBoundingClientRect();
+    return (
+      rect.right > 0 &&
+      rect.bottom > 0 &&
+      rect.left < window.innerWidth &&
+      rect.top < window.innerHeight
+    );
   }
 
   updateStick(clientX, clientY) {
