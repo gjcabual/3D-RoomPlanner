@@ -182,7 +182,11 @@ body {
   cursor: pointer;
   z-index: 1600;
   font-size: 1.4em;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 48px;
   height: 48px;
   display: flex;
@@ -197,6 +201,19 @@ body {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes panel-toggle-spin-tap {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    transform: scale(1.1) rotate(180deg);
+  }
+}
+
+body.mobile-layout #panel-toggle.tap-spin {
+  animation: panel-toggle-spin-tap 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hidden {
@@ -535,8 +552,12 @@ body.mobile-layout #instructions.open .instructions-content {
 }
 
 #cost-panel:hover {
-  transform: scale(1.05);
+  transform: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+#cost-panel.collapsed:hover {
+  transform: scale(1.05);
 }
 
 .cost-header {
@@ -661,10 +682,10 @@ body.mobile-layout #instructions.open .instructions-content {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(15, 15, 15, 0.5);
 
-  /* Fixed height - scrollable list */
-  height: 200px;
-  max-height: 200px;
-  min-height: 200px;
+  /* Dynamic height - grows with items up to a cap */
+  height: auto;
+  max-height: min(42vh, 260px);
+  min-height: 0;
   min-width: 320px;
   box-sizing: border-box;
 
@@ -672,8 +693,7 @@ body.mobile-layout #instructions.open .instructions-content {
   transition:
     max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     opacity 0.2s ease-out,
-    padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    padding 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   opacity: 1;
 }
 
@@ -1458,7 +1478,7 @@ body.mobile-layout #instructions.open .instructions-content {
 .drop-indicator {
   position: fixed;
   pointer-events: none;
-  background: rgba(102, 126, 234, 0.3);
+  background: rgba(40, 45, 66, 0.3);
   border: 2px dashed #abacb0;
   border-radius: 10px;
   display: none;
@@ -1687,9 +1707,9 @@ body.mobile-layout .cost-header h3 {
 }
 
 body.mobile-layout .cost-body {
-  height: min(42vh, 250px);
+  height: auto;
   max-height: min(42vh, 250px);
-  min-height: 130px;
+  min-height: 0;
   padding: 10px 12px;
 }
 
@@ -1749,6 +1769,10 @@ body.mobile-layout #panel-toggle {
   bottom: 18px;
   width: 44px;
   height: 44px;
+}
+
+body.mobile-layout #panel-toggle:hover {
+  transform: none;
 }
 
 body.mobile-layout .panel-header {

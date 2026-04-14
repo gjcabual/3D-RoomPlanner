@@ -1763,6 +1763,14 @@ function togglePanel() {
       resizePanel.classList.remove("open");
     }
   }
+
+  // Touch devices don't have reliable hover states, so trigger a click-based
+  // spin animation to mirror desktop feedback.
+  if (toggle && mobileMode) {
+    toggle.classList.remove("tap-spin");
+    void toggle.offsetWidth;
+    toggle.classList.add("tap-spin");
+  }
 }
 
 function handleDropIndicatorClick(e) {
