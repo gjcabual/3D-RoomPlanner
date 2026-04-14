@@ -290,7 +290,7 @@ async function updateProfileMenu(isAuthenticated, user) {
     }
     const adminDashboardTab = document.getElementById("dashboard-overlay-admin-tab");
     if (adminDashboardTab) {
-      adminDashboardTab.style.display = userIsAdmin ? "inline-flex" : "none";
+      adminDashboardTab.style.display = userIsAdmin ? "" : "none";
     }
   } else {
     profileCircle.classList.add("logged-out");
