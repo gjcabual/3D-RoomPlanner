@@ -263,22 +263,37 @@ body.mobile-layout #panel-toggle.tap-spin {
   position: fixed;
   inset: 0;
   z-index: 10050;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.24s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.dashboard-overlay.is-visible {
+  visibility: visible;
 }
 
 .dashboard-overlay.open {
-  display: flex;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .dashboard-overlay-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(8, 10, 14, 0.58);
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  transition:
+    opacity 0.18s ease,
+    backdrop-filter 0.18s ease;
+}
+
+.dashboard-overlay.open .dashboard-overlay-backdrop {
+  opacity: 1;
   backdrop-filter: blur(4px);
 }
 
@@ -294,6 +309,17 @@ body.mobile-layout #panel-toggle.tap-spin {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  opacity: 0;
+  transform: translateY(16px) scale(0.97);
+  transition:
+    opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.dashboard-overlay.open .dashboard-overlay-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .dashboard-overlay-header {
@@ -1812,6 +1838,15 @@ body.mobile-layout .dashboard-overlay-panel {
   height: min(92vh, 860px);
   border-radius: 16px 16px 0 0;
   margin: 0 6px 6px;
+  transform: translateY(28px);
+}
+
+body.mobile-layout .dashboard-overlay.open .dashboard-overlay-panel {
+  transform: translateY(0);
+}
+
+body.mobile-layout .dashboard-overlay.open .dashboard-overlay-backdrop {
+  backdrop-filter: blur(2px);
 }
 
 body.mobile-layout .dashboard-overlay-header {
@@ -1833,6 +1868,20 @@ body.mobile-layout .dashboard-overlay-tab {
 
 body.mobile-layout .dashboard-overlay-close {
   margin-left: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-overlay,
+  .dashboard-overlay-backdrop,
+  .dashboard-overlay-panel,
+  .dashboard-overlay-frame {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .dashboard-overlay-panel {
+    transform: none !important;
+  }
 }
 
 body.mobile-layout #cost-panel {

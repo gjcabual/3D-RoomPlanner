@@ -26,10 +26,13 @@ const DASHBOARD_MODAL_ROUTES = {
 
 let _dashboardOverlayInitialized = false;
 let _dashboardOverlayEls = null;
+let _dashboardOverlayCloseTimer = null;
 const _dashboardOverlayLoaded = {
   profile: false,
   admin: false,
 };
+
+const DASHBOARD_OVERLAY_CLOSE_MS = 260;
 
 function initDashboardOverlay() {
   if (_dashboardOverlayInitialized) return;
@@ -109,8 +112,20 @@ function openDashboardOverlay(view = "profile") {
   const nextView = view === "admin" && !adminVisible ? "profile" : view;
 
   setDashboardFrameVisibility(nextView);
-  _dashboardOverlayEls.overlay.classList.add("open");
+  if (_dashboardOverlayCloseTimer) {
+    clearTimeout(_dashboardOverlayCloseTimer);
+    _dashboardOverlayCloseTimer = null;
+  }
+
+  _dashboardOverlayEls.overlay.classList.add("is-visible");
   _dashboardOverlayEls.overlay.setAttribute("aria-hidden", "false");
+
+  requestAnimationFrame(() => {
+    if (_dashboardOverlayEls?.overlay) {
+      _dashboardOverlayEls.overlay.classList.add("open");
+    }
+  });
+
   document.body.classList.add("dashboard-modal-open");
 
   const dropdown = document.getElementById("profile-dropdown");
@@ -136,9 +151,28 @@ function switchDashboardOverlayTab(view) {
 
 function closeDashboardOverlay() {
   if (!_dashboardOverlayEls) return;
+
   _dashboardOverlayEls.overlay.classList.remove("open");
   _dashboardOverlayEls.overlay.setAttribute("aria-hidden", "true");
   document.body.classList.remove("dashboard-modal-open");
+
+  if (_dashboardOverlayCloseTimer) {
+    clearTimeout(_dashboardOverlayCloseTimer);
+  }
+
+  const prefersReducedMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  _dashboardOverlayCloseTimer = setTimeout(
+    () => {
+      if (_dashboardOverlayEls?.overlay) {
+        _dashboardOverlayEls.overlay.classList.remove("is-visible");
+      }
+      _dashboardOverlayCloseTimer = null;
+    },
+    prefersReducedMotion ? 0 : DASHBOARD_OVERLAY_CLOSE_MS,
+  );
 }
 
 function handleDashboardOverlayMessage(event) {
