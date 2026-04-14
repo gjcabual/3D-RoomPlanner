@@ -259,6 +259,133 @@ body.mobile-layout #panel-toggle.tap-spin {
   display: none;
 }
 
+.dashboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+
+.dashboard-overlay.open {
+  display: flex;
+  opacity: 1;
+}
+
+.dashboard-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.dashboard-overlay-panel {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, calc(100vw - 36px));
+  height: min(780px, calc(100vh - 42px));
+  border-radius: 16px;
+  background: rgba(17, 19, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #343434 0%, #181818 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 10px;
+}
+
+.dashboard-overlay-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #f5f5f5;
+  font-weight: 600;
+}
+
+.dashboard-overlay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-overlay-tab {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 245, 245, 0.92);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-overlay-tab:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.dashboard-overlay-tab.active {
+  border-color: rgba(255, 140, 0, 0.6);
+  background: rgba(255, 140, 0, 0.22);
+  color: #fff;
+}
+
+.dashboard-overlay-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-overlay-close:hover {
+  background: rgba(244, 67, 54, 0.24);
+  border-color: rgba(244, 67, 54, 0.45);
+}
+
+.dashboard-overlay-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: rgba(12, 13, 17, 0.95);
+}
+
+.dashboard-overlay-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  background: #0f1115;
+}
+
+.dashboard-overlay-frame.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.dashboard-modal-open {
+  overflow: hidden;
+}
+
 /* Instructions Hover Panel - Upper Left */
 #instructions {
   position: fixed;
@@ -1674,6 +1801,38 @@ body.mobile-layout #hud-stack {
 
 body.mobile-layout #profile-circle {
   align-self: flex-end;
+}
+
+body.mobile-layout .dashboard-overlay {
+  align-items: flex-end;
+}
+
+body.mobile-layout .dashboard-overlay-panel {
+  width: calc(100vw - 12px);
+  height: min(92vh, 860px);
+  border-radius: 16px 16px 0 0;
+  margin: 0 6px 6px;
+}
+
+body.mobile-layout .dashboard-overlay-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+body.mobile-layout .dashboard-overlay-controls {
+  width: 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+body.mobile-layout .dashboard-overlay-tab {
+  flex: 1 1 auto;
+  min-width: 96px;
+}
+
+body.mobile-layout .dashboard-overlay-close {
+  margin-left: auto;
 }
 
 body.mobile-layout #cost-panel {
