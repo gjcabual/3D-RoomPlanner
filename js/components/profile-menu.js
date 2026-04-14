@@ -19,6 +19,150 @@ function getInitials(email) {
 
 /** Track auth state for profile click handler */
 let _profileAuthenticated = false;
+const DASHBOARD_MODAL_ROUTES = {
+  profile: "profile.html",
+  admin: "admin.html",
+};
+
+let _dashboardOverlayInitialized = false;
+let _dashboardOverlayEls = null;
+const _dashboardOverlayLoaded = {
+  profile: false,
+  admin: false,
+};
+
+function initDashboardOverlay() {
+  if (_dashboardOverlayInitialized) return;
+
+  const overlay = document.getElementById("dashboard-overlay");
+  const profileFrame = document.getElementById("dashboard-profile-frame");
+  const adminFrame = document.getElementById("dashboard-admin-frame");
+  const profileTab = document.getElementById("dashboard-overlay-profile-tab");
+  const adminTab = document.getElementById("dashboard-overlay-admin-tab");
+  const title = document.getElementById("dashboard-overlay-title");
+
+  if (!overlay || !profileFrame || !adminFrame || !profileTab || !adminTab || !title) {
+    return;
+  }
+
+  _dashboardOverlayEls = {
+    overlay,
+    profileFrame,
+    adminFrame,
+    profileTab,
+    adminTab,
+    title,
+  };
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target?.matches("[data-dashboard-close]")) {
+      closeDashboardOverlay();
+    }
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && overlay.classList.contains("open")) {
+      closeDashboardOverlay();
+    }
+  });
+
+  window.addEventListener("message", handleDashboardOverlayMessage);
+  _dashboardOverlayInitialized = true;
+}
+
+function setDashboardFrameVisibility(view) {
+  if (!_dashboardOverlayEls) return;
+
+  const isProfile = view === "profile";
+  _dashboardOverlayEls.profileFrame.classList.toggle("active", isProfile);
+  _dashboardOverlayEls.adminFrame.classList.toggle("active", !isProfile);
+  _dashboardOverlayEls.profileTab.classList.toggle("active", isProfile);
+  _dashboardOverlayEls.adminTab.classList.toggle("active", !isProfile);
+  _dashboardOverlayEls.title.textContent = isProfile
+    ? "Profile Dashboard"
+    : "Admin Dashboard";
+
+  const frame = isProfile
+    ? _dashboardOverlayEls.profileFrame
+    : _dashboardOverlayEls.adminFrame;
+
+  if (!_dashboardOverlayLoaded[view]) {
+    frame.src = DASHBOARD_MODAL_ROUTES[view];
+    _dashboardOverlayLoaded[view] = true;
+  }
+}
+
+function openDashboardOverlay(view = "profile") {
+  if (!_profileAuthenticated) {
+    if (typeof showAuthModal === "function") {
+      showAuthModal(() => {
+        window.location.reload();
+      });
+    }
+    return;
+  }
+
+  initDashboardOverlay();
+  if (!_dashboardOverlayEls) return;
+
+  const adminVisible = _dashboardOverlayEls.adminTab.style.display !== "none";
+  const nextView = view === "admin" && !adminVisible ? "profile" : view;
+
+  setDashboardFrameVisibility(nextView);
+  _dashboardOverlayEls.overlay.classList.add("open");
+  _dashboardOverlayEls.overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("dashboard-modal-open");
+
+  const dropdown = document.getElementById("profile-dropdown");
+  if (dropdown) {
+    dropdown.style.display = "none";
+  }
+  document.removeEventListener("click", closeProfileMenuOnOutsideClick);
+}
+
+function switchDashboardOverlayTab(view) {
+  if (view !== "profile" && view !== "admin") return;
+  if (!_dashboardOverlayEls) {
+    initDashboardOverlay();
+  }
+  if (!_dashboardOverlayEls) return;
+
+  if (view === "admin" && _dashboardOverlayEls.adminTab.style.display === "none") {
+    return;
+  }
+
+  setDashboardFrameVisibility(view);
+}
+
+function closeDashboardOverlay() {
+  if (!_dashboardOverlayEls) return;
+  _dashboardOverlayEls.overlay.classList.remove("open");
+  _dashboardOverlayEls.overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("dashboard-modal-open");
+}
+
+function handleDashboardOverlayMessage(event) {
+  if (event.origin !== window.location.origin) return;
+  const messageType = event?.data?.type;
+
+  if (messageType === "planner-dashboard-close") {
+    closeDashboardOverlay();
+  } else if (messageType === "planner-dashboard-signed-out") {
+    closeDashboardOverlay();
+    window.location.reload();
+  } else if (messageType === "planner-dashboard-require-auth") {
+    closeDashboardOverlay();
+    if (typeof showAuthModal === "function") {
+      showAuthModal(() => {
+        window.location.reload();
+      });
+    }
+  }
+}
+
+window.openDashboardOverlay = openDashboardOverlay;
+window.closeDashboardOverlay = closeDashboardOverlay;
+window.switchDashboardOverlayTab = switchDashboardOverlayTab;
 
 /**
  * Handle profile circle click — opens auth modal when logged out,
@@ -110,6 +254,10 @@ async function updateProfileMenu(isAuthenticated, user) {
     if (adminDashboardLink) {
       adminDashboardLink.style.display = userIsAdmin ? "block" : "none";
     }
+    const adminDashboardTab = document.getElementById("dashboard-overlay-admin-tab");
+    if (adminDashboardTab) {
+      adminDashboardTab.style.display = userIsAdmin ? "inline-flex" : "none";
+    }
   } else {
     profileCircle.classList.add("logged-out");
     if (dropdown) {
@@ -122,6 +270,11 @@ async function updateProfileMenu(isAuthenticated, user) {
     if (profileEmail) {
       profileEmail.textContent = "Not signed in";
     }
+    const adminDashboardTab = document.getElementById("dashboard-overlay-admin-tab");
+    if (adminDashboardTab) {
+      adminDashboardTab.style.display = "none";
+    }
+    closeDashboardOverlay();
   }
 }
 

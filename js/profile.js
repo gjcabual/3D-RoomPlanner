@@ -7,6 +7,13 @@ async function initProfile() {
   // Check authentication
   const isAuthenticated = await checkAuth();
   if (!isAuthenticated) {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        { type: "planner-dashboard-require-auth" },
+        window.location.origin,
+      );
+      return;
+    }
     window.location.href = "planner.html";
     return;
   }
@@ -191,6 +198,13 @@ async function deletePlan(planId) {
 async function handleLogout() {
   const result = await signOut();
   if (result.success) {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        { type: "planner-dashboard-signed-out" },
+        window.location.origin,
+      );
+      return;
+    }
     window.location.href = "planner.html";
   } else {
     await showDialog("Error signing out: " + result.error, "Error");

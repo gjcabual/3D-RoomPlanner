@@ -3875,6 +3875,12 @@ window.addEventListener("load", async function () {
   // Initialize loading controller
   LoadingController.init();
   LoadingController.startFallbackTimer();
+
+  const loadingTitleEl = document.querySelector(".planner-loading-title");
+  if (loadingTitleEl) {
+    loadingTitleEl.textContent = "Loading Room Planner";
+  }
+
   LoadingController.updateStatus("Loading 3D engine...");
   LoadingController.updateProgress(10);
 
@@ -3884,9 +3890,9 @@ window.addEventListener("load", async function () {
   async function onSceneLoaded() {
     ensureMobileTouchLookControls();
 
+    const savedRoomStateRaw = localStorage.getItem("currentRoomState");
     LoadingController.updateStatus("Building room...");
     LoadingController.updateProgress(10);
-
     initializeRoom();
 
     // ── UNIFIED ASSET PRELOAD ────────────────────────────────────────
@@ -3934,10 +3940,9 @@ window.addEventListener("load", async function () {
     LoadingController.updateProgress(78);
 
     // Auto-restore room state after room is initialized
-    const saved = localStorage.getItem("currentRoomState");
-    if (saved) {
+    if (savedRoomStateRaw) {
       try {
-        const roomData = JSON.parse(saved);
+        const roomData = JSON.parse(savedRoomStateRaw);
         await restoreRoom(roomData);
         console.log("Room state auto-restored from currentRoomState");
       } catch (error) {
@@ -4008,8 +4013,7 @@ window.addEventListener("load", async function () {
     costPanel.classList.add("collapsed");
   }
 
-  // Save state before page unload using collectRoomPlanData
-  window.addEventListener("beforeunload", () => {
+  const persistCurrentRoomState = () => {
     if (typeof collectRoomPlanData === "function") {
       const roomPlanData = collectRoomPlanData();
       localStorage.setItem(
@@ -4020,28 +4024,18 @@ window.addEventListener("load", async function () {
           furnitureCounter: furnitureCounter,
         }),
       );
-      console.log("Room state auto-saved on page unload");
     } else {
       saveWorkspaceState();
     }
-  });
+  };
+
+  // Use pagehide/visibilitychange instead of beforeunload to keep bfcache enabled.
+  window.addEventListener("pagehide", persistCurrentRoomState);
 
   // Also save on visibility change (when tab becomes hidden)
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      if (typeof collectRoomPlanData === "function") {
-        const roomPlanData = collectRoomPlanData();
-        localStorage.setItem(
-          "currentRoomState",
-          JSON.stringify({
-            ...roomPlanData,
-            costState: costState,
-            furnitureCounter: furnitureCounter,
-          }),
-        );
-      } else {
-        saveWorkspaceState();
-      }
+      persistCurrentRoomState();
     }
   });
 });
