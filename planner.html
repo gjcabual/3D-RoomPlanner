@@ -125,7 +125,7 @@
     <div id="planner-loading-overlay">
       <div class="planner-loading-content">
         <div class="planner-loading-spinner"></div>
-        <h2 class="planner-loading-title">Setting Up Your Room</h2>
+        <h2 class="planner-loading-title">Loading Room Planner</h2>
         <p class="planner-loading-status" id="planner-loading-status">
           Initializing 3D environment...
         </p>
@@ -461,7 +461,7 @@
           <button
             type="button"
             class="profile-dropdown-item"
-            onclick="window.location.href = 'profile.html'"
+            onclick="openDashboardOverlay('profile')"
           >
             Profile
           </button>
@@ -470,7 +470,7 @@
             id="profile-admin-link"
             class="profile-dropdown-item"
             style="display: none"
-            onclick="window.location.href = 'admin.html'"
+            onclick="openDashboardOverlay('admin')"
           >
             Admin Dashboard
           </button>
@@ -536,6 +536,67 @@
               class="save-notification"
             ></span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embedded Dashboard Modal Overlay -->
+    <div
+      id="dashboard-overlay"
+      class="dashboard-overlay"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dashboard-overlay-title"
+    >
+      <div class="dashboard-overlay-backdrop" data-dashboard-close></div>
+      <div class="dashboard-overlay-panel" role="document">
+        <div class="dashboard-overlay-header">
+          <h2 id="dashboard-overlay-title">Dashboard</h2>
+          <div class="dashboard-overlay-controls">
+            <button
+              id="dashboard-overlay-profile-tab"
+              type="button"
+              class="dashboard-overlay-tab active"
+              onclick="switchDashboardOverlayTab('profile')"
+            >
+              Profile
+            </button>
+            <button
+              id="dashboard-overlay-admin-tab"
+              type="button"
+              class="dashboard-overlay-tab"
+              style="display: none"
+              onclick="switchDashboardOverlayTab('admin')"
+            >
+              Admin
+            </button>
+            <button
+              type="button"
+              class="dashboard-overlay-close"
+              aria-label="Close Dashboard"
+              onclick="closeDashboardOverlay()"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div class="dashboard-overlay-body">
+          <iframe
+            id="dashboard-profile-frame"
+            class="dashboard-overlay-frame active"
+            title="Profile Dashboard"
+            loading="lazy"
+            src="about:blank"
+          ></iframe>
+          <iframe
+            id="dashboard-admin-frame"
+            class="dashboard-overlay-frame"
+            title="Admin Dashboard"
+            loading="lazy"
+            src="about:blank"
+          ></iframe>
         </div>
       </div>
     </div>
