@@ -1,51 +1,74 @@
 // snapshot.js (UPDATED)
 // Snapshot utility for saving and loading room plans
 
-const LOCAL_ROOM_PLANS_KEY = 'localRoomPlans';
+const LOCAL_ROOM_PLANS_KEY = "localRoomPlans";
 
 /**
  * Collect current room plan data
  * @returns {Object} - Room plan data object
  */
 function collectRoomPlanData() {
-  const roomWidth = parseFloat(localStorage.getItem('roomWidth')) || 10;
-  const roomLength = parseFloat(localStorage.getItem('roomLength')) || 10;
-  
+  const roomWidth = parseFloat(localStorage.getItem("roomWidth")) || 10;
+  const roomLength = parseFloat(localStorage.getItem("roomLength")) || 10;
+
+  const parseVec3 = (value, fallback = { x: 0, y: 0, z: 0 }) => {
+    if (value && typeof value === "object") {
+      const x = Number(value.x);
+      const y = Number(value.y);
+      const z = Number(value.z);
+      return {
+        x: Number.isFinite(x) ? x : fallback.x,
+        y: Number.isFinite(y) ? y : fallback.y,
+        z: Number.isFinite(z) ? z : fallback.z,
+      };
+    }
+
+    if (typeof value === "string") {
+      const parts = value.trim().split(/\s+/).map(Number);
+      const [x, y, z] = parts;
+      return {
+        x: Number.isFinite(x) ? x : fallback.x,
+        y: Number.isFinite(y) ? y : fallback.y,
+        z: Number.isFinite(z) ? z : fallback.z,
+      };
+    }
+
+    return { ...fallback };
+  };
+
   // Collect all furniture items
-  const furnitureContainer = document.getElementById('furniture-container');
+  const furnitureContainer = document.getElementById("furniture-container");
   const furnitureData = [];
-  
+
   if (furnitureContainer) {
-    const furnitureItems = furnitureContainer.querySelectorAll('[id^="furniture-"]');
-    furnitureItems.forEach(item => {
-      const position = item.getAttribute('position');
-      const rotation = item.getAttribute('rotation');
-      const scale = item.getAttribute('scale');
-      const modelKey = item.getAttribute('data-model-key');
-      
-      if (modelKey && position) {
-        const [x, y, z] = position.split(' ').map(parseFloat);
-        const [rx, ry, rz] = (rotation || '0 0 0').split(' ').map(parseFloat);
-        const [sx, sy, sz] = (scale || '1 1 1').split(' ').map(parseFloat);
-        
+    const furnitureItems =
+      furnitureContainer.querySelectorAll('[id^="furniture-"]');
+    furnitureItems.forEach((item) => {
+      const position = parseVec3(item.getAttribute("position"));
+      const rotation = parseVec3(item.getAttribute("rotation"));
+      const scale = parseVec3(item.getAttribute("scale"), { x: 1, y: 1, z: 1 });
+      const modelKey = item.getAttribute("data-model-key");
+
+      if (modelKey) {
         furnitureData.push({
           model_key: modelKey,
-          position: { x, y, z },
-          rotation: { x: rx, y: ry, z: rz },
-          scale: { x: sx, y: sy, z: sz }
+          position,
+          rotation,
+          scale,
         });
       }
     });
   }
-  
+
   // Get current cost total
-  const costTotal = (typeof costState !== 'undefined' && costState?.total) ? costState.total : 0;
-  
+  const costTotal =
+    typeof costState !== "undefined" && costState?.total ? costState.total : 0;
+
   return {
     room_width: roomWidth,
     room_length: roomLength,
     furniture_data: furnitureData,
-    cost_total: costTotal
+    cost_total: costTotal,
   };
 }
 
@@ -55,7 +78,7 @@ function getLocalRoomPlans() {
     const plans = raw ? JSON.parse(raw) : [];
     return Array.isArray(plans) ? plans : [];
   } catch (error) {
-    console.warn('Error parsing local room plans:', error);
+    console.warn("Error parsing local room plans:", error);
     return [];
   }
 }
@@ -72,7 +95,7 @@ function addLocalRoomPlan(plan) {
 }
 
 function deleteLocalRoomPlan(planId) {
-  const plans = getLocalRoomPlans().filter(plan => plan.id !== planId);
+  const plans = getLocalRoomPlans().filter((plan) => plan.id !== planId);
   saveLocalRoomPlans(plans);
   return plans;
 }
@@ -83,21 +106,23 @@ function deleteLocalRoomPlan(planId) {
  */
 function waitForAFrameCanvas(timeout = 3000) {
   return new Promise((resolve, reject) => {
-    const scene = document.querySelector('a-scene');
+    const scene = document.querySelector("a-scene");
     if (!scene) {
-      reject(new Error('A-Frame scene not found.'));
+      reject(new Error("A-Frame scene not found."));
       return;
     }
 
     let timedOut = false;
     const timeoutId = setTimeout(() => {
       timedOut = true;
-      reject(new Error('Timed out waiting for A-Frame canvas to become ready.'));
+      reject(
+        new Error("Timed out waiting for A-Frame canvas to become ready."),
+      );
     }, timeout);
 
     const tryGetCanvas = () => {
       // A-Frame uses canvas with class 'a-canvas'
-      const canvas = document.querySelector('canvas.a-canvas');
+      const canvas = document.querySelector("canvas.a-canvas");
       if (canvas && canvas.width > 0 && canvas.height > 0) {
         clearTimeout(timeoutId);
         resolve(canvas);
@@ -127,7 +152,7 @@ function waitForAFrameCanvas(timeout = 3000) {
       }, 150); // small extra wait
     };
 
-    scene.addEventListener('loaded', onLoaded, { once: true });
+    scene.addEventListener("loaded", onLoaded, { once: true });
 
     // also attempt immediate polling (in case loaded already)
     const initialPoll = setInterval(() => {
@@ -144,25 +169,27 @@ function waitForAFrameCanvas(timeout = 3000) {
  */
 async function capturePlannerScreenshot() {
   // wait for canvas
-  const canvas = await waitForAFrameCanvas().catch(err => {
+  const canvas = await waitForAFrameCanvas().catch((err) => {
     throw new Error(`Unable to capture screenshot: ${err.message}`);
   });
 
   // Small extra wait to allow textures/materials to finish
-  await new Promise(r => setTimeout(r, 150));
+  await new Promise((r) => setTimeout(r, 150));
 
   try {
-    const dataUrl = canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL("image/png");
     return dataUrl;
   } catch (err) {
     // Canvas.toDataURL throws a DOMException if canvas is tainted (cross-origin)
-    console.error('Error converting canvas to data URL:', err);
-    throw new Error('Screenshot failed: the WebGL canvas appears to be tainted by cross-origin resources. Ensure your 3D assets (models/textures) are served with proper CORS headers and loaded with crossorigin attributes.');
+    console.error("Error converting canvas to data URL:", err);
+    throw new Error(
+      "Screenshot failed: the WebGL canvas appears to be tainted by cross-origin resources. Ensure your 3D assets (models/textures) are served with proper CORS headers and loaded with crossorigin attributes.",
+    );
   }
 }
 
 function downloadDataUrl(dataUrl, fileName) {
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = dataUrl;
   link.download = fileName;
   document.body.appendChild(link);
@@ -171,10 +198,12 @@ function downloadDataUrl(dataUrl, fileName) {
 }
 
 function slugifyFileName(name) {
-  return (name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '') || `room-plan-${Date.now()}`;
+  return (
+    (name || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "") || `room-plan-${Date.now()}`
+  );
 }
 
 /**
@@ -182,41 +211,53 @@ function slugifyFileName(name) {
  */
 async function handleSnapshotClick() {
   const isAuthenticated = await checkAuth();
-  
+
   if (!isAuthenticated) {
     showAuthModal(async () => {
       await handleSnapshotClick();
     });
     return;
   }
-  
+
   try {
-    const nameInput = await showPrompt('Enter a name for this snapshot:', '', 'Save Snapshot');
-    const snapshotName = (nameInput && nameInput.trim()) || `Room Plan ${new Date().toLocaleString()}`;
+    const nameInput = await showPrompt(
+      "Enter a name for this snapshot:",
+      "",
+      "Save Snapshot",
+    );
+    const snapshotName =
+      (nameInput && nameInput.trim()) ||
+      `Room Plan ${new Date().toLocaleString()}`;
 
     // Capture screenshot directly from WebGL canvas
     const screenshotDataUrl = await capturePlannerScreenshot();
     const safeFileName = `${slugifyFileName(snapshotName)}.png`;
     downloadDataUrl(screenshotDataUrl, safeFileName);
-    
+
     const planData = collectRoomPlanData();
     const localPlan = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}`,
       name: snapshotName,
       createdAt: new Date().toISOString(),
       roomWidth: planData.room_width,
       roomLength: planData.room_length,
       costTotal: planData.cost_total,
       furnitureData: planData.furniture_data,
-      snapshotFileName: safeFileName
+      snapshotFileName: safeFileName,
     };
-    
+
     addLocalRoomPlan(localPlan);
-    await showDialog('Snapshot downloaded and saved to your plans!', 'Success');
+    await showDialog("Snapshot downloaded and saved to your plans!", "Success");
   } catch (error) {
-    console.error('Error capturing snapshot:', error);
-    const message = error && error.message ? error.message : 'Unable to save snapshot. Please try again.';
-    await showDialog(message, 'Error');
+    console.error("Error capturing snapshot:", error);
+    const message =
+      error && error.message
+        ? error.message
+        : "Unable to save snapshot. Please try again.";
+    await showDialog(message, "Error");
   }
 }
 
