@@ -4109,7 +4109,7 @@ async function handleSaveEstimation() {
   } catch (error) {
     console.error("Error saving cost estimation:", error);
     await showDialog(
-      "Unable to save cost estimation. Please try again.",
+      `Unable to save cost estimation. ${error?.message || "Please try again."}`,
       "Error",
     );
   }
