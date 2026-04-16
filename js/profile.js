@@ -895,11 +895,34 @@ function generatePlanPdf(estimation) {
     doc.setTextColor(0, 0, 0);
   };
 
+  const metadataLabelColumnWidth = (() => {
+    const metadataLabels = [
+      "Project",
+      "Generated",
+      "Saved Plan Date",
+      "Room Dimensions",
+      "Floor Area / Furniture",
+      "Layout Source",
+    ];
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+
+    const widestLabel = metadataLabels.reduce(
+      (max, label) => Math.max(max, doc.getTextWidth(`${label}:`)),
+      0,
+    );
+
+    // Keep values aligned and avoid label/value collisions on long labels.
+    return Math.max(33, widestLabel + 2.5);
+  })();
+
   const drawMetadataRow = (label, value) => {
-    const labelWidth = 33;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.3);
     const valueLines = doc.splitTextToSize(
       String(value),
-      contentWidth - labelWidth - 4,
+      contentWidth - metadataLabelColumnWidth,
     );
     const rowHeight = Math.max(5, valueLines.length * 4.2);
     ensureSpace(rowHeight + 1);
@@ -910,7 +933,7 @@ function generatePlanPdf(estimation) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.3);
-    doc.text(valueLines, margin + labelWidth, y);
+    doc.text(valueLines, margin + metadataLabelColumnWidth, y);
 
     y += rowHeight;
   };
