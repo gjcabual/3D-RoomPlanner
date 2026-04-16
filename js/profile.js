@@ -1008,6 +1008,7 @@ function generatePlanPdf(estimation) {
   drawHorizontalRule();
 
   drawSectionHeader("I. ROOM BLUEPRINT (2D TOP VIEW)");
+  y += 2; // Add extra space before the section header for visual balance
 
   const blueprintImage = blueprint.canvas.toDataURL("image/png");
   const blueprintWidth = contentWidth - 8;
