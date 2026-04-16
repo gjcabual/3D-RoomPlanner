@@ -1034,14 +1034,15 @@ function generatePlanPdf(estimation) {
   y += 2; // Add extra space before the section header for visual balance
 
   const blueprintImage = blueprint.canvas.toDataURL("image/png");
-  const blueprintWidth = contentWidth - 8;
+  const blueprintX = margin;
+  const blueprintWidth = contentWidth;
   const blueprintHeight =
     blueprintWidth * (blueprint.canvas.height / blueprint.canvas.width);
   ensureSpace(blueprintHeight + 10);
 
   doc.setDrawColor(203, 213, 225);
   doc.roundedRect(
-    margin + 4,
+    blueprintX,
     y - 1.5,
     blueprintWidth,
     blueprintHeight + 3,
@@ -1052,7 +1053,7 @@ function generatePlanPdf(estimation) {
   doc.addImage(
     blueprintImage,
     "PNG",
-    margin + 4,
+    blueprintX,
     y,
     blueprintWidth,
     blueprintHeight,
@@ -1282,6 +1283,7 @@ function generatePlanPdf(estimation) {
       y += rowHeight;
     });
   }
+  y += 4; // Add extra space before the section header for visual balance
 
   ensureSpace(22);
   const summaryWidth = 82;

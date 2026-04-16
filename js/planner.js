@@ -2520,6 +2520,12 @@ function renderCost() {
     costState.baseTotal = baseTotal;
   }
 
+  // When there are placed items, keep total strictly itemized.
+  if (hasItemizedCosts && baseTotal > 0) {
+    baseTotal = 0;
+    costState.baseTotal = 0;
+  }
+
   const displayTotal = Math.max(0, baseTotal + total);
 
   costState.total = displayTotal; // Final total shown in the UI
@@ -3555,46 +3561,66 @@ async function restoreRoom(roomData) {
     if (hasPersistedItems) {
       costState.items = roomData.costState.items;
 
+      const persistedItemsTotal = Object.values(
+        roomData.costState.items,
+      ).reduce((sum, item) => {
+        const unit = Number(item?.unitCost ?? item?.price ?? 0);
+        const qty = Number(item?.qty ?? 0);
+        return sum + unit * qty;
+      }, 0);
+
+      const persistedTotal =
+        typeof roomData.costState.total === "number" &&
+        Number.isFinite(roomData.costState.total)
+          ? roomData.costState.total
+          : NaN;
+
       const persistedBaseTotal =
-        roomData.costState &&
         typeof roomData.costState.baseTotal === "number" &&
         Number.isFinite(roomData.costState.baseTotal)
           ? roomData.costState.baseTotal
-          : null;
+          : NaN;
 
-      if (typeof persistedBaseTotal === "number" && persistedBaseTotal > 0) {
-        costState.baseTotal = persistedBaseTotal;
-      } else {
-        // Legacy compatibility:
-        // Old saves stored only itemized totals; infer baseline from budget target.
-        const persistedItemsTotal = Object.values(
-          roomData.costState.items,
-        ).reduce((sum, item) => {
-          const unit = Number(item?.unitCost ?? item?.price ?? 0);
-          const qty = Number(item?.qty ?? 0);
-          return sum + unit * qty;
-        }, 0);
-        const persistedTotal =
-          typeof roomData.costState.total === "number" &&
-          Number.isFinite(roomData.costState.total)
-            ? roomData.costState.total
-            : 0;
+      const hasVisibleOmittedItems =
+        typeof getVisibleOmittedItems === "function" &&
+        typeof getOmittedItemsFromStorage === "function" &&
+        getVisibleOmittedItems(getOmittedItemsFromStorage()).length > 0;
+
+      if (!hasVisibleOmittedItems) {
+        // Normal user sessions should derive total from itemized costs only.
+        costState.baseTotal = 0;
+      } else if (Number.isFinite(persistedTotal)) {
         const budgetTarget = getProjectBudget();
-
-        if (
+        const looksLikeLegacyBudgetDouble =
           budgetTarget > 0 &&
-          Math.abs(persistedTotal - persistedItemsTotal) < 0.01
-        ) {
-          costState.baseTotal = budgetTarget;
-        } else {
+          persistedItemsTotal > 0 &&
+          Math.abs(persistedItemsTotal - budgetTarget) < 0.01 &&
+          Math.abs(persistedTotal - persistedItemsTotal * 2) < 0.01;
+
+        if (looksLikeLegacyBudgetDouble) {
+          // Repair legacy state where reload incorrectly doubled itemized totals.
           costState.baseTotal = 0;
+        } else {
+          costState.baseTotal = Math.max(
+            0,
+            persistedTotal - persistedItemsTotal,
+          );
         }
+      } else if (Number.isFinite(persistedBaseTotal)) {
+        costState.baseTotal = Math.max(0, persistedBaseTotal);
+      } else {
+        costState.baseTotal = 0;
       }
 
-      costState.total =
-        typeof roomData.costState.total === "number"
-          ? roomData.costState.total
-          : 0;
+      costState.total = Number.isFinite(persistedTotal)
+        ? persistedTotal
+        : persistedItemsTotal;
+
+      if (persistedItemsTotal > 0) {
+        // Do not carry legacy baseline once real itemized costs exist.
+        costState.baseTotal = 0;
+        costState.total = persistedItemsTotal;
+      }
       renderCost();
       console.log("Cost state restored");
 
@@ -3616,14 +3642,16 @@ async function restoreRoom(roomData) {
         0,
       );
 
-      const budgetTarget = getProjectBudget();
-      if (budgetTarget > 0) {
-        costState.baseTotal = budgetTarget - itemizedTotal;
-        costState.total = budgetTarget;
-      } else if (typeof roomData.cost_total === "number") {
-        costState.baseTotal = roomData.cost_total - itemizedTotal;
-        costState.total = roomData.cost_total;
+      const savedRoomTotal = Number(roomData.cost_total);
+      if (Number.isFinite(savedRoomTotal) && savedRoomTotal > 0) {
+        costState.baseTotal = Math.max(0, savedRoomTotal - itemizedTotal);
+        costState.total = Math.max(0, savedRoomTotal);
       } else {
+        costState.baseTotal = 0;
+        costState.total = itemizedTotal;
+      }
+
+      if (itemizedTotal > 0) {
         costState.baseTotal = 0;
         costState.total = itemizedTotal;
       }

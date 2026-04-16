@@ -70,27 +70,40 @@ document.addEventListener("DOMContentLoaded", function () {
     const isPremium = budget >= 30000;
     const isComfort = budget >= 10000 && budget < 30000;
 
-    const bedKey = isPremium ? "bed2" : "bed1";
-    const deskKey = isPremium ? "desk2" : "desk1";
-    const chairKey = isPremium ? "chair2" : "chair1";
-    const wardrobeKey = isPremium
-      ? "wardrobe2"
+    const bedModelCandidates = isPremium ? ["bed2", "bed1"] : ["bed1", "bed2"];
+    const deskModelCandidates = isPremium
+      ? ["desk2", "desk1"]
+      : ["desk1", "desk2"];
+    const chairModelCandidates = isPremium
+      ? ["chair2", "chair1"]
+      : ["chair1", "chair2"];
+    const wardrobeModelCandidates = isPremium
+      ? ["wardrobe2", "wardrobe1", "wardrobe3"]
       : isComfort
-        ? "wardrobe1"
-        : "wardrobe3";
-    const shelfKey = isPremium ? "shelf2" : "shelf1";
-    const tableKey = isPremium ? "center_table2" : "center_table1";
-    const shelfLabel = shelfKey === "shelf2" ? "Shelf 2" : "Shelf 1";
-    const tableLabel =
-      tableKey === "center_table2" ? "Center Table 2" : "Center Table 1";
+        ? ["wardrobe1", "wardrobe2", "wardrobe3"]
+        : ["wardrobe3", "wardrobe1", "wardrobe2"];
+    const shelfModelCandidates = isPremium
+      ? ["shelf2", "shelf1"]
+      : ["shelf1", "shelf2"];
+    const tableModelCandidates = isPremium
+      ? ["center_table2", "center_table1", "table1"]
+      : ["center_table1", "table1", "center_table2"];
 
     const labelByModelKey = {
-      [bedKey]: "Bed",
-      [wardrobeKey]: "Wardrobe",
-      [deskKey]: "Study Desk",
-      [chairKey]: "Office Chair",
-      [shelfKey]: shelfLabel,
-      [tableKey]: tableLabel,
+      bed1: "Bed",
+      bed2: "Bed",
+      wardrobe1: "Wardrobe",
+      wardrobe2: "Wardrobe",
+      wardrobe3: "Wardrobe",
+      desk1: "Study Desk",
+      desk2: "Study Desk",
+      chair1: "Office Chair",
+      chair2: "Office Chair",
+      shelf1: "Shelf 1",
+      shelf2: "Shelf 2",
+      center_table1: "Center Table 1",
+      center_table2: "Center Table 2",
+      table1: "Table 1",
       mirror1: "Mirror 1",
     };
 
@@ -108,6 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
       shelf2: 11500,
       center_table1: 12000,
       center_table2: 15000,
+      table1: 11000,
       mirror1: 2500,
     };
 
@@ -120,6 +134,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!omitted_items.includes(label)) {
         omitted_items.push(label);
       }
+    };
+
+    const getModelPrice = (modelKey) => Number(localModelPrices[modelKey] || 0);
+
+    const canAddModelWithinBudget = (modelKey) => {
+      return startingCost + getModelPrice(modelKey) <= budget + 0.01;
     };
 
     // Use conservative real-model footprints so premade layouts match the
@@ -387,48 +407,64 @@ document.addEventListener("DOMContentLoaded", function () {
       return [normalized, { ...normalized, y: altY }];
     };
 
-    // Helper to safely add an item checking bounds and overlaps
-    const pushItem = (key, pos, rot, itemName = "Item") => {
-      const rotationCandidates = getRotationCandidates(key, rot);
+    // Helper to safely add an item checking budget, bounds, and overlaps.
+    const pushItem = (modelCandidates, pos, rot, itemName = "Item") => {
+      const candidateKeys = Array.isArray(modelCandidates)
+        ? modelCandidates
+        : [modelCandidates];
       let bestPlacement = null;
 
-      for (const candidateRot of rotationCandidates) {
-        const pad = getBoundaryPadding(key, candidateRot);
-        const padX = pad.x;
-        const padZ = pad.z;
-
-        if (padX >= halfW || padZ >= halfL) {
-          continue;
+      candidateKeys.forEach((key, keyIndex) => {
+        if (!canAddModelWithinBudget(key)) {
+          return;
         }
 
-        const candidates = buildPlacementCandidates(
-          key,
-          pos,
-          candidateRot,
-          padX,
-          padZ,
-        );
+        const rotationCandidates = getRotationCandidates(key, rot);
 
-        for (const candidate of candidates) {
-          if (!isInsideBounds(candidate.x, candidate.z, padX, padZ)) continue;
-          if (isOverlappingAt(key, candidateRot, candidate.x, candidate.z)) {
+        for (const candidateRot of rotationCandidates) {
+          const pad = getBoundaryPadding(key, candidateRot);
+          const padX = pad.x;
+          const padZ = pad.z;
+
+          if (padX >= halfW || padZ >= halfL) {
             continue;
           }
 
-          const score =
-            (candidate.x - pos.x) ** 2 +
-            (candidate.z - pos.z) ** 2 +
-            (candidateRot.y === normalizeRightAngle(rot?.y || 0) ? 0 : 0.04);
+          const candidates = buildPlacementCandidates(
+            key,
+            pos,
+            candidateRot,
+            padX,
+            padZ,
+          );
 
-          if (!bestPlacement || score < bestPlacement.score) {
-            bestPlacement = {
-              score,
-              pos: candidate,
-              rot: candidateRot,
-            };
+          for (const candidate of candidates) {
+            if (!isInsideBounds(candidate.x, candidate.z, padX, padZ)) continue;
+            if (isOverlappingAt(key, candidateRot, candidate.x, candidate.z)) {
+              continue;
+            }
+
+            // Keep preferred variants slightly favored while still allowing
+            // cheaper fallbacks when they fit better.
+            const variantPenalty = keyIndex * 0.03;
+            const score =
+              (candidate.x - pos.x) ** 2 +
+              (candidate.z - pos.z) ** 2 +
+              (candidateRot.y === normalizeRightAngle(rot?.y || 0) ? 0 : 0.04) +
+              variantPenalty;
+
+            if (!bestPlacement || score < bestPlacement.score) {
+              bestPlacement = {
+                key,
+                price: getModelPrice(key),
+                score,
+                pos: candidate,
+                rot: candidateRot,
+              };
+            }
           }
         }
-      }
+      });
 
       if (!bestPlacement) {
         if (itemName !== "Item") addOmittedItem(itemName);
@@ -436,7 +472,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       furniture_data.push({
-        model_key: key,
+        model_key: bestPlacement.key,
         position: {
           x: bestPlacement.pos.x,
           y: pos.y,
@@ -446,14 +482,17 @@ document.addEventListener("DOMContentLoaded", function () {
         scale: { x: 1, y: 1, z: 1 },
       });
 
-      if (localModelPrices[key]) {
-        startingCost += localModelPrices[key];
-      }
+      startingCost += bestPlacement.price;
     };
 
     // Mirrors are wall-mounted, so they should use free wall space
     // instead of competing with floor area constraints.
     const pushWallMirror = (key, itemName = "Mirror 1") => {
+      if (!canAddModelWithinBudget(key)) {
+        addOmittedItem(itemName);
+        return;
+      }
+
       const minY = 0.8;
       const maxY = Math.max(minY, heightM - 0.5);
       const mirrorY = Math.max(minY, Math.min(maxY, heightM * 0.45));
@@ -468,9 +507,7 @@ document.addEventListener("DOMContentLoaded", function () {
         scale: { x: 1, y: 1, z: 1 },
       });
 
-      if (localModelPrices[key]) {
-        startingCost += localModelPrices[key];
-      }
+      startingCost += getModelPrice(key);
     };
 
     const isFloorItem = (item) => {
@@ -551,11 +588,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       furniture_data = [...sanitized, ...wallMountedItems];
+      startingCost = furniture_data.reduce((sum, item) => {
+        return sum + getModelPrice(item.model_key);
+      }, 0);
     };
 
     // 1. Bed (Essential) - Placed in Back Left corner
     pushItem(
-      bedKey,
+      bedModelCandidates,
       { x: -halfW + 0.55, y: 0, z: -halfL + 0.65 },
       { x: 0, y: 0, z: 0 },
       "Bed",
@@ -563,7 +603,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 2. Wardrobe (Essential) - Placed in Back Right corner
     pushItem(
-      wardrobeKey,
+      wardrobeModelCandidates,
       { x: halfW - 0.45, y: 0, z: -halfL + 0.45 },
       { x: 0, y: -90, z: 0 },
       "Wardrobe",
@@ -573,7 +613,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (roomArea > 7.5) {
       const beforeDeskCount = furniture_data.length;
       pushItem(
-        deskKey,
+        deskModelCandidates,
         { x: halfW - 0.45, y: 0, z: halfL - 0.55 },
         { x: 0, y: -90, z: 0 },
         "Study Desk",
@@ -582,7 +622,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const deskPlaced = furniture_data.length > beforeDeskCount;
       if (deskPlaced) {
         pushItem(
-          chairKey,
+          chairModelCandidates,
           { x: halfW - 0.95, y: 0, z: halfL - 1.3 },
           { x: 0, y: 90, z: 0 },
           "Office Chair",
@@ -599,13 +639,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isComfort || isPremium) {
       if (roomArea > 10) {
         pushItem(
-          shelfKey,
+          shelfModelCandidates,
           { x: -halfW + 0.4, y: 0, z: halfL - 0.4 },
           { x: 0, y: 90, z: 0 },
-          shelfLabel,
+          "Shelf",
         );
       } else {
-        addOmittedItem(shelfLabel);
+        addOmittedItem("Shelf");
       }
     }
 
@@ -613,13 +653,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isComfort || isPremium) {
       if (roomArea > 14) {
         pushItem(
-          tableKey,
+          tableModelCandidates,
           { x: 0, y: 0, z: 0 },
           { x: 0, y: 90, z: 0 },
-          tableLabel,
+          "Center Table",
         );
       } else {
-        addOmittedItem(tableLabel);
+        addOmittedItem("Center Table");
       }
     }
 
@@ -629,12 +669,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
     sanitizePremadeLayout();
 
+    const generatedCostItems = {};
+    furniture_data.forEach((item) => {
+      const key = String(item.model_key || "");
+      if (!key) return;
+
+      if (!generatedCostItems[key]) {
+        const unitCost = getModelPrice(key);
+        generatedCostItems[key] = {
+          name: labelByModelKey[key] || key,
+          price: unitCost,
+          unitCost,
+          qty: 0,
+        };
+      }
+
+      generatedCostItems[key].qty += 1;
+    });
+
+    const generatedCostTotal = Object.values(generatedCostItems).reduce(
+      (sum, item) => sum + item.unitCost * item.qty,
+      0,
+    );
+    startingCost = generatedCostTotal;
+
     const defaultRoomState = {
       room_width: widthM,
       room_length: lengthM,
       room_height: heightM,
       furniture_data: furniture_data,
-      cost_total: startingCost,
+      cost_total: generatedCostTotal,
+      costState: {
+        items: generatedCostItems,
+        total: generatedCostTotal,
+        baseTotal: 0,
+      },
       furnitureCounter: furniture_data.length,
     };
 
