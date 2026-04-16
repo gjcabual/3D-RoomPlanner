@@ -183,6 +183,7 @@ body {
   z-index: 1600;
   font-size: 1.4em;
   transition:
+    left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -194,6 +195,42 @@ body {
   justify-content: center;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(10px);
+  will-change: left, transform;
+  overflow: hidden;
+}
+
+#panel-toggle .panel-toggle-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+}
+
+#panel-toggle .panel-toggle-icon-grid {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+#panel-toggle .panel-toggle-icon-close {
+  opacity: 0;
+  transform: scale(0.76) rotate(-90deg);
+}
+
+#panel-toggle.is-open .panel-toggle-icon-grid {
+  opacity: 0;
+  transform: scale(0.76) rotate(90deg);
+}
+
+#panel-toggle.is-open .panel-toggle-icon-close {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
 }
 
 #panel-toggle:hover {

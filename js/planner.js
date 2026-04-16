@@ -8,6 +8,11 @@ let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
 let instructionsHelpInitialized = false;
 
+const PANEL_TOGGLE_GRID_ICON =
+  '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
+const PANEL_TOGGLE_CLOSE_ICON =
+  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 function isInstructionsTapMode() {
   if (document.body?.classList.contains("mobile-layout")) return true;
   if (typeof window.matchMedia === "function") {
@@ -41,7 +46,9 @@ function syncSidebarOpenClass() {
     !!sidePanel?.classList.contains("open") ||
     !!resizePanel?.classList.contains("open");
 
+  panelOpen = sidebarOpen;
   document.body.classList.toggle("sidebar-open", sidebarOpen);
+  setPanelToggleVisual(sidebarOpen);
   if (sidebarOpen) {
     setInstructionsHelpOpen(false);
   }
@@ -324,11 +331,7 @@ function updateResponsivePlannerMode() {
 
   const toggle = document.getElementById("panel-toggle");
   if (toggle) {
-    if (panelOpen) {
-      toggle.style.left = mobileMode ? "12px" : "310px";
-    } else {
-      toggle.style.left = mobileMode ? "12px" : "20px";
-    }
+    setPanelToggleVisual(panelOpen);
   }
 
   ensureMobileTouchLookControls();
@@ -1728,12 +1731,43 @@ function createBlenderGrid() {
   scene.object3D.add(gridHelper);
 }
 
-function togglePanel() {
-  panelOpen = !panelOpen;
-  const mobileMode = isMobilePlacementMode();
-  const panel = document.getElementById("side-panel");
+function ensurePanelToggleIcons(toggle) {
+  if (!toggle || toggle.dataset.iconsReady === "true") return;
+
+  toggle.innerHTML = `<span class="panel-toggle-icon panel-toggle-icon-grid" aria-hidden="true">${PANEL_TOGGLE_GRID_ICON}</span><span class="panel-toggle-icon panel-toggle-icon-close" aria-hidden="true">${PANEL_TOGGLE_CLOSE_ICON}</span>`;
+  toggle.dataset.iconsReady = "true";
+}
+
+function setPanelToggleVisual(isOpen) {
   const toggle = document.getElementById("panel-toggle");
+  if (!toggle) return;
+
+  const activeTimer = Number(toggle.dataset.iconSwapTimer || "0");
+  if (activeTimer) {
+    clearTimeout(activeTimer);
+    delete toggle.dataset.iconSwapTimer;
+  }
+
+  toggle.classList.remove("icon-swap");
+  ensurePanelToggleIcons(toggle);
+
+  const mobileMode = isMobilePlacementMode();
+  toggle.style.left = mobileMode ? "12px" : isOpen ? "310px" : "20px";
+  toggle.classList.toggle("is-open", !!isOpen);
+  toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  toggle.setAttribute("aria-label", isOpen ? "Close sidebar" : "Open sidebar");
+}
+
+function togglePanel() {
+  const panel = document.getElementById("side-panel");
   const resizePanel = document.getElementById("resize-dimension-panel");
+  const isCurrentlyOpen =
+    !!panel?.classList.contains("open") ||
+    !!resizePanel?.classList.contains("open");
+
+  panelOpen = !isCurrentlyOpen;
+  const mobileMode = isMobilePlacementMode();
+  const toggle = document.getElementById("panel-toggle");
 
   if (panelOpen) {
     // Close resize panel if open
@@ -1744,25 +1778,18 @@ function togglePanel() {
     if (panel) {
       panel.classList.add("open");
     }
-    if (toggle) {
-      toggle.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-      toggle.style.left = mobileMode ? "12px" : "310px";
-    }
   } else {
     if (panel) {
       panel.classList.remove("open");
-    }
-    if (toggle) {
-      toggle.innerHTML =
-        '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
-      toggle.style.left = mobileMode ? "12px" : "20px";
     }
     // Hide resize panel if open
     if (resizePanel) {
       resizePanel.classList.remove("open");
     }
   }
+
+  setPanelToggleVisual(panelOpen);
+  syncSidebarOpenClass();
 
   // Touch devices don't have reliable hover states, so trigger a click-based
   // spin animation to mirror desktop feedback.
