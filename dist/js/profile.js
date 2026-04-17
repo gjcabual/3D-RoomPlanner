@@ -21,6 +21,8 @@ const BLUEPRINT_ITEM_FOOTPRINTS = {
 
 const REPORT_CURRENCY_CODE = "PHP";
 let PROFILE_ITEM_PRICE_SOURCES = {};
+const PROFILE_ESTIMATIONS_STORAGE_KEY = "localCostEstimations";
+let profilePlansRefreshTimer = null;
 
 function formatModelName(modelKey) {
   return String(modelKey || "Unknown")
@@ -605,13 +607,62 @@ async function initProfile() {
   await loadProfileData();
 }
 
+function refreshSavedEstimationsView() {
+  const plansListEl = document.getElementById("plans-list");
+  const plansCountEl = document.getElementById("profile-plans-count");
+  if (!plansListEl || !plansCountEl) return;
+
+  const estimations =
+    typeof getSavedCostEstimations === "function"
+      ? getSavedCostEstimations()
+      : [];
+
+  plansCountEl.textContent = estimations.length;
+  renderPlans(estimations);
+}
+
+function scheduleSavedEstimationsRefresh() {
+  if (profilePlansRefreshTimer) {
+    clearTimeout(profilePlansRefreshTimer);
+  }
+
+  profilePlansRefreshTimer = window.setTimeout(() => {
+    profilePlansRefreshTimer = null;
+    refreshSavedEstimationsView();
+  }, 60);
+}
+
+function handleProfileDashboardMessage(event) {
+  if (event.origin !== window.location.origin) return;
+
+  const messageType = event?.data?.type;
+  if (
+    messageType === "planner-dashboard-refresh-profile" ||
+    messageType === "planner-dashboard-refresh-all"
+  ) {
+    scheduleSavedEstimationsRefresh();
+  }
+}
+
+function handleProfileStorageUpdate(event) {
+  if (event.key !== PROFILE_ESTIMATIONS_STORAGE_KEY) return;
+  scheduleSavedEstimationsRefresh();
+}
+
 /**
  * Load user profile and saved plans
  */
 async function loadProfileData() {
   try {
-    document.getElementById("loading").style.display = "block";
-    document.getElementById("error").style.display = "none";
+    const loadingEl = document.getElementById("loading");
+    const errorEl = document.getElementById("error");
+    const profileInfoEl = document.getElementById("profile-info");
+    const plansSectionEl = document.getElementById("plans-section");
+
+    if (loadingEl) loadingEl.style.display = "block";
+    if (errorEl) errorEl.style.display = "none";
+    if (profileInfoEl) profileInfoEl.style.display = "none";
+    if (plansSectionEl) plansSectionEl.style.display = "none";
 
     // Get user profile
     const profile = await getUserProfile();
@@ -644,13 +695,14 @@ async function loadProfileData() {
     // Display estimations
     renderPlans(estimations);
 
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("profile-info").style.display = "block";
-    document.getElementById("plans-section").style.display = "block";
+    if (loadingEl) loadingEl.style.display = "none";
+    if (profileInfoEl) profileInfoEl.style.display = "block";
+    if (plansSectionEl) plansSectionEl.style.display = "block";
   } catch (error) {
     console.error("Error loading profile:", error);
     showError(`Error loading profile: ${error.message}`);
-    document.getElementById("loading").style.display = "none";
+    const loadingEl = document.getElementById("loading");
+    if (loadingEl) loadingEl.style.display = "none";
   }
 }
 
@@ -1348,6 +1400,9 @@ function showError(message) {
   errorText.textContent = message;
   errorEl.style.display = "block";
 }
+
+window.addEventListener("message", handleProfileDashboardMessage);
+window.addEventListener("storage", handleProfileStorageUpdate);
 
 // Initialize on page load
 window.addEventListener("load", async () => {

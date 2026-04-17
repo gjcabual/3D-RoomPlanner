@@ -4149,7 +4149,21 @@ async function handleSaveEstimation() {
       `Cost Estimation ${new Date().toLocaleString()}`;
 
     if (typeof saveCostEstimation === "function") {
-      saveCostEstimation(estimationName);
+      const savedEstimation = saveCostEstimation(estimationName);
+
+      if (typeof window.notifyDashboardDataUpdated === "function") {
+        window.notifyDashboardDataUpdated("cost-estimation-saved");
+      }
+
+      if (typeof window.CustomEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("planner-cost-estimations-updated", {
+            detail: {
+              estimationId: savedEstimation?.id || null,
+            },
+          }),
+        );
+      }
 
       // Show notification
       const notification = document.getElementById(

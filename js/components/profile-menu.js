@@ -32,6 +32,37 @@ const _dashboardOverlayLoaded = {
   admin: false,
 };
 
+function postMessageToDashboardFrame(view, payload) {
+  if (!_dashboardOverlayEls) return;
+
+  const frame =
+    view === "admin"
+      ? _dashboardOverlayEls.adminFrame
+      : _dashboardOverlayEls.profileFrame;
+
+  if (!frame || !_dashboardOverlayLoaded[view]) return;
+  if (!frame.contentWindow) return;
+
+  try {
+    frame.contentWindow.postMessage(payload, window.location.origin);
+  } catch (error) {
+    console.warn(`Unable to post dashboard message to ${view} frame:`, error);
+  }
+}
+
+function requestDashboardRefresh(view, reason = "manual") {
+  const messageType =
+    view === "admin"
+      ? "planner-dashboard-refresh-admin"
+      : "planner-dashboard-refresh-profile";
+
+  postMessageToDashboardFrame(view, {
+    type: messageType,
+    reason,
+    requestedAt: new Date().toISOString(),
+  });
+}
+
 const DASHBOARD_OVERLAY_CLOSE_MS = 260;
 
 function initDashboardOverlay() {
@@ -44,7 +75,14 @@ function initDashboardOverlay() {
   const adminTab = document.getElementById("dashboard-overlay-admin-tab");
   const title = document.getElementById("dashboard-overlay-title");
 
-  if (!overlay || !profileFrame || !adminFrame || !profileTab || !adminTab || !title) {
+  if (
+    !overlay ||
+    !profileFrame ||
+    !adminFrame ||
+    !profileTab ||
+    !adminTab ||
+    !title
+  ) {
     return;
   }
 
@@ -92,6 +130,8 @@ function setDashboardFrameVisibility(view) {
   if (!_dashboardOverlayLoaded[view]) {
     frame.src = DASHBOARD_MODAL_ROUTES[view];
     _dashboardOverlayLoaded[view] = true;
+  } else {
+    requestDashboardRefresh(view, "tab-switch");
   }
 }
 
@@ -142,7 +182,10 @@ function switchDashboardOverlayTab(view) {
   }
   if (!_dashboardOverlayEls) return;
 
-  if (view === "admin" && _dashboardOverlayEls.adminTab.style.display === "none") {
+  if (
+    view === "admin" &&
+    _dashboardOverlayEls.adminTab.style.display === "none"
+  ) {
     return;
   }
 
@@ -175,6 +218,15 @@ function closeDashboardOverlay() {
   );
 }
 
+function notifyDashboardDataUpdated(reason = "data-updated") {
+  if (!_dashboardOverlayEls) {
+    initDashboardOverlay();
+  }
+
+  requestDashboardRefresh("profile", reason);
+  requestDashboardRefresh("admin", reason);
+}
+
 function handleDashboardOverlayMessage(event) {
   if (event.origin !== window.location.origin) return;
   const messageType = event?.data?.type;
@@ -197,6 +249,7 @@ function handleDashboardOverlayMessage(event) {
 window.openDashboardOverlay = openDashboardOverlay;
 window.closeDashboardOverlay = closeDashboardOverlay;
 window.switchDashboardOverlayTab = switchDashboardOverlayTab;
+window.notifyDashboardDataUpdated = notifyDashboardDataUpdated;
 
 /**
  * Handle profile circle click — opens auth modal when logged out,
@@ -288,7 +341,9 @@ async function updateProfileMenu(isAuthenticated, user) {
     if (adminDashboardLink) {
       adminDashboardLink.style.display = userIsAdmin ? "block" : "none";
     }
-    const adminDashboardTab = document.getElementById("dashboard-overlay-admin-tab");
+    const adminDashboardTab = document.getElementById(
+      "dashboard-overlay-admin-tab",
+    );
     if (adminDashboardTab) {
       adminDashboardTab.style.display = userIsAdmin ? "" : "none";
     }
@@ -304,7 +359,9 @@ async function updateProfileMenu(isAuthenticated, user) {
     if (profileEmail) {
       profileEmail.textContent = "Not signed in";
     }
-    const adminDashboardTab = document.getElementById("dashboard-overlay-admin-tab");
+    const adminDashboardTab = document.getElementById(
+      "dashboard-overlay-admin-tab",
+    );
     if (adminDashboardTab) {
       adminDashboardTab.style.display = "none";
     }

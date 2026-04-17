@@ -2,6 +2,30 @@
 
 let allItems = [];
 let itemPrices = {};
+let adminRefreshTimer = null;
+
+function scheduleAdminReload() {
+  if (adminRefreshTimer) {
+    clearTimeout(adminRefreshTimer);
+  }
+
+  adminRefreshTimer = window.setTimeout(async () => {
+    adminRefreshTimer = null;
+    await loadAllItems();
+  }, 80);
+}
+
+function handleAdminDashboardMessage(event) {
+  if (event.origin !== window.location.origin) return;
+
+  const messageType = event?.data?.type;
+  if (
+    messageType === "planner-dashboard-refresh-admin" ||
+    messageType === "planner-dashboard-refresh-all"
+  ) {
+    scheduleAdminReload();
+  }
+}
 
 /**
  * Initialize admin panel
@@ -10,9 +34,9 @@ async function initAdmin() {
   // Check if user is admin
   const userIsAdmin = await isAdmin();
   if (!userIsAdmin) {
-    showError('Access denied. Admin privileges required.');
-    document.getElementById('admin-panel').style.display = 'none';
-    document.getElementById('loading').style.display = 'none';
+    showError("Access denied. Admin privileges required.");
+    document.getElementById("admin-panel").style.display = "none";
+    document.getElementById("loading").style.display = "none";
     return;
   }
 
@@ -25,14 +49,19 @@ async function initAdmin() {
  */
 async function loadAllItems() {
   try {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('error').style.display = 'none';
+    const loadingEl = document.getElementById("loading");
+    const errorEl = document.getElementById("error");
+    const adminPanelEl = document.getElementById("admin-panel");
+
+    if (loadingEl) loadingEl.style.display = "block";
+    if (errorEl) errorEl.style.display = "none";
+    if (adminPanelEl) adminPanelEl.style.display = "none";
 
     // Fetch all items
     const { data: items, error: itemsError } = await supabase
-      .from('items')
-      .select('*')
-      .order('category, model_key');
+      .from("items")
+      .select("*")
+      .order("category, model_key");
 
     if (itemsError) {
       throw itemsError;
@@ -43,20 +72,20 @@ async function loadAllItems() {
       allItems = [];
       itemPrices = {};
       populateItemSelector();
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('admin-panel').style.display = 'block';
+      if (loadingEl) loadingEl.style.display = "none";
+      if (adminPanelEl) adminPanelEl.style.display = "block";
       return;
     }
 
     allItems = items;
 
     // Fetch all prices
-    const itemIds = items.map(item => item.id);
+    const itemIds = items.map((item) => item.id);
     const { data: prices, error: pricesError } = await supabase
-      .from('item_prices')
-      .select('*')
-      .in('item_id', itemIds)
-      .order('item_id, store_name');
+      .from("item_prices")
+      .select("*")
+      .in("item_id", itemIds)
+      .order("item_id, store_name");
 
     if (pricesError) {
       throw pricesError;
@@ -64,12 +93,12 @@ async function loadAllItems() {
 
     // Organize prices by item_id and store
     itemPrices = {};
-    items.forEach(item => {
+    items.forEach((item) => {
       itemPrices[item.id] = {};
     });
 
     if (prices) {
-      prices.forEach(price => {
+      prices.forEach((price) => {
         if (!itemPrices[price.item_id]) {
           itemPrices[price.item_id] = {};
         }
@@ -83,12 +112,13 @@ async function loadAllItems() {
     // Render all item cards
     renderAllItems();
 
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'block';
+    if (loadingEl) loadingEl.style.display = "none";
+    if (adminPanelEl) adminPanelEl.style.display = "block";
   } catch (error) {
-    console.error('Error loading items:', error);
+    console.error("Error loading items:", error);
     showError(`Error loading data: ${error.message}`);
-    document.getElementById('loading').style.display = 'none';
+    const loadingEl = document.getElementById("loading");
+    if (loadingEl) loadingEl.style.display = "none";
   }
 }
 
@@ -96,13 +126,13 @@ async function loadAllItems() {
  * Populate item selector dropdown
  */
 function populateItemSelector() {
-  const select = document.getElementById('price-item-select');
+  const select = document.getElementById("price-item-select");
   if (!select) return;
 
   select.innerHTML = '<option value="">Select an item...</option>';
-  
-  allItems.forEach(item => {
-    const option = document.createElement('option');
+
+  allItems.forEach((item) => {
+    const option = document.createElement("option");
     option.value = item.id;
     option.textContent = `${item.name} (${item.model_key})`;
     select.appendChild(option);
@@ -113,20 +143,21 @@ function populateItemSelector() {
  * Render all items with prices
  */
 function renderAllItems() {
-  const container = document.getElementById('items-list');
+  const container = document.getElementById("items-list");
   if (!container) return;
 
-  container.innerHTML = '';
+  container.innerHTML = "";
 
   if (allItems.length === 0) {
-    container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No items found. Add your first item above!</p>';
+    container.innerHTML =
+      '<p style="text-align: center; color: #666; padding: 40px;">No items found. Add your first item above!</p>';
     return;
   }
 
   // Group items by category
   const itemsByCategory = {};
-  allItems.forEach(item => {
-    const category = item.category || 'Other';
+  allItems.forEach((item) => {
+    const category = item.category || "Other";
     if (!itemsByCategory[category]) {
       itemsByCategory[category] = [];
     }
@@ -134,47 +165,58 @@ function renderAllItems() {
   });
 
   // Render items grouped by category
-  Object.keys(itemsByCategory).sort().forEach(category => {
-    const categorySection = document.createElement('div');
-    categorySection.className = 'category-section';
-    categorySection.innerHTML = `<h3 style="color: #666; margin-bottom: 15px; font-size: 18px;">${category}</h3>`;
-    
-    const categoryItems = document.createElement('div');
-    
-    itemsByCategory[category].forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'item-card';
-      card.dataset.itemId = item.id;
+  Object.keys(itemsByCategory)
+    .sort()
+    .forEach((category) => {
+      const categorySection = document.createElement("div");
+      categorySection.className = "category-section";
+      categorySection.innerHTML = `<h3 style="color: #666; margin-bottom: 15px; font-size: 18px;">${category}</h3>`;
 
-      // Calculate estimated price
-      const prices = itemPrices[item.id] || {};
-      const priceValues = Object.values(prices).map(p => p.price);
-      const estimatedPrice = priceValues.length > 0 && priceValues.some(p => p > 0)
-        ? (priceValues.reduce((a, b) => a + b, 0) / priceValues.length).toFixed(2)
-        : 0;
+      const categoryItems = document.createElement("div");
 
-      // Get all store names for this item
-      const storeNames = Object.keys(prices).sort();
-      const defaultStores = ['All-Home', 'Wilcon Depot', 'Gaisano', 'Local suppliers'];
-      const allStoreNames = [...new Set([...defaultStores, ...storeNames])];
+      itemsByCategory[category].forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item-card";
+        card.dataset.itemId = item.id;
 
-      card.innerHTML = `
+        // Calculate estimated price
+        const prices = itemPrices[item.id] || {};
+        const priceValues = Object.values(prices).map((p) => p.price);
+        const estimatedPrice =
+          priceValues.length > 0 && priceValues.some((p) => p > 0)
+            ? (
+                priceValues.reduce((a, b) => a + b, 0) / priceValues.length
+              ).toFixed(2)
+            : 0;
+
+        // Get all store names for this item
+        const storeNames = Object.keys(prices).sort();
+        const defaultStores = [
+          "All-Home",
+          "Wilcon Depot",
+          "Gaisano",
+          "Local suppliers",
+        ];
+        const allStoreNames = [...new Set([...defaultStores, ...storeNames])];
+
+        card.innerHTML = `
         <div class="item-header">
           <div>
             <h3>${item.name || item.model_key}</h3>
-            <div class="item-meta">Model Key: ${item.model_key} | Category: ${item.category || 'N/A'}</div>
+            <div class="item-meta">Model Key: ${item.model_key} | Category: ${item.category || "N/A"}</div>
           </div>
           <div class="estimated-price">
             <span class="estimated-price-label">Estimated Price:</span>
-            ₱${parseFloat(estimatedPrice).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            ₱${parseFloat(estimatedPrice).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div class="stores-section">
           <div class="stores-title">Store Prices:</div>
-          ${allStoreNames.map(storeName => {
-            const price = prices[storeName];
-            const priceValue = price ? price.price : 0;
-            return `
+          ${allStoreNames
+            .map((storeName) => {
+              const price = prices[storeName];
+              const priceValue = price ? price.price : 0;
+              return `
               <div class="store-row">
                 <div class="store-name">${storeName}:</div>
                 <div class="store-input-group">
@@ -193,16 +235,17 @@ function renderAllItems() {
                 </div>
               </div>
             `;
-          }).join('')}
+            })
+            .join("")}
         </div>
       `;
 
-      categoryItems.appendChild(card);
+        categoryItems.appendChild(card);
+      });
+
+      categorySection.appendChild(categoryItems);
+      container.appendChild(categorySection);
     });
-    
-    categorySection.appendChild(categoryItems);
-    container.appendChild(categorySection);
-  });
 }
 
 /**
@@ -218,7 +261,7 @@ function handlePriceChange(itemId, storeName, value) {
     itemPrices[itemId][storeName] = {
       item_id: itemId,
       store_name: storeName,
-      price: priceValue
+      price: priceValue,
     };
   } else {
     itemPrices[itemId][storeName].price = priceValue;
@@ -235,60 +278,58 @@ async function savePrice(itemId, storeName) {
   try {
     const priceData = itemPrices[itemId][storeName];
     if (!priceData || priceData.price < 0) {
-      throw new Error('Invalid price');
+      throw new Error("Invalid price");
     }
 
     const statusEl = document.getElementById(`status-${itemId}-${storeName}`);
-    statusEl.textContent = 'Saving...';
-    statusEl.className = 'save-status';
+    statusEl.textContent = "Saving...";
+    statusEl.className = "save-status";
 
     // Check if price exists
     const { data: existing } = await supabase
-      .from('item_prices')
-      .select('id')
-      .eq('item_id', itemId)
-      .eq('store_name', storeName)
+      .from("item_prices")
+      .select("id")
+      .eq("item_id", itemId)
+      .eq("store_name", storeName)
       .single();
 
     let result;
     if (existing) {
       // Update existing price
       result = await supabase
-        .from('item_prices')
+        .from("item_prices")
         .update({
           price: priceData.price,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('item_id', itemId)
-        .eq('store_name', storeName);
+        .eq("item_id", itemId)
+        .eq("store_name", storeName);
     } else {
       // Insert new price
-      result = await supabase
-        .from('item_prices')
-        .insert({
-          item_id: itemId,
-          store_name: storeName,
-          price: priceData.price
-        });
+      result = await supabase.from("item_prices").insert({
+        item_id: itemId,
+        store_name: storeName,
+        price: priceData.price,
+      });
     }
 
     if (result.error) {
       throw result.error;
     }
 
-    statusEl.textContent = 'Saved!';
-    statusEl.className = 'save-status success';
+    statusEl.textContent = "Saved!";
+    statusEl.className = "save-status success";
     setTimeout(() => {
-      statusEl.textContent = '';
+      statusEl.textContent = "";
     }, 2000);
 
     // Recalculate estimated price
     updateEstimatedPrice(itemId);
   } catch (error) {
-    console.error('Error saving price:', error);
+    console.error("Error saving price:", error);
     const statusEl = document.getElementById(`status-${itemId}-${storeName}`);
-    statusEl.textContent = 'Error!';
-    statusEl.className = 'save-status error';
+    statusEl.textContent = "Error!";
+    statusEl.className = "save-status error";
   }
 }
 
@@ -297,18 +338,21 @@ async function savePrice(itemId, storeName) {
  */
 function updateEstimatedPrice(itemId) {
   const prices = itemPrices[itemId] || {};
-  const priceValues = Object.values(prices).map(p => p.price).filter(p => p > 0);
-  const estimatedPrice = priceValues.length > 0
-    ? (priceValues.reduce((a, b) => a + b, 0) / priceValues.length).toFixed(2)
-    : 0;
+  const priceValues = Object.values(prices)
+    .map((p) => p.price)
+    .filter((p) => p > 0);
+  const estimatedPrice =
+    priceValues.length > 0
+      ? (priceValues.reduce((a, b) => a + b, 0) / priceValues.length).toFixed(2)
+      : 0;
 
   const card = document.querySelector(`[data-item-id="${itemId}"]`);
   if (card) {
-    const estimatedEl = card.querySelector('.estimated-price');
+    const estimatedEl = card.querySelector(".estimated-price");
     if (estimatedEl) {
       estimatedEl.innerHTML = `
         <span class="estimated-price-label">Estimated Price:</span>
-        ₱${parseFloat(estimatedPrice).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+        ₱${parseFloat(estimatedPrice).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       `;
     }
   }
@@ -318,31 +362,31 @@ function updateEstimatedPrice(itemId) {
  * Add new item
  */
 async function addNewItem() {
-  const modelKey = document.getElementById('new-item-model-key').value.trim();
-  const name = document.getElementById('new-item-name').value.trim();
-  const category = document.getElementById('new-item-category').value;
-  const modelPath = document.getElementById('new-item-model-path').value.trim();
+  const modelKey = document.getElementById("new-item-model-key").value.trim();
+  const name = document.getElementById("new-item-name").value.trim();
+  const category = document.getElementById("new-item-category").value;
+  const modelPath = document.getElementById("new-item-model-path").value.trim();
 
-  const statusEl = document.getElementById('add-item-status');
+  const statusEl = document.getElementById("add-item-status");
 
   // Validation
   if (!modelKey || !name) {
-    statusEl.textContent = 'Please fill in Model Key and Name';
-    statusEl.className = 'save-status error';
+    statusEl.textContent = "Please fill in Model Key and Name";
+    statusEl.className = "save-status error";
     return;
   }
 
-  statusEl.textContent = 'Adding...';
-  statusEl.className = 'save-status';
+  statusEl.textContent = "Adding...";
+  statusEl.className = "save-status";
 
   try {
     const { data, error } = await supabase
-      .from('items')
+      .from("items")
       .insert({
         model_key: modelKey,
         name: name,
         category: category || null,
-        model_file_path: modelPath || null
+        model_file_path: modelPath || null,
       })
       .select()
       .single();
@@ -352,23 +396,23 @@ async function addNewItem() {
     }
 
     // Clear form
-    document.getElementById('new-item-model-key').value = '';
-    document.getElementById('new-item-name').value = '';
-    document.getElementById('new-item-category').value = 'Tables';
-    document.getElementById('new-item-model-path').value = '';
+    document.getElementById("new-item-model-key").value = "";
+    document.getElementById("new-item-name").value = "";
+    document.getElementById("new-item-category").value = "Tables";
+    document.getElementById("new-item-model-path").value = "";
 
     // Reload items
     await loadAllItems();
 
-    statusEl.textContent = 'Item added successfully!';
-    statusEl.className = 'save-status success';
+    statusEl.textContent = "Item added successfully!";
+    statusEl.className = "save-status success";
     setTimeout(() => {
-      statusEl.textContent = '';
+      statusEl.textContent = "";
     }, 3000);
   } catch (error) {
-    console.error('Error adding item:', error);
-    statusEl.textContent = 'Error: ' + (error.message || 'Failed to add item');
-    statusEl.className = 'save-status error';
+    console.error("Error adding item:", error);
+    statusEl.textContent = "Error: " + (error.message || "Failed to add item");
+    statusEl.className = "save-status error";
   }
 }
 
@@ -376,63 +420,61 @@ async function addNewItem() {
  * Add price to item
  */
 async function addPriceToItem() {
-  const itemId = document.getElementById('price-item-select').value;
-  const storeName = document.getElementById('price-store-name').value.trim();
-  const priceAmount = parseFloat(document.getElementById('price-amount').value);
+  const itemId = document.getElementById("price-item-select").value;
+  const storeName = document.getElementById("price-store-name").value.trim();
+  const priceAmount = parseFloat(document.getElementById("price-amount").value);
 
-  const statusEl = document.getElementById('add-price-status');
+  const statusEl = document.getElementById("add-price-status");
 
   // Validation
   if (!itemId) {
-    statusEl.textContent = 'Please select an item';
-    statusEl.className = 'save-status error';
+    statusEl.textContent = "Please select an item";
+    statusEl.className = "save-status error";
     return;
   }
 
   if (!storeName) {
-    statusEl.textContent = 'Please enter store name';
-    statusEl.className = 'save-status error';
+    statusEl.textContent = "Please enter store name";
+    statusEl.className = "save-status error";
     return;
   }
 
   if (!priceAmount || priceAmount < 0) {
-    statusEl.textContent = 'Please enter a valid price';
-    statusEl.className = 'save-status error';
+    statusEl.textContent = "Please enter a valid price";
+    statusEl.className = "save-status error";
     return;
   }
 
-  statusEl.textContent = 'Adding...';
-  statusEl.className = 'save-status';
+  statusEl.textContent = "Adding...";
+  statusEl.className = "save-status";
 
   try {
     // Check if price exists
     const { data: existing } = await supabase
-      .from('item_prices')
-      .select('id')
-      .eq('item_id', itemId)
-      .eq('store_name', storeName)
+      .from("item_prices")
+      .select("id")
+      .eq("item_id", itemId)
+      .eq("store_name", storeName)
       .single();
 
     let result;
     if (existing) {
       // Update existing price
       result = await supabase
-        .from('item_prices')
+        .from("item_prices")
         .update({
           price: priceAmount,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('item_id', itemId)
-        .eq('store_name', storeName);
+        .eq("item_id", itemId)
+        .eq("store_name", storeName);
     } else {
       // Insert new price
-      result = await supabase
-        .from('item_prices')
-        .insert({
-          item_id: itemId,
-          store_name: storeName,
-          price: priceAmount
-        });
+      result = await supabase.from("item_prices").insert({
+        item_id: itemId,
+        store_name: storeName,
+        price: priceAmount,
+      });
     }
 
     if (result.error) {
@@ -440,21 +482,21 @@ async function addPriceToItem() {
     }
 
     // Clear form
-    document.getElementById('price-store-name').value = '';
-    document.getElementById('price-amount').value = '';
+    document.getElementById("price-store-name").value = "";
+    document.getElementById("price-amount").value = "";
 
     // Reload items
     await loadAllItems();
 
-    statusEl.textContent = 'Price added successfully!';
-    statusEl.className = 'save-status success';
+    statusEl.textContent = "Price added successfully!";
+    statusEl.className = "save-status success";
     setTimeout(() => {
-      statusEl.textContent = '';
+      statusEl.textContent = "";
     }, 3000);
   } catch (error) {
-    console.error('Error adding price:', error);
-    statusEl.textContent = 'Error: ' + (error.message || 'Failed to add price');
-    statusEl.className = 'save-status error';
+    console.error("Error adding price:", error);
+    statusEl.textContent = "Error: " + (error.message || "Failed to add price");
+    statusEl.className = "save-status error";
   }
 }
 
@@ -462,10 +504,10 @@ async function addPriceToItem() {
  * Show error message
  */
 function showError(message) {
-  const errorEl = document.getElementById('error');
-  const errorText = document.getElementById('error-text');
+  const errorEl = document.getElementById("error");
+  const errorText = document.getElementById("error-text");
   errorText.textContent = message;
-  errorEl.style.display = 'block';
+  errorEl.style.display = "block";
 }
 
 /**
@@ -476,33 +518,34 @@ async function handleSignOut() {
   if (result.success) {
     if (window.parent && window.parent !== window) {
       window.parent.postMessage(
-        { type: 'planner-dashboard-signed-out' },
+        { type: "planner-dashboard-signed-out" },
         window.location.origin,
       );
       return;
     }
-    window.location.href = 'planner.html';
+    window.location.href = "planner.html";
   } else {
-    await showDialog('Error signing out: ' + result.error, 'Error');
+    await showDialog("Error signing out: " + result.error, "Error");
   }
 }
 
+window.addEventListener("message", handleAdminDashboardMessage);
+
 // Initialize on page load
-window.addEventListener('load', async () => {
+window.addEventListener("load", async () => {
   // Check authentication first
   const isAuthenticated = await checkAuth();
   if (!isAuthenticated) {
     if (window.parent && window.parent !== window) {
       window.parent.postMessage(
-        { type: 'planner-dashboard-require-auth' },
+        { type: "planner-dashboard-require-auth" },
         window.location.origin,
       );
       return;
     }
-    window.location.href = 'planner.html';
+    window.location.href = "planner.html";
     return;
   }
 
   await initAdmin();
 });
-

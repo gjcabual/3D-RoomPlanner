@@ -414,9 +414,60 @@ body {
 }
 
 .loading {
-  text-align: center;
-  padding: 40px;
-  color: rgba(255, 255, 255, 0.6);
+  padding: 12px 0;
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 14px;
+}
+
+.skeleton-line,
+.skeleton-card,
+.skeleton-plan-card {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 220% 100%;
+  animation: profile-skeleton-shimmer 1.2s linear infinite;
+}
+
+.profile-loading-skeleton .skeleton-heading {
+  height: 22px;
+  width: min(46%, 280px);
+}
+
+.skeleton-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.skeleton-card {
+  height: 86px;
+}
+
+.profile-loading-skeleton .skeleton-subheading {
+  height: 18px;
+  width: min(38%, 220px);
+  margin-top: 6px;
+}
+
+.skeleton-plan-card {
+  height: 132px;
+}
+
+@keyframes profile-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .error-message {
