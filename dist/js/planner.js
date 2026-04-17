@@ -7,6 +7,9 @@ let furnitureCounter = 0;
 let panelOpen = false;
 let selectedFurniture = null; // Track currently selected furniture
 let instructionsHelpInitialized = false;
+let costPanelToggleLocked = false;
+let spaceConstraintToggleLocked = false;
+const MOBILE_PANEL_TOGGLE_LOCK_MS = 320;
 
 const PANEL_TOGGLE_GRID_ICON =
   '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
@@ -2001,6 +2004,14 @@ function isFurnitureOutsideBoundaries(
 function toggleCostPanel() {
   const costPanel = document.getElementById("cost-panel");
   if (!costPanel) return;
+
+  if (document.body?.classList.contains("mobile-layout")) {
+    if (costPanelToggleLocked) return;
+    costPanelToggleLocked = true;
+    window.setTimeout(() => {
+      costPanelToggleLocked = false;
+    }, MOBILE_PANEL_TOGGLE_LOCK_MS);
+  }
 
   costPanel.classList.toggle("collapsed");
 }
@@ -4397,6 +4408,14 @@ function ensureSpaceConstraintPanel() {
   const toggleBtn = panel.querySelector(".space-constraint-toggle");
   if (toggleBtn) {
     toggleBtn.addEventListener("click", () => {
+      if (document.body?.classList.contains("mobile-layout")) {
+        if (spaceConstraintToggleLocked) return;
+        spaceConstraintToggleLocked = true;
+        window.setTimeout(() => {
+          spaceConstraintToggleLocked = false;
+        }, MOBILE_PANEL_TOGGLE_LOCK_MS);
+      }
+
       const shouldCollapse = !panel.classList.contains("collapsed");
       setSpaceConstraintCollapsed(panel, shouldCollapse);
     });

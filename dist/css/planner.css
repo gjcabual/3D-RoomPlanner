@@ -1869,7 +1869,8 @@ body.mobile-layout #hud-stack {
   top: 10px;
   right: 8px;
   left: auto;
-  width: min(92vw, 340px);
+  width: auto;
+  max-width: min(92vw, 340px);
   gap: 8px;
   align-items: flex-end;
 }
@@ -1934,12 +1935,27 @@ body.mobile-layout .dashboard-overlay-close {
 }
 
 body.mobile-layout #cost-panel {
-  width: 100%;
-  max-width: 100%;
+  width: min(92vw, 340px);
+  max-width: min(92vw, 340px);
+  max-height: 90vh;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.28s ease,
+    opacity 0.2s ease;
+  contain: layout paint;
+  will-change: width, max-width, max-height, opacity;
+  transform-origin: top right;
+  align-self: flex-end;
 }
 
 body.mobile-layout #cost-panel.collapsed {
-  width: 48px;
+  width: 52px;
+  max-width: 52px;
+  max-height: 52px;
 }
 
 body.mobile-layout #cost-panel:hover {
@@ -1954,6 +1970,17 @@ body.mobile-layout #cost-panel .cost-footer {
 
 body.mobile-layout #cost-panel .cost-header {
   padding: 12px 14px;
+  transition: padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  touch-action: manipulation;
+}
+
+body.mobile-layout #cost-panel.collapsed .cost-header {
+  height: 52px;
+}
+
+body.mobile-layout #cost-panel .cost-header::after {
+  width: 52px;
+  height: 52px;
 }
 
 body.mobile-layout #cost-panel .cost-header h3 {
@@ -1972,6 +1999,76 @@ body.mobile-layout #cost-panel .cost-body {
 
 body.mobile-layout #cost-panel .cost-footer {
   padding: 12px;
+}
+
+body.mobile-layout #cost-panel .cost-body,
+body.mobile-layout #cost-panel .cost-footer {
+  transition:
+    max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.mobile-layout #cost-panel .cost-body > *,
+body.mobile-layout #cost-panel .cost-footer > * {
+  transition-delay: 0s !important;
+}
+
+body.mobile-layout #cost-panel:not(.collapsed) .cost-body > *,
+body.mobile-layout #cost-panel:not(.collapsed) .cost-footer > * {
+  transition-delay: 0.08s !important;
+}
+
+body.mobile-layout .space-constraint-panel {
+  width: min(92vw, 340px);
+  max-width: min(92vw, 340px);
+  max-height: min(58vh, 340px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.28s ease,
+    opacity 0.2s ease;
+  contain: layout paint;
+  will-change: width, max-width, max-height, opacity;
+  transform-origin: top right;
+  align-self: flex-end;
+}
+
+body.mobile-layout .space-constraint-panel.collapsed {
+  width: 52px;
+  max-width: 52px;
+  max-height: 52px;
+}
+
+body.mobile-layout .space-constraint-panel.collapsed .space-constraint-toggle {
+  height: 52px;
+  min-height: 52px;
+}
+
+body.mobile-layout .space-constraint-toggle {
+  touch-action: manipulation;
+}
+
+body.mobile-layout .space-constraint-body {
+  transition:
+    max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    padding 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.mobile-layout .space-constraint-body > * {
+  transition-delay: 0s !important;
+}
+
+body.mobile-layout
+  .space-constraint-panel:not(.collapsed)
+  .space-constraint-body
+  > * {
+  transition-delay: 0.08s !important;
 }
 
 body.mobile-layout #cost-panel .cost-total-row {
