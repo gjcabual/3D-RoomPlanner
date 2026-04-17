@@ -1842,8 +1842,7 @@ function showResizeDimensionPanel() {
   // Show resize dimension panel
   resizePanel.classList.add("open");
 
-  // Load current dimensions if available (stored in meters, display in feet)
-  const FT_PER_M = 3.28084;
+  // Load current dimensions in meters.
   const width = localStorage.getItem("roomWidth") || "";
   const length = localStorage.getItem("roomLength") || "";
   const height = localStorage.getItem("roomHeight") || "";
@@ -1852,16 +1851,11 @@ function showResizeDimensionPanel() {
   const lengthInput = document.getElementById("room-length-input");
   const heightInput = document.getElementById("room-height-input");
 
-  if (widthInput)
-    widthInput.value = width ? (parseFloat(width) * FT_PER_M).toFixed(1) : "";
+  if (widthInput) widthInput.value = width ? parseFloat(width).toFixed(2) : "";
   if (lengthInput)
-    lengthInput.value = length
-      ? (parseFloat(length) * FT_PER_M).toFixed(1)
-      : "";
+    lengthInput.value = length ? parseFloat(length).toFixed(2) : "";
   if (heightInput)
-    heightInput.value = height
-      ? (parseFloat(height) * FT_PER_M).toFixed(1)
-      : "";
+    heightInput.value = height ? parseFloat(height).toFixed(2) : "";
 }
 
 function saveRoomDimensions() {
@@ -1869,24 +1863,21 @@ function saveRoomDimensions() {
   const lengthInput = document.getElementById("room-length-input");
   const heightInput = document.getElementById("room-height-input");
 
-  const widthFt = parseFloat(widthInput?.value);
-  const lengthFt = parseFloat(lengthInput?.value);
-  const heightFt = parseFloat(heightInput?.value);
+  const widthM = parseFloat(widthInput?.value);
+  const lengthM = parseFloat(lengthInput?.value);
+  const heightM = parseFloat(heightInput?.value);
 
-  if (!widthFt || !lengthFt || widthFt <= 0 || lengthFt <= 0) {
+  if (!widthM || !lengthM || widthM <= 0 || lengthM <= 0) {
     showDialog(
-      "Please enter valid width and length values (greater than 0).",
+      "Please enter valid width and length values in meters (greater than 0).",
       "Invalid Dimensions",
     );
     return;
   }
 
-  // Convert feet to meters for internal storage
-  const M_PER_FT = 0.3048;
-  const width = +(widthFt * M_PER_FT).toFixed(2);
-  const length = +(lengthFt * M_PER_FT).toFixed(2);
-  const height =
-    heightFt && heightFt > 0 ? +(heightFt * M_PER_FT).toFixed(2) : null;
+  const width = +widthM.toFixed(2);
+  const length = +lengthM.toFixed(2);
+  const height = heightM && heightM > 0 ? +heightM.toFixed(2) : null;
 
   // Save to localStorage (in meters)
   localStorage.setItem("roomWidth", width.toString());
@@ -3782,9 +3773,11 @@ function showWelcomeDialog() {
   }
 
   // Get room dimensions for display
-  const width = localStorage.getItem("roomWidth") || "?";
-  const length = localStorage.getItem("roomLength") || "?";
-  const height = localStorage.getItem("roomHeight") || "?";
+  const width = Number.parseFloat(localStorage.getItem("roomWidth") || "");
+  const length = Number.parseFloat(localStorage.getItem("roomLength") || "");
+  const height = Number.parseFloat(localStorage.getItem("roomHeight") || "");
+  const formatMeters = (value) =>
+    Number.isFinite(value) ? `${value.toFixed(2)}m` : "?";
   const helpTip = isMobilePlacementMode()
     ? "Tap the <strong>?</strong> button anytime to open this guide again."
     : "Hover over the <strong>?</strong> button anytime to see these instructions again.";
@@ -3792,7 +3785,7 @@ function showWelcomeDialog() {
   const welcomeContent = `
     <div class="welcome-dialog-content">
       <h2 class="welcome-title">Welcome to 3D Room Planner</h2>
-      <p class="welcome-subtitle">Your room: ${width}ft × ${length}ft × ${height}ft</p>
+      <p class="welcome-subtitle">Your room: ${formatMeters(width)} × ${formatMeters(length)} × ${formatMeters(height)}</p>
       
       <div class="welcome-section">
         <h3>Controls</h3>

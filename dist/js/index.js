@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const MIN_DIMENSION_M = 1;
+  const MAX_DIMENSION_M = 6;
+
   // Expose function to global scope directly here as well
   window.startPlanner = function () {
     const budgetInput = document.getElementById("project-budget");
@@ -34,25 +37,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (
-      width < 1 ||
-      width > 20 ||
-      length < 1 ||
-      length > 20 ||
-      height < 1 ||
-      height > 20
+      width < MIN_DIMENSION_M ||
+      width > MAX_DIMENSION_M ||
+      length < MIN_DIMENSION_M ||
+      length > MAX_DIMENSION_M ||
+      height < MIN_DIMENSION_M ||
+      height > MAX_DIMENSION_M
     ) {
       showDialog(
-        "Please enter dimensions between 1ft and 20ft",
+        `Please enter dimensions between ${MIN_DIMENSION_M}m and ${MAX_DIMENSION_M}m`,
         "Validation Error",
       );
       return;
     }
 
-    // Convert feet to meters for internal storage (planner uses meters)
-    const M_PER_FT = 0.3048;
-    const widthM = +(width * M_PER_FT).toFixed(2);
-    const lengthM = +(length * M_PER_FT).toFixed(2);
-    const heightM = +(height * M_PER_FT).toFixed(2);
+    // Planner stores and renders room dimensions in meters.
+    const widthM = +width.toFixed(2);
+    const lengthM = +length.toFixed(2);
+    const heightM = +height.toFixed(2);
 
     localStorage.setItem("projectBudget", budget);
     localStorage.setItem("roomWidth", widthM);

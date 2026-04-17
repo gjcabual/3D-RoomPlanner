@@ -203,7 +203,7 @@ body::before {
 
 .dimension-input:focus {
   border-bottom-color: #ffffff;
-  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: none;
 }
 
 .dimension-input::-webkit-inner-spin-button,
