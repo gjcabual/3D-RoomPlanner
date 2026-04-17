@@ -48,7 +48,8 @@ body {
   left: 0;
 }
 
-.panel-header {
+#side-panel .panel-header,
+#resize-dimension-panel .panel-header {
   padding: 20px;
   background: linear-gradient(135deg, #343434 0%, #181818 100%);
   color: #f5f5f5;
@@ -56,14 +57,16 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.panel-header h3 {
+#side-panel .panel-header h3,
+#resize-dimension-panel .panel-header h3 {
   margin: 0;
   font-size: 1.2em;
   font-weight: 500;
   color: #f5f5f5;
 }
 
-.panel-header small {
+#side-panel .panel-header small,
+#resize-dimension-panel .panel-header small {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85em;
 }
@@ -754,7 +757,7 @@ body.mobile-layout #instructions.open .instructions-content {
   transform: scale(1.05);
 }
 
-.cost-header {
+#cost-panel .cost-header {
   padding: 16px 20px;
   background: linear-gradient(135deg, #343434 0%, #181818 100%);
   color: #f5f5f5;
@@ -772,7 +775,7 @@ body.mobile-layout #instructions.open .instructions-content {
 }
 
 /* Icon for collapsed state - Absolutely positioned for smooth transition */
-.cost-header::after {
+#cost-panel .cost-header::after {
   content: "$";
   font-size: 20px;
   font-weight: 700;
@@ -806,13 +809,13 @@ body.mobile-layout #instructions.open .instructions-content {
   transition-delay: 0s;
 }
 
-.cost-header h3 {
+#cost-panel .cost-header h3 {
   transition: opacity 0.2s ease;
   opacity: 1;
   will-change: opacity;
 }
 
-.cost-toggle-btn {
+#cost-panel .cost-toggle-btn {
   transition:
     opacity 0.18s ease,
     transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
@@ -840,14 +843,14 @@ body.mobile-layout #instructions.open .instructions-content {
   transition-delay: 0.24s;
 }
 
-.cost-header h3 {
+#cost-panel .cost-header h3 {
   margin: 0;
   font-size: 1.1em;
   font-weight: 500;
   flex: 1;
 }
 
-.cost-toggle-btn {
+#cost-panel .cost-toggle-btn {
   background: transparent;
   border: none;
   color: #f5f5f5;
@@ -868,7 +871,7 @@ body.mobile-layout #instructions.open .instructions-content {
   overflow: hidden; /* Ensure no scrollbars appear */
 }
 
-.cost-body {
+#cost-panel .cost-body {
   padding: 15px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -891,8 +894,8 @@ body.mobile-layout #instructions.open .instructions-content {
   opacity: 1;
 }
 
-.cost-body > *,
-.cost-footer > * {
+#cost-panel .cost-body > *,
+#cost-panel .cost-footer > * {
   opacity: 1;
   transition: opacity 0.2s ease;
   transition-delay: 0.24s;
@@ -910,7 +913,7 @@ body.mobile-layout #instructions.open .instructions-content {
   transition-delay: 0.24s;
 }
 
-.cost-footer {
+#cost-panel .cost-footer {
   /* Prevent reflow during collapse */
   min-width: 320px;
   box-sizing: border-box;
@@ -926,26 +929,26 @@ body.mobile-layout #instructions.open .instructions-content {
 }
 
 /* Custom Scrollbar for Cost Body - Webkit */
-.cost-body::-webkit-scrollbar {
+#cost-panel .cost-body::-webkit-scrollbar {
   width: 8px;
 }
 
-.cost-body::-webkit-scrollbar-track {
+#cost-panel .cost-body::-webkit-scrollbar-track {
   background: rgba(15, 15, 15, 0.5);
   border-radius: 4px;
 }
 
-.cost-body::-webkit-scrollbar-thumb {
+#cost-panel .cost-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
   border: 1px solid rgba(15, 15, 15, 0.3);
 }
 
-.cost-body::-webkit-scrollbar-thumb:hover {
+#cost-panel .cost-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.cost-item {
+#cost-panel .cost-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -955,40 +958,40 @@ body.mobile-layout #instructions.open .instructions-content {
   color: #f5f5f5;
 }
 
-.cost-item-details {
+#cost-panel .cost-item-details {
   display: flex;
   flex-direction: column;
   gap: 6px;
   flex: 1;
 }
 
-.cost-item-total {
+#cost-panel .cost-item-total {
   font-weight: 600;
   color: #f5f5f5;
   margin-left: 12px;
 }
 
-.cost-source-controls {
+#cost-panel .cost-source-controls {
   display: flex;
   flex-direction: column;
   gap: 4px;
   position: relative;
 }
 
-.cost-item-right {
+#cost-panel .cost-item-right {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.cost-item-actions {
+#cost-panel .cost-item-actions {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.cost-source-toggle {
+#cost-panel .cost-source-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1001,13 +1004,13 @@ body.mobile-layout #instructions.open .instructions-content {
   transition: all 0.2s ease;
 }
 
-.cost-source-toggle:hover {
+#cost-panel .cost-source-toggle:hover {
   background: rgba(255, 255, 255, 0.15);
   color: #f5f5f5;
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.cost-item-remove {
+#cost-panel .cost-item-remove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1020,7 +1023,7 @@ body.mobile-layout #instructions.open .instructions-content {
   transition: all 0.2s ease;
 }
 
-.cost-item-remove:hover {
+#cost-panel .cost-item-remove:hover {
   background: rgba(220, 53, 69, 0.2);
   color: #ff6b6b;
   border-color: rgba(220, 53, 69, 0.4);
@@ -1158,30 +1161,30 @@ body.mobile-layout #instructions.open .instructions-content {
   margin-left: 12px;
 }
 
-.cost-item > div:last-child {
+#cost-panel .cost-item > div:last-child {
   color: #f5f5f5;
   font-weight: 600;
 }
 
-.cost-item-name {
+#cost-panel .cost-item-name {
   color: #f5f5f5;
   font-weight: 600;
   overflow-wrap: break-word;
 }
 
-.cost-item-meta {
+#cost-panel .cost-item-meta {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85em;
   overflow-wrap: break-word;
 }
 
-.cost-footer {
+#cost-panel .cost-footer {
   padding: 15px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 15, 15, 0.96);
 }
 
-.cost-total-row {
+#cost-panel .cost-total-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1191,7 +1194,7 @@ body.mobile-layout #instructions.open .instructions-content {
   margin-bottom: 12px;
 }
 
-.cost-budget-row {
+#cost-panel .cost-budget-row {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 8px;
   transition-delay: 0.24s;
@@ -1200,18 +1203,18 @@ body.mobile-layout #instructions.open .instructions-content {
   color: rgba(245, 245, 245, 0.75);
 }
 
-.cost-budget-row span:last-child {
+#cost-panel .cost-budget-row span:last-child {
   color: #c6e1ff;
 }
 
-.cost-save-row {
+#cost-panel .cost-save-row {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 8px;
 }
 
-.cost-save-btn {
+#cost-panel .cost-save-btn {
   background: #4caf50;
   color: white;
   border: none;
@@ -1225,16 +1228,16 @@ body.mobile-layout #instructions.open .instructions-content {
     transform 0.1s;
 }
 
-.cost-save-btn:hover {
+#cost-panel .cost-save-btn:hover {
   background: #45a049;
   transform: translateY(-1px);
 }
 
-.cost-save-btn:active {
+#cost-panel .cost-save-btn:active {
   transform: translateY(0);
 }
 
-.save-notification {
+#cost-panel .save-notification {
   color: #4caf50;
   font-size: 0.85em;
   font-weight: 500;
@@ -1243,7 +1246,7 @@ body.mobile-layout #instructions.open .instructions-content {
   pointer-events: none;
 }
 
-.save-notification.show {
+#cost-panel .save-notification.show {
   opacity: 1;
 }
 
@@ -1938,57 +1941,57 @@ body.mobile-layout #cost-panel:hover {
   transform: none;
 }
 
-body.mobile-layout .cost-header,
-body.mobile-layout .cost-body,
-body.mobile-layout .cost-footer {
+body.mobile-layout #cost-panel .cost-header,
+body.mobile-layout #cost-panel .cost-body,
+body.mobile-layout #cost-panel .cost-footer {
   min-width: 0;
 }
 
-body.mobile-layout .cost-header {
+body.mobile-layout #cost-panel .cost-header {
   padding: 12px 14px;
 }
 
-body.mobile-layout .cost-header h3 {
+body.mobile-layout #cost-panel .cost-header h3 {
   font-size: 0.95em;
   line-height: 1.2;
   text-align: left;
   white-space: normal;
 }
 
-body.mobile-layout .cost-body {
+body.mobile-layout #cost-panel .cost-body {
   height: auto;
   max-height: min(42vh, 250px);
   min-height: 0;
   padding: 10px 12px;
 }
 
-body.mobile-layout .cost-footer {
+body.mobile-layout #cost-panel .cost-footer {
   padding: 12px;
 }
 
-body.mobile-layout .cost-total-row {
+body.mobile-layout #cost-panel .cost-total-row {
   font-size: 0.94em;
 }
 
-body.mobile-layout .cost-item {
+body.mobile-layout #cost-panel .cost-item {
   gap: 8px;
   align-items: flex-start;
 }
 
-body.mobile-layout .cost-item-total {
+body.mobile-layout #cost-panel .cost-item-total {
   margin-left: 0;
   font-size: 0.92em;
 }
 
-body.mobile-layout .cost-item-actions {
+body.mobile-layout #cost-panel .cost-item-actions {
   gap: 6px;
 }
 
-body.mobile-layout .cost-save-row {
+body.mobile-layout #cost-panel .cost-save-row {
   flex-wrap: wrap;
 }
 
-body.mobile-layout .cost-save-btn {
+body.mobile-layout #cost-panel .cost-save-btn {
   width: 100%;
 }
 
@@ -2024,7 +2027,8 @@ body.mobile-layout #panel-toggle:hover {
   transform: none;
 }
 
-body.mobile-layout .panel-header {
+body.mobile-layout #side-panel .panel-header,
+body.mobile-layout #resize-dimension-panel .panel-header {
   padding: 14px 14px 12px;
   position: sticky;
   top: 0;

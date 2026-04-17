@@ -63,25 +63,7 @@
       };
     </script>
     <!-- Custom Styles -->
-    <!-- Preload floor texture ASAP - browser starts downloading before JS even parses -->
-    <link rel="preload" href="./assets/wood2k-CFv1IHYO.jpg" as="image" />
-    <!-- Prefetch OBJ models early so downloads start before JS finishes loading.
-         The browser will open up to 6 parallel connections immediately. -->
-    <link rel="prefetch" href="./assets/bed1-Hh71A8pR.obj" />
-    <link rel="prefetch" href="./assets/bed2-BxDi0R3g.obj" />
-    <link rel="prefetch" href="./assets/center_table1-CW8OkQJs.obj" />
-    <link rel="prefetch" href="./assets/center_table2-CVRY-FcH.obj" />
-    <link rel="prefetch" href="./assets/chair1-tN9DYmJQ.obj" />
-    <link rel="prefetch" href="./assets/chair2-CMLF4exL.obj" />
-    <link rel="prefetch" href="./assets/desk1-BzDWbK6T.obj" />
-    <link rel="prefetch" href="./assets/desk2-B7aZSgQd.obj" />
-    <link rel="prefetch" href="./assets/mirror1-D1YtGorF.obj" />
-    <link rel="prefetch" href="./assets/mirror2-CHbTuuyM.obj" />
-    <link rel="prefetch" href="./assets/shelf1-D5CsAtNm.obj" />
-    <link rel="prefetch" href="./assets/shelf2-CR49kRk8.obj" />
-    <link rel="prefetch" href="./assets/wardrobe_modern-zPZoRWbt.obj" />
-    <link rel="prefetch" href="./assets/wardrobe_traditional-rGKVwsns.obj" />
-    <link rel="prefetch" href="./assets/wardrobe_openframe-CORuh_om.obj" />
+    <!-- Runtime asset preloading is handled by js/utils/asset-preloader.js to avoid duplicate URL variants in production builds. -->
     <script src="/vendor/supabase.min.js"></script>
     <script src="/vendor/html2canvas.min.js"></script>
     <script src="/vendor/aframe.min.js"></script>
@@ -113,7 +95,7 @@
     <script src="js/utils/furniture-thumbnails.js"></script>
     <!-- Main Application Script -->
     <script src="js/planner.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/planner-DUM_jtPI.css">
+    <link rel="stylesheet" crossorigin href="./assets/planner-Bj4HxvQn.css">
     <link rel="stylesheet" crossorigin href="./assets/dialog-CSGw4P5k.css">
   </head>
   <body class="dark">

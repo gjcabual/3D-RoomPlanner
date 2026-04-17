@@ -69,25 +69,7 @@
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/planner.css" />
     <link rel="stylesheet" href="css/dialog.css" />
-    <!-- Preload floor texture ASAP - browser starts downloading before JS even parses -->
-    <link rel="preload" href="asset/textures/wood2k.jpg" as="image" />
-    <!-- Prefetch OBJ models early so downloads start before JS finishes loading.
-         The browser will open up to 6 parallel connections immediately. -->
-    <link rel="prefetch" href="asset/models/bed1.obj" />
-    <link rel="prefetch" href="asset/models/bed2.obj" />
-    <link rel="prefetch" href="asset/models/center_table1.obj" />
-    <link rel="prefetch" href="asset/models/center_table2.obj" />
-    <link rel="prefetch" href="asset/models/chair1.obj" />
-    <link rel="prefetch" href="asset/models/chair2.obj" />
-    <link rel="prefetch" href="asset/models/desk1.obj" />
-    <link rel="prefetch" href="asset/models/desk2.obj" />
-    <link rel="prefetch" href="asset/models/mirror1.obj" />
-    <link rel="prefetch" href="asset/models/mirror2.obj" />
-    <link rel="prefetch" href="asset/models/shelf1.obj" />
-    <link rel="prefetch" href="asset/models/shelf2.obj" />
-    <link rel="prefetch" href="asset/models/wardrobe_modern.obj" />
-    <link rel="prefetch" href="asset/models/wardrobe_traditional.obj" />
-    <link rel="prefetch" href="asset/models/wardrobe_openframe.obj" />
+    <!-- Runtime asset preloading is handled by js/utils/asset-preloader.js to avoid duplicate URL variants in production builds. -->
     <script src="/vendor/supabase.min.js"></script>
     <script src="/vendor/html2canvas.min.js"></script>
     <script src="/vendor/aframe.min.js"></script>
