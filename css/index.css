@@ -791,6 +791,10 @@ body::before {
     gap: 20px;
   }
 
+  .subtitle {
+    margin-bottom: 22px;
+  }
+
   .vertical-divider {
     width: 80%;
     height: 1px;
@@ -798,6 +802,7 @@ body::before {
   }
 
   .room-visualization {
+    margin-top: 12px;
     height: auto;
     min-height: 0;
     display: flex;
@@ -855,6 +860,10 @@ body::before {
 }
 
 @media (max-width: 480px) {
+  .room-visualization {
+    margin-top: 16px;
+  }
+
   .dimension-inputs-wrapper {
     gap: 8px 12px;
   }

@@ -749,7 +749,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     localStorage.setItem("currentRoomState", JSON.stringify(defaultRoomState));
     localStorage.setItem("omittedItems", JSON.stringify(omitted_items));
-    localStorage.setItem("omittedItemsMeta", JSON.stringify(omitted_items_meta));
+    localStorage.setItem(
+      "omittedItemsMeta",
+      JSON.stringify(omitted_items_meta),
+    );
     localStorage.removeItem("workspaceState"); // Clear legacy state
 
     // Navigate directly to planner - loading is handled there
