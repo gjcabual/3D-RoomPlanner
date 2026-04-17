@@ -49,7 +49,9 @@ function syncSidebarOpenClass() {
   panelOpen = sidebarOpen;
   document.body.classList.toggle("sidebar-open", sidebarOpen);
   setPanelToggleVisual(sidebarOpen);
-  if (sidebarOpen) {
+  // Keep desktop hover help available; only force-close tap-mode help
+  // to avoid blocking touch navigation when side panels are open.
+  if (sidebarOpen && isInstructionsTapMode()) {
     setInstructionsHelpOpen(false);
   }
 }
@@ -4181,29 +4183,95 @@ window.showMirrorSubcategory = showMirrorSubcategory;
 window.showShelfSubcategory = showShelfSubcategory;
 
 function getOmittedItemsFromStorage() {
-  const omittedStr = localStorage.getItem("omittedItems");
-  if (!omittedStr) return [];
+  const entryMap = new Map();
 
-  try {
-    const omittedItems = JSON.parse(omittedStr);
-    if (!Array.isArray(omittedItems)) return [];
+  const upsertEntry = (label, reason = "space") => {
+    const normalizedLabel = typeof label === "string" ? label.trim() : "";
+    if (!normalizedLabel) return;
 
-    const uniqueItems = [];
-    omittedItems.forEach((item) => {
-      if (
-        typeof item === "string" &&
-        item.trim().length > 0 &&
-        !uniqueItems.includes(item)
-      ) {
-        uniqueItems.push(item);
+    const normalizedReason = reason === "budget" ? "budget" : "space";
+    const existingReason = entryMap.get(normalizedLabel);
+    if (
+      !existingReason ||
+      (existingReason === "budget" && normalizedReason === "space")
+    ) {
+      entryMap.set(normalizedLabel, normalizedReason);
+    }
+  };
+
+  let usedDetailedEntries = false;
+  const omittedMetaStr = localStorage.getItem("omittedItemsMeta");
+  if (omittedMetaStr) {
+    try {
+      const omittedMeta = JSON.parse(omittedMetaStr);
+      if (Array.isArray(omittedMeta)) {
+        omittedMeta.forEach((entry) => {
+          if (entry && typeof entry === "object") {
+            upsertEntry(entry.label, entry.reason);
+          }
+        });
+        usedDetailedEntries = entryMap.size > 0;
       }
-    });
-
-    return uniqueItems;
-  } catch (error) {
-    console.error("Error parsing omitted items", error);
-    return [];
+    } catch (error) {
+      console.warn("Error parsing omitted item metadata", error);
+    }
   }
+
+  if (!usedDetailedEntries) {
+    const omittedStr = localStorage.getItem("omittedItems");
+    if (!omittedStr) return [];
+
+    try {
+      const omittedItems = JSON.parse(omittedStr);
+      if (!Array.isArray(omittedItems)) return [];
+      omittedItems.forEach((item) => upsertEntry(item, "space"));
+    } catch (error) {
+      console.error("Error parsing omitted items", error);
+      return [];
+    }
+  }
+
+  let visibleItems = Array.from(entryMap.entries())
+    .filter(([, reason]) => reason !== "budget")
+    .map(([label]) => label);
+
+  // Legacy fallback: if old states only have a plain label list, infer and
+  // suppress budget-only omissions based on remaining budget and cheapest
+  // candidate model price.
+  if (!usedDetailedEntries && visibleItems.length > 0) {
+    const budget = getProjectBudget();
+    const currentTotal = Number(costState.total || 0);
+    const remainingBudget = Math.max(0, budget - currentTotal);
+
+    if (budget > 0) {
+      visibleItems = visibleItems.filter((itemLabel) => {
+        const candidates = getOmittedModelCandidates(itemLabel);
+        if (candidates.length === 0) {
+          return true;
+        }
+
+        let cheapestCandidate = Number.POSITIVE_INFINITY;
+        candidates.forEach((modelKey) => {
+          const listedPrice = Number(PRICE_LIST[modelKey] || 0);
+          const fallbackPrice = Number(
+            DUMMY_PRICES?.[modelKey]?.estimatedPrice || 0,
+          );
+          const candidatePrice = listedPrice > 0 ? listedPrice : fallbackPrice;
+          if (candidatePrice > 0 && candidatePrice < cheapestCandidate) {
+            cheapestCandidate = candidatePrice;
+          }
+        });
+
+        if (!Number.isFinite(cheapestCandidate)) {
+          return true;
+        }
+
+        return cheapestCandidate <= remainingBudget + 0.01;
+      });
+    }
+  }
+
+  return visibleItems;
 }
 
 function getPlacedModelKeysForConstraint() {
@@ -4327,7 +4395,7 @@ function ensureSpaceConstraintPanel() {
       <span class="space-constraint-chevron" aria-hidden="true"></span>
     </button>
     <div class="space-constraint-body">
-      <p class="space-constraint-text">These budget items could not fit and were omitted to prevent overlapping:</p>
+      <p class="space-constraint-text">These items could not be placed due to space constraints:</p>
       <ul class="space-constraint-list"></ul>
       <p class="space-constraint-tip">Tip: Increase room dimensions to fit the full premium set.</p>
     </div>

@@ -128,11 +128,23 @@ document.addEventListener("DOMContentLoaded", function () {
     let startingCost = 0;
 
     let omitted_items = [];
+    const omitted_item_reasons = new Map();
 
-    const addOmittedItem = (label) => {
-      if (!label) return;
-      if (!omitted_items.includes(label)) {
-        omitted_items.push(label);
+    const addOmittedItem = (label, reason = "space") => {
+      const normalizedLabel = typeof label === "string" ? label.trim() : "";
+      if (!normalizedLabel) return;
+
+      const normalizedReason = reason === "budget" ? "budget" : "space";
+      const existingReason = omitted_item_reasons.get(normalizedLabel);
+      if (
+        !existingReason ||
+        (existingReason === "budget" && normalizedReason === "space")
+      ) {
+        omitted_item_reasons.set(normalizedLabel, normalizedReason);
+      }
+
+      if (!omitted_items.includes(normalizedLabel)) {
+        omitted_items.push(normalizedLabel);
       }
     };
 
@@ -413,11 +425,14 @@ document.addEventListener("DOMContentLoaded", function () {
         ? modelCandidates
         : [modelCandidates];
       let bestPlacement = null;
+      let hasAffordableCandidate = false;
 
       candidateKeys.forEach((key, keyIndex) => {
         if (!canAddModelWithinBudget(key)) {
           return;
         }
+
+        hasAffordableCandidate = true;
 
         const rotationCandidates = getRotationCandidates(key, rot);
 
@@ -467,8 +482,14 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       if (!bestPlacement) {
-        if (itemName !== "Item") addOmittedItem(itemName);
-        return;
+        if (itemName !== "Item") {
+          addOmittedItem(itemName, hasAffordableCandidate ? "space" : "budget");
+        }
+
+        return {
+          placed: false,
+          reason: hasAffordableCandidate ? "space" : "budget",
+        };
       }
 
       furniture_data.push({
@@ -483,14 +504,22 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       startingCost += bestPlacement.price;
+
+      return {
+        placed: true,
+        reason: null,
+      };
     };
 
     // Mirrors are wall-mounted, so they should use free wall space
     // instead of competing with floor area constraints.
     const pushWallMirror = (key, itemName = "Mirror 1") => {
       if (!canAddModelWithinBudget(key)) {
-        addOmittedItem(itemName);
-        return;
+        addOmittedItem(itemName, "budget");
+        return {
+          placed: false,
+          reason: "budget",
+        };
       }
 
       const minY = 0.8;
@@ -508,6 +537,11 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       startingCost += getModelPrice(key);
+
+      return {
+        placed: true,
+        reason: null,
+      };
     };
 
     const isFloorItem = (item) => {
@@ -611,16 +645,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 3. Desk & Chair - Only if room is > 7.5 sqm (approx 9x9 ft)
     if (roomArea > 7.5) {
-      const beforeDeskCount = furniture_data.length;
-      pushItem(
+      const deskPlacement = pushItem(
         deskModelCandidates,
         { x: halfW - 0.45, y: 0, z: halfL - 0.55 },
         { x: 0, y: -90, z: 0 },
         "Study Desk",
       );
 
-      const deskPlaced = furniture_data.length > beforeDeskCount;
-      if (deskPlaced) {
+      if (deskPlacement?.placed) {
         pushItem(
           chairModelCandidates,
           { x: halfW - 0.95, y: 0, z: halfL - 1.3 },
@@ -628,7 +660,10 @@ document.addEventListener("DOMContentLoaded", function () {
           "Office Chair",
         );
       } else {
-        addOmittedItem("Office Chair");
+        addOmittedItem(
+          "Office Chair",
+          deskPlacement?.reason === "budget" ? "budget" : "space",
+        );
       }
     } else {
       addOmittedItem("Study Desk");
@@ -707,8 +742,17 @@ document.addEventListener("DOMContentLoaded", function () {
       furnitureCounter: furniture_data.length,
     };
 
+    const omitted_items_meta = omitted_items.map((label) => ({
+      label,
+      reason: omitted_item_reasons.get(label) || "space",
+    }));
+
     localStorage.setItem("currentRoomState", JSON.stringify(defaultRoomState));
     localStorage.setItem("omittedItems", JSON.stringify(omitted_items));
+    localStorage.setItem(
+      "omittedItemsMeta",
+      JSON.stringify(omitted_items_meta),
+    );
     localStorage.removeItem("workspaceState"); // Clear legacy state
 
     // Navigate directly to planner - loading is handled there
