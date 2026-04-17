@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Room Planner - Welcome</title>
+    <!-- Design Tokens -->
+    <!-- Tailwind CSS -->
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "bg-primary": "#0a0a0a",
+              "bg-surface": "rgba(15, 15, 15, 0.96)",
+              "text-primary": "#ffffff",
+              "text-secondary": "#f5f5f5",
+              "text-muted": "rgba(255, 255, 255, 0.7)",
+              "border-default": "rgba(255, 255, 255, 0.08)",
+              "border-hover": "rgba(255, 255, 255, 0.15)",
+              "accent-success": "#4CAF50",
+            },
+            spacing: {
+              xs: "4px",
+              sm: "8px",
+              md: "12px",
+              base: "16px",
+              lg: "20px",
+              xl: "24px",
+            },
+            boxShadow: {
+              md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+              lg: "0 10px 30px rgba(0, 0, 0, 0.35)",
+              xl: "0 20px 45px rgba(0, 0, 0, 0.35)",
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Custom Styles -->
+    <script src="js/utils/dialog.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-wJZscsAi.css">
+    <link rel="stylesheet" crossorigin href="./assets/dialog-CSGw4P5k.css">
+  </head>
+  <body class="dark">
+    <div class="intro-container">
+      <h1 class="main-title">
+        <span class="title-3d">3D</span>
+        <span class="title-room">ROOM PLANNER</span>
+      </h1>
+      <p class="subtitle">Set your room dimensions and budget to get started</p>
+
+      <div class="split-layout">
+        <!-- Left Side: Dimensions -->
+        <div class="dimension-section">
+          <div class="room-visualization">
+            <!-- 3D Wireframe Cube -->
+            <div class="wireframe-cube">
+              <div class="cube-face cube-front"></div>
+              <div class="cube-face cube-back"></div>
+              <div class="cube-face cube-right"></div>
+              <div class="cube-face cube-left"></div>
+              <div class="cube-face cube-top"></div>
+              <div class="cube-face cube-bottom"></div>
+            </div>
+
+            <!-- Dimension Inputs positioned around the cube -->
+            <div class="dimension-inputs-wrapper">
+              <div class="dimension-input-group dimension-width">
+                <label class="dimension-label">W:</label>
+                <input
+                  type="number"
+                  id="room-width"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+
+              <div class="dimension-input-group dimension-length">
+                <label class="dimension-label">L:</label>
+                <input
+                  type="number"
+                  id="room-length"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+
+              <div class="dimension-input-group dimension-height">
+                <label class="dimension-label">H:</label>
+                <input
+                  type="number"
+                  id="room-height"
+                  class="dimension-input"
+                  placeholder="ft"
+                  min="1"
+                  max="20"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vertical-divider"></div>
+
+        <!-- Right Side: Budget & Recommendations -->
+        <div class="budget-section">
+          <div class="budget-input-container">
+            <label
+              class="dimension-label"
+              style="display: block; margin-bottom: 8px"
+              >Project Budget (&#8369;):</label
+            >
+            <input
+              type="number"
+              id="project-budget"
+              class="dimension-input"
+              style="
+                width: 180px;
+                text-align: center;
+                font-size: 1.2rem;
+                padding: 10px;
+              "
+              placeholder="e.g. 50000"
+              min="1"
+            />
+          </div>
+
+          <div class="recommendation-wrapper" id="recommendation-wrapper">
+            <p class="recommendation-title">Recommended Template</p>
+            <div class="recommendation-preview" id="recommendation-content">
+              <div class="recommendation-placeholder">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.4)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                  ></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Enter budget to see recommendations</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="start-button" onclick="startPlanner()">
+        Start PlanninGGGGGGGG
+      </button>
+
+      <div class="hint">Recommended range: 1-20ft per dimension</div>
+    </div>
+
+    <!-- Dialog Modal -->
+    <div id="dialog-modal">
+      <div id="dialog-content">
+        <h2 id="dialog-title">Dialog</h2>
+        <p id="dialog-message"></p>
+        <div id="dialog-buttons"></div>
+      </div>
+    </div>
+
+    <!-- Preloader (loads FIRST to show loading screen immediately) -->
+    <script src="js/utils/index-preloader.js"></script>
+    <!-- Main index page script -->
+    <script src="js/index.js"></script>
+  </body>
+</html>

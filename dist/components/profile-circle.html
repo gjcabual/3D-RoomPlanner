@@ -1,0 +1,36 @@
+<!-- Profile Circle -->
+<div id="profile-circle" style="display: none" onclick="toggleProfileMenu()">
+  <div id="profile-initials">U</div>
+  <div id="profile-dropdown" class="profile-dropdown">
+    <div class="profile-dropdown-info">
+      <div class="profile-dropdown-label">Signed in as</div>
+      <div id="profile-user-email" class="profile-dropdown-email">
+        user@example.com
+      </div>
+    </div>
+    <div class="profile-dropdown-divider"></div>
+    <button
+      type="button"
+      class="profile-dropdown-item"
+      onclick="window.location.href='profile.html'"
+    >
+      Profile
+    </button>
+    <button
+      type="button"
+      id="profile-admin-link"
+      class="profile-dropdown-item"
+      style="display: none"
+      onclick="window.location.href='admin.html'"
+    >
+      Admin Dashboard
+    </button>
+    <button
+      type="button"
+      class="profile-dropdown-item"
+      onclick="handleProfileLogout()"
+    >
+      Logout
+    </button>
+  </div>
+</div>

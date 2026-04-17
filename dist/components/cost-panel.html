@@ -1,0 +1,40 @@
+<div id="hud-stack">
+  <!-- Cost Estimator Panel -->
+  <div id="cost-panel" class="collapsed">
+    <div class="cost-header" onclick="toggleCostPanel()">
+      <h3>Estimated Project Cost</h3>
+      <button class="cost-toggle-btn" aria-label="Toggle Cost Panel">▼</button>
+    </div>
+    <div class="cost-body" id="cost-items-list"></div>
+    <div class="cost-footer">
+      <div
+        class="cost-total-row"
+        style="
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          padding-bottom: 5px;
+          margin-bottom: 5px;
+        "
+      >
+        <span>Budget:</span>
+        <span id="cost-budget-display">&#8369;0.00</span>
+      </div>
+      <div class="cost-total-row">
+        <span>Total:</span>
+        <span id="cost-total-display">&#8369;0.00</span>
+      </div>
+      <div class="cost-save-row">
+        <button
+          id="save-estimation-btn"
+          class="cost-save-btn"
+          onclick="handleSaveEstimation()"
+        >
+          Save
+        </button>
+        <span
+          id="save-estimation-notification"
+          class="save-notification"
+        ></span>
+      </div>
+    </div>
+  </div>
+</div>

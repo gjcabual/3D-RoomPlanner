@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Panel - 3D Room Planner</title>
+    <!-- Design Tokens -->
+    <!-- Tailwind CSS -->
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "bg-primary": "#0a0a0a",
+              "bg-surface": "rgba(15, 15, 15, 0.96)",
+              "text-primary": "#ffffff",
+              "text-secondary": "#f5f5f5",
+              "text-muted": "rgba(255, 255, 255, 0.7)",
+              "border-default": "rgba(255, 255, 255, 0.08)",
+              "border-hover": "rgba(255, 255, 255, 0.15)",
+              "accent-success": "#4CAF50",
+              "accent-error": "#f44336",
+            },
+            spacing: {
+              xs: "4px",
+              sm: "8px",
+              md: "12px",
+              base: "16px",
+              lg: "20px",
+              xl: "24px",
+            },
+            boxShadow: {
+              sm: "0 1px 3px rgba(0, 0, 0, 0.3)",
+              md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Custom Styles -->
+    <script src="/vendor/supabase.min.js"></script>
+    <script src="js/utils/supabase.js"></script>
+    <script src="js/auth/auth.js"></script>
+    <script src="js/utils/dialog.js"></script>
+    <script src="js/utils/workspace-state.js"></script>
+    <script src="js/admin.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/admin-BMIKKPHG.css">
+    <link rel="stylesheet" crossorigin href="./assets/dialog-CSGw4P5k.css">
+  </head>
+  <body class="dark">
+    <div class="admin-container">
+      <header class="admin-header">
+        <h1>Admin Panel</h1>
+        <div class="admin-actions">
+          <button class="btn-secondary" onclick="goBackToPlanner()">
+            ← Back to Planner
+          </button>
+          <button
+            id="sign-out-btn"
+            class="btn-secondary"
+            onclick="handleSignOut()"
+          >
+            Sign Out
+          </button>
+        </div>
+      </header>
+
+      <div id="admin-content">
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+          <p>Loading...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error-message" style="display: none">
+          <p id="error-text"></p>
+        </div>
+
+        <!-- Admin Content -->
+        <div id="admin-panel" style="display: none">
+          <div class="info-box">
+            <p>
+              <strong>Note:</strong> You can manage all furniture items and
+              their prices. Prices from multiple stores are averaged to
+              calculate the estimated price.
+            </p>
+          </div>
+
+          <!-- Add New Item Section -->
+          <div class="admin-section">
+            <h2>Add New Item</h2>
+            <div class="form-card">
+              <div class="form-group">
+                <label for="new-item-model-key">Model Key</label>
+                <input
+                  type="text"
+                  id="new-item-model-key"
+                  placeholder="e.g., table2"
+                />
+              </div>
+              <div class="form-group">
+                <label for="new-item-name">Item Name</label>
+                <input
+                  type="text"
+                  id="new-item-name"
+                  placeholder="e.g., Dining Table"
+                />
+              </div>
+              <div class="form-group">
+                <label for="new-item-category">Category</label>
+                <select id="new-item-category">
+                  <option value="Tables">Tables</option>
+                  <option value="Bedroom">Bedroom</option>
+                  <option value="Seating">Seating</option>
+                  <option value="Storage">Storage</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="new-item-model-path">Model File Path</label>
+                <input
+                  type="text"
+                  id="new-item-model-path"
+                  placeholder="e.g., table2.obj"
+                />
+              </div>
+              <button class="btn-primary" onclick="addNewItem()">
+                Add Item
+              </button>
+              <span id="add-item-status" class="save-status"></span>
+            </div>
+          </div>
+
+          <!-- Add Price Section -->
+          <div class="admin-section">
+            <h2>Add Price to Item</h2>
+            <div class="form-card">
+              <div class="form-group">
+                <label for="price-item-select">Select Item</label>
+                <select id="price-item-select">
+                  <option value="">Select an item...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="price-store-name">Store Name</label>
+                <input
+                  type="text"
+                  id="price-store-name"
+                  placeholder="e.g., All-Home"
+                />
+              </div>
+              <div class="form-group">
+                <label for="price-amount">Price (₱)</label>
+                <input
+                  type="number"
+                  id="price-amount"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <button class="btn-primary" onclick="addPriceToItem()">
+                Add Price
+              </button>
+              <span id="add-price-status" class="save-status"></span>
+            </div>
+          </div>
+
+          <!-- Items Management Section -->
+          <div class="admin-section">
+            <h2>Manage Items & Prices</h2>
+            <div id="items-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog Modal -->
+    <div id="dialog-modal">
+      <div id="dialog-content">
+        <h2 id="dialog-title">Dialog</h2>
+        <p id="dialog-message"></p>
+        <div id="dialog-buttons"></div>
+      </div>
+    </div>
+  </body>
+</html>

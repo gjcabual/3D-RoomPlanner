@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "path";
 
 export default defineConfig({
+  base: "./",
+
   plugins: [
     {
       name: "copy-runtime-static-files",

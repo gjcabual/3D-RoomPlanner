@@ -1,0 +1,2267 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Room Planner</title>
+    <!-- Design Tokens -->
+    <!-- Tailwind CSS -->
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "bg-primary": "#0a0a0a",
+              "bg-secondary": "#1a1a1a",
+              "bg-surface": "rgba(15, 15, 15, 0.96)",
+              "bg-overlay": "rgba(0, 0, 0, 0.7)",
+              "bg-panel": "rgba(15, 15, 15, 0.96)",
+              "bg-card": "rgba(255, 255, 255, 0.05)",
+              "bg-hover": "rgba(255, 255, 255, 0.1)",
+              "text-primary": "#ffffff",
+              "text-secondary": "#f5f5f5",
+              "text-muted": "rgba(255, 255, 255, 0.7)",
+              "border-default": "rgba(255, 255, 255, 0.08)",
+              "border-hover": "rgba(255, 255, 255, 0.15)",
+              "border-active": "rgba(255, 255, 255, 0.25)",
+              "accent-success": "#4CAF50",
+              "accent-success-hover": "#45a049",
+              "accent-error": "#f44336",
+              "accent-orange": "#FF8C00",
+            },
+            spacing: {
+              xs: "4px",
+              sm: "8px",
+              md: "12px",
+              base: "16px",
+              lg: "20px",
+              xl: "24px",
+              "2xl": "32px",
+            },
+            boxShadow: {
+              sm: "0 1px 3px rgba(0, 0, 0, 0.3)",
+              md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+              lg: "0 10px 30px rgba(0, 0, 0, 0.35)",
+              xl: "0 20px 45px rgba(0, 0, 0, 0.35)",
+              panel: "2px 0 20px rgba(0, 0, 0, 0.5)",
+            },
+            zIndex: {
+              "side-panel": "1500",
+              "resize-panel": "1501",
+              "sources-panel": "1300",
+              "furniture-control": "2000",
+              "drop-indicator": "2500",
+              dialog: "10001",
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Custom Styles -->
+    <!-- Preload floor texture ASAP - browser starts downloading before JS even parses -->
+    <link rel="preload" href="./assets/wood2k-CFv1IHYO.jpg" as="image" />
+    <!-- Prefetch OBJ models early so downloads start before JS finishes loading.
+         The browser will open up to 6 parallel connections immediately. -->
+    <link rel="prefetch" href="./assets/bed1-Hh71A8pR.obj" />
+    <link rel="prefetch" href="./assets/bed2-BxDi0R3g.obj" />
+    <link rel="prefetch" href="./assets/center_table1-CW8OkQJs.obj" />
+    <link rel="prefetch" href="./assets/center_table2-CVRY-FcH.obj" />
+    <link rel="prefetch" href="./assets/chair1-tN9DYmJQ.obj" />
+    <link rel="prefetch" href="./assets/chair2-CMLF4exL.obj" />
+    <link rel="prefetch" href="./assets/desk1-BzDWbK6T.obj" />
+    <link rel="prefetch" href="./assets/desk2-B7aZSgQd.obj" />
+    <link rel="prefetch" href="./assets/mirror1-D1YtGorF.obj" />
+    <link rel="prefetch" href="./assets/mirror2-CHbTuuyM.obj" />
+    <link rel="prefetch" href="./assets/shelf1-D5CsAtNm.obj" />
+    <link rel="prefetch" href="./assets/shelf2-CR49kRk8.obj" />
+    <link rel="prefetch" href="./assets/wardrobe_modern-zPZoRWbt.obj" />
+    <link rel="prefetch" href="./assets/wardrobe_traditional-rGKVwsns.obj" />
+    <link rel="prefetch" href="./assets/wardrobe_openframe-CORuh_om.obj" />
+    <script src="/vendor/supabase.min.js"></script>
+    <script src="/vendor/html2canvas.min.js"></script>
+    <script src="/vendor/aframe.min.js"></script>
+    <!-- A-Frame Components -->
+    <script src="js/components/movement.js"></script>
+    <script src="js/components/virtual-joystick.js"></script>
+    <script src="js/components/floor-resize.js"></script>
+    <script src="js/components/smart-placement.js"></script>
+    <script src="js/components/textured-model.js"></script>
+    <script src="js/components/cached-obj-model.js"></script>
+    <script src="js/components/reflective-ground.js"></script>
+    <script src="js/components/draggable-furniture.js"></script>
+    <script src="js/components/clickable-furniture.js"></script>
+    <script src="js/components/position-debug.js"></script>
+    <script src="js/utils/debug.js"></script>
+    <!-- Supabase and Auth -->
+    <script src="js/utils/supabase.js"></script>
+    <script src="js/utils/model-analyzer.js"></script>
+    <script src="js/auth/auth.js"></script>
+    <script src="js/auth/auth-ui.js"></script>
+    <script src="js/utils/cost-estimation.js"></script>
+    <script src="js/utils/migrate-data.js"></script>
+    <script src="js/utils/dialog.js"></script>
+    <script src="js/utils/snapshot.js"></script>
+    <script src="js/components/profile-menu.js"></script>
+    <!-- Asset Preloader (loads models/textures ahead of time) -->
+    <script src="js/utils/asset-preloader.js"></script>
+    <!-- 3D Thumbnail Renderer (renders OBJ models as panel icons) -->
+    <script src="js/utils/furniture-thumbnails.js"></script>
+    <!-- Main Application Script -->
+    <script src="js/planner.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/planner-CE7Cjm0o.css">
+    <link rel="stylesheet" crossorigin href="./assets/dialog-CSGw4P5k.css">
+    <link rel="stylesheet" crossorigin href="./assets/profile-Gc7tAkF6.css">
+  </head>
+  <body class="dark">
+    <!-- Loading Overlay - shown until A-Frame scene is fully ready -->
+    <div id="planner-loading-overlay">
+      <div class="planner-loading-content">
+        <div class="planner-loading-spinner"></div>
+        <h2 class="planner-loading-title">Loading Room Planner</h2>
+        <p class="planner-loading-status" id="planner-loading-status">
+          Initializing 3D environment...
+        </p>
+        <div class="planner-loading-progress-bar">
+          <div
+            class="planner-loading-progress-fill"
+            id="planner-loading-progress-fill"
+          ></div>
+        </div>
+        <p class="planner-loading-percent" id="planner-loading-percent">0%</p>
+      </div>
+    </div>
+    <style>
+      #planner-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a0a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        transition: opacity 0.5s ease;
+      }
+      /* Grid background pattern */
+      #planner-loading-overlay::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        opacity: 0.5;
+      }
+      #planner-loading-overlay.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #planner-loading-overlay.hidden {
+        display: none;
+      }
+      .planner-loading-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: white;
+        max-width: 400px;
+        padding: 40px;
+      }
+      .planner-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #ff8c00;
+        border-radius: 50%;
+        animation: planner-spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      @keyframes planner-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .planner-loading-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 10px;
+      }
+      .planner-loading-status {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 0 0 20px;
+      }
+      .planner-loading-progress-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+      .planner-loading-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff8c00, #ffa500);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.15s ease;
+      }
+      .planner-loading-percent {
+        font-size: 14px;
+        font-weight: 500;
+        color: #ff8c00;
+        margin: 0;
+      }
+    </style>
+    <!-- Loading logic moved to planner.js for better control -->
+
+    <!-- Instructions -->
+    <div id="instructions">
+      <button
+        type="button"
+        class="instructions-button"
+        aria-label="Help"
+        aria-controls="instructions-help-panel"
+        aria-expanded="false"
+        onpointerdown="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        ontouchstart="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        onpointerup="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        ontouchend="window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)"
+        onclick="
+          window.toggleInstructionsHelp && window.toggleInstructionsHelp(event)
+        "
+        title="Help & Controls"
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="2"
+          />
+          <path
+            d="M9.5 9.5C9.5 8.12 10.62 7 12 7C13.38 7 14.5 8.12 14.5 9.5C14.5 10.88 13.38 12 12 12V13.5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <circle cx="12" cy="16.5" r="1" fill="currentColor" />
+        </svg>
+      </button>
+      <div class="instructions-content" id="instructions-help-panel">
+        <div class="instructions-desktop-help">
+          <div style="margin-bottom: 14px">
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Navigation
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>
+                <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Move around
+              </p>
+              <p><kbd>Q</kbd> Move up &nbsp; <kbd>E</kbd> Move down</p>
+              <p><kbd>Space</kbd> Fly up &nbsp; <kbd>Shift</kbd> Fly down</p>
+              <p><kbd>Mouse</kbd> Look around</p>
+            </div>
+          </div>
+          <div style="margin-bottom: 14px">
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Build Workflow
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Open the furniture panel from the bottom-left button</p>
+              <p>Drag items into the room</p>
+              <p>Click furniture to rotate or remove</p>
+              <p>Resize room from the side panel when needed</p>
+            </div>
+          </div>
+          <div>
+            <div
+              style="
+                font-size: 13px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+              "
+            >
+              Budget & Checks
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Use <strong>$</strong> panel for live costs and total</p>
+              <p>Use source icon on each item to view price sources</p>
+              <p>
+                Use <strong>!</strong> panel to review omitted items and spacing
+                limits
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="instructions-mobile-help">
+          <div style="margin-bottom: 12px">
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Move
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Use the joystick (bottom-left) to move</p>
+              <p>Swipe the screen to look around the room</p>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px">
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Place Furniture
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Tap grid button (bottom-left) to open furniture library</p>
+              <p>Tap an item card to place it in the room</p>
+              <p>Tap placed furniture to open rotate/remove controls</p>
+            </div>
+          </div>
+
+          <div>
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 7px;
+              "
+            >
+              Budget & Layout
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <p>Tap <strong>$</strong> for cost details and budget totals</p>
+              <p>
+                Tap <strong>!</strong> for space constraints and omitted items
+              </p>
+              <p>Use <strong>Go inside</strong> to jump back to room view</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sources Panel (hidden by default) -->
+    <div id="sources-panel">
+      <div class="sources-panel-header">
+        <h3 id="sources-panel-title">Item Sources</h3>
+        <button
+          class="sources-close-btn"
+          onclick="closeSourcesPanel()"
+          aria-label="Close Sources Panel"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M15 5L5 15M5 5L15 15"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="sources-panel-body" id="sources-panel-content">
+        <div class="sources-empty">Select an item to view sources</div>
+      </div>
+    </div>
+
+    <div id="hud-stack">
+      <!-- Profile / Login Button (always visible) -->
+      <div id="profile-circle" onclick="handleProfileClick()">
+        <div id="profile-initials">U</div>
+        <svg
+          id="profile-user-icon"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+            fill="currentColor"
+          />
+        </svg>
+        <div id="profile-dropdown" class="profile-dropdown">
+          <div class="profile-dropdown-info">
+            <div class="profile-dropdown-label">Signed in as</div>
+            <div id="profile-user-email" class="profile-dropdown-email">
+              user@example.com
+            </div>
+          </div>
+          <div class="profile-dropdown-divider"></div>
+          <button
+            type="button"
+            class="profile-dropdown-item"
+            onclick="openDashboardOverlay('profile')"
+          >
+            Profile
+          </button>
+          <button
+            type="button"
+            id="profile-admin-link"
+            class="profile-dropdown-item"
+            style="display: none"
+            onclick="openDashboardOverlay('admin')"
+          >
+            Admin Dashboard
+          </button>
+          <button
+            type="button"
+            class="profile-dropdown-item"
+            onclick="handleProfileLogout()"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+      <!-- Cost Estimator Panel -->
+      <div id="cost-panel" class="collapsed">
+        <div class="cost-header" onclick="toggleCostPanel()">
+          <h3>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              style="vertical-align: -2px; margin-right: 6px"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <path
+                d="M12 7v10M9 9.5c0-1.38 1.34-2.5 3-2.5s3 1.12 3 2.5-1.34 2.5-3 2.5-3 1.12-3 2.5 1.34 2.5 3 2.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              /></svg
+            >Estimated Project Cost
+          </h3>
+          <button class="cost-toggle-btn" aria-label="Toggle Cost Panel">
+            ▼
+          </button>
+        </div>
+        <div class="cost-body" id="cost-items-list"></div>
+        <div class="cost-footer">
+          <div class="cost-total-row cost-budget-row">
+            <span>Budget:</span>
+            <span id="cost-budget-display">₱0.00</span>
+          </div>
+          <div class="cost-total-row">
+            <span>Total:</span>
+            <span id="cost-total-display">₱0.00</span>
+          </div>
+          <div class="cost-save-row">
+            <button
+              id="save-estimation-btn"
+              class="cost-save-btn"
+              onclick="handleSaveEstimation()"
+            >
+              Save
+            </button>
+            <span
+              id="save-estimation-notification"
+              class="save-notification"
+            ></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Embedded Dashboard Modal Overlay -->
+    <div
+      id="dashboard-overlay"
+      class="dashboard-overlay"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dashboard-overlay-title"
+    >
+      <div class="dashboard-overlay-backdrop" data-dashboard-close></div>
+      <div class="dashboard-overlay-panel" role="document">
+        <div class="dashboard-overlay-header">
+          <h2 id="dashboard-overlay-title">Dashboard</h2>
+          <div class="dashboard-overlay-controls">
+            <button
+              id="dashboard-overlay-profile-tab"
+              type="button"
+              class="dashboard-overlay-tab active"
+              onclick="switchDashboardOverlayTab('profile')"
+            >
+              Profile
+            </button>
+            <button
+              id="dashboard-overlay-admin-tab"
+              type="button"
+              class="dashboard-overlay-tab"
+              style="display: none"
+              onclick="switchDashboardOverlayTab('admin')"
+            >
+              Admin
+            </button>
+            <button
+              type="button"
+              class="dashboard-overlay-close"
+              aria-label="Close Dashboard"
+              onclick="closeDashboardOverlay()"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div class="dashboard-overlay-body">
+          <iframe
+            id="dashboard-profile-frame"
+            class="dashboard-overlay-frame active"
+            title="Profile Dashboard"
+            loading="lazy"
+            src="about:blank"
+          ></iframe>
+          <iframe
+            id="dashboard-admin-frame"
+            class="dashboard-overlay-frame"
+            title="Admin Dashboard"
+            loading="lazy"
+            src="about:blank"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Info (legacy, may remove later) -->
+    <div id="user-info"></div>
+
+    <!-- Admin Link (legacy, replaced by profile menu) -->
+    <a href="admin.html" id="admin-link" style="display: none">Admin Panel</a>
+
+    <!-- Side Panel Toggle Button -->
+    <button id="panel-toggle" onclick="togglePanel()">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect
+          x="3"
+          y="3"
+          width="8"
+          height="8"
+          rx="1.5"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <rect
+          x="13"
+          y="3"
+          width="8"
+          height="8"
+          rx="1.5"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <rect
+          x="3"
+          y="13"
+          width="8"
+          height="8"
+          rx="1.5"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+        <rect
+          x="13"
+          y="13"
+          width="8"
+          height="8"
+          rx="1.5"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </svg>
+    </button>
+
+    <!-- Side Panel with 3D Models -->
+    <div id="side-panel">
+      <div class="panel-header">
+        <button
+          class="resize-dimension-btn"
+          onclick="showResizeDimensionPanel()"
+          title="Resize Room Dimensions"
+          aria-label="Resize Room"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <h3>Furniture Library</h3>
+        <small>Drag & drop furniture into your room</small>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style="vertical-align: -2px; margin-right: 6px"
+          >
+            <rect
+              x="2"
+              y="4"
+              width="20"
+              height="3"
+              rx="1"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="5"
+              y1="7"
+              x2="5"
+              y2="20"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <line
+              x1="19"
+              y1="7"
+              x2="19"
+              y2="20"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg
+          >Tables
+        </div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="center-table"
+            onclick="showCenterTableSubcategory()"
+          >
+            <span class="model-icon">
+              <!-- Inline SVG: simple table icon -->
+              <svg
+                width="28"
+                height="22"
+                viewBox="0 0 28 22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="2" y="2" width="24" height="4" rx="1" fill="#6b7280" />
+                <rect x="3" y="6" width="2" height="14" rx="1" fill="#6b7280" />
+                <rect
+                  x="23"
+                  y="6"
+                  width="2"
+                  height="14"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect x="8" y="6" width="2" height="10" rx="1" fill="#6b7280" />
+                <rect
+                  x="18"
+                  y="6"
+                  width="2"
+                  height="10"
+                  rx="1"
+                  fill="#6b7280"
+                />
+              </svg>
+            </span>
+            <div class="model-name">Center Table</div>
+          </div>
+          <div class="model-item disabled" data-model="coffee-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="36"
+                height="28"
+                viewBox="0 0 36 28"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="4" y="6" width="28" height="4" rx="2" fill="#6b7280" />
+                <rect
+                  x="6"
+                  y="10"
+                  width="3"
+                  height="14"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="27"
+                  y="10"
+                  width="3"
+                  height="14"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Coffee Table</div>
+          </div>
+          <div class="model-item disabled" data-model="side-table">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="28"
+                height="32"
+                viewBox="0 0 28 32"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="4" y="4" width="20" height="3" rx="1" fill="#6b7280" />
+                <rect x="5" y="7" width="2" height="20" rx="1" fill="#6b7280" />
+                <rect
+                  x="21"
+                  y="7"
+                  width="2"
+                  height="20"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="4"
+                  y="15"
+                  width="20"
+                  height="2"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Side Table</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style="vertical-align: -2px; margin-right: 6px"
+          >
+            <path
+              d="M5 11V5a2 2 0 012-2h10a2 2 0 012 2v6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <rect
+              x="3"
+              y="11"
+              width="18"
+              height="4"
+              rx="1"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="5"
+              y1="15"
+              x2="5"
+              y2="21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <line
+              x1="19"
+              y1="15"
+              x2="19"
+              y2="21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg
+          >Seating
+        </div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="chair"
+            onclick="showChairSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="6"
+                  y="2"
+                  width="20"
+                  height="16"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="6"
+                  y="18"
+                  width="20"
+                  height="3"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="7"
+                  y="21"
+                  width="3"
+                  height="12"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="22"
+                  y="21"
+                  width="3"
+                  height="12"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Chairs</div>
+          </div>
+          <div class="model-item disabled" data-model="sofa">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="40"
+                height="28"
+                viewBox="0 0 40 28"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="2"
+                  y="8"
+                  width="36"
+                  height="12"
+                  rx="3"
+                  fill="#6b7280"
+                />
+                <rect x="2" y="4" width="6" height="16" rx="2" fill="#6b7280" />
+                <rect
+                  x="32"
+                  y="4"
+                  width="6"
+                  height="16"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <rect x="4" y="20" width="4" height="4" rx="1" fill="#6b7280" />
+                <rect
+                  x="32"
+                  y="20"
+                  width="4"
+                  height="4"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Sofa</div>
+          </div>
+          <div class="model-item disabled" data-model="armchair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="28"
+                viewBox="0 0 32 28"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="6"
+                  y="2"
+                  width="20"
+                  height="14"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <rect x="2" y="6" width="6" height="12" rx="2" fill="#6b7280" />
+                <rect
+                  x="24"
+                  y="6"
+                  width="6"
+                  height="12"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="8"
+                  y="16"
+                  width="16"
+                  height="4"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect x="7" y="20" width="3" height="4" rx="1" fill="#6b7280" />
+                <rect
+                  x="22"
+                  y="20"
+                  width="3"
+                  height="4"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Armchair</div>
+          </div>
+          <div class="model-item disabled" data-model="stool">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="28"
+                height="32"
+                viewBox="0 0 28 32"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <ellipse cx="14" cy="6" rx="10" ry="4" fill="#6b7280" />
+                <rect
+                  x="5"
+                  y="6"
+                  width="2"
+                  height="22"
+                  rx="1"
+                  fill="#6b7280"
+                  transform="rotate(-5 6 6)"
+                />
+                <rect
+                  x="21"
+                  y="6"
+                  width="2"
+                  height="22"
+                  rx="1"
+                  fill="#6b7280"
+                  transform="rotate(5 22 6)"
+                />
+                <rect
+                  x="12"
+                  y="6"
+                  width="2"
+                  height="22"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Stool</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style="vertical-align: -2px; margin-right: 6px"
+          >
+            <rect
+              x="2"
+              y="10"
+              width="20"
+              height="6"
+              rx="1"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path
+              d="M4 10V6a2 2 0 012-2h12a2 2 0 012 2v4"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="4"
+              y1="16"
+              x2="4"
+              y2="20"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <line
+              x1="20"
+              y1="16"
+              x2="20"
+              y2="20"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg
+          >Bedroom
+        </div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="bed"
+            onclick="showBedSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="40"
+                height="28"
+                viewBox="0 0 40 28"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="2"
+                  y="10"
+                  width="36"
+                  height="10"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <rect x="2" y="4" width="10" height="8" rx="2" fill="#6b7280" />
+                <rect x="3" y="20" width="3" height="5" rx="1" fill="#6b7280" />
+                <rect
+                  x="34"
+                  y="20"
+                  width="3"
+                  height="5"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Beds</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="wardrobe"
+            onclick="showWardrobeSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="30"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="16"
+                  y1="2"
+                  x2="16"
+                  y2="32"
+                  stroke="#4b5563"
+                  stroke-width="1.5"
+                />
+                <circle cx="13" cy="17" r="1.5" fill="#d1d5db" />
+                <circle cx="19" cy="17" r="1.5" fill="#d1d5db" />
+                <rect x="5" y="32" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="24"
+                  y="32"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Wardrobe</div>
+          </div>
+          <div class="model-item disabled" data-model="dresser">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="36"
+                height="32"
+                viewBox="0 0 36 32"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="30"
+                  height="26"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="3"
+                  y1="10"
+                  x2="33"
+                  y2="10"
+                  stroke="#4b5563"
+                  stroke-width="1"
+                />
+                <line
+                  x1="3"
+                  y1="18"
+                  x2="33"
+                  y2="18"
+                  stroke="#4b5563"
+                  stroke-width="1"
+                />
+                <circle cx="18" cy="6" r="1" fill="#d1d5db" />
+                <circle cx="18" cy="14" r="1" fill="#d1d5db" />
+                <circle cx="18" cy="22" r="1" fill="#d1d5db" />
+                <rect x="5" y="28" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="28"
+                  y="28"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Dresser</div>
+          </div>
+          <div class="model-item disabled" data-model="nightstand">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="28"
+                height="32"
+                viewBox="0 0 28 32"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="22"
+                  height="26"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="3"
+                  y1="15"
+                  x2="25"
+                  y2="15"
+                  stroke="#4b5563"
+                  stroke-width="1"
+                />
+                <circle cx="14" cy="9" r="1" fill="#d1d5db" />
+                <circle cx="14" cy="21" r="1" fill="#d1d5db" />
+                <rect x="5" y="28" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="20"
+                  y="28"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Nightstand</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style="vertical-align: -2px; margin-right: 6px"
+          >
+            <rect
+              x="2"
+              y="3"
+              width="20"
+              height="14"
+              rx="2"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="8"
+              y1="21"
+              x2="16"
+              y2="21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <line
+              x1="12"
+              y1="17"
+              x2="12"
+              y2="21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg
+          >Office
+        </div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="desk"
+            onclick="showDeskSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="36"
+                height="28"
+                viewBox="0 0 36 28"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="2" y="4" width="32" height="3" rx="1" fill="#6b7280" />
+                <rect x="3" y="7" width="3" height="18" rx="1" fill="#6b7280" />
+                <rect
+                  x="30"
+                  y="7"
+                  width="3"
+                  height="18"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="6"
+                  y="14"
+                  width="24"
+                  height="2"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Desks</div>
+          </div>
+          <div class="model-item disabled" data-model="office-chair">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="6"
+                  y="2"
+                  width="20"
+                  height="14"
+                  rx="3"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="8"
+                  y="16"
+                  width="16"
+                  height="4"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="14"
+                  y="20"
+                  width="4"
+                  height="6"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <ellipse cx="16" cy="28" rx="10" ry="2" fill="#6b7280" />
+                <circle cx="8" cy="30" r="2" fill="#4b5563" />
+                <circle cx="24" cy="30" r="2" fill="#4b5563" /></svg
+            ></span>
+            <div class="model-name">Office Chair</div>
+          </div>
+          <div class="model-item disabled" data-model="bookshelf">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="32"
+                  rx="1"
+                  fill="none"
+                  stroke="#6b7280"
+                  stroke-width="2"
+                />
+                <line
+                  x1="3"
+                  y1="12"
+                  x2="29"
+                  y2="12"
+                  stroke="#6b7280"
+                  stroke-width="1.5"
+                />
+                <line
+                  x1="3"
+                  y1="22"
+                  x2="29"
+                  y2="22"
+                  stroke="#6b7280"
+                  stroke-width="1.5"
+                />
+                <rect x="6" y="4" width="4" height="7" rx="1" fill="#6b7280" />
+                <rect x="12" y="4" width="3" height="7" rx="1" fill="#6b7280" />
+                <rect x="17" y="4" width="5" height="7" rx="1" fill="#6b7280" />
+                <rect x="6" y="14" width="5" height="7" rx="1" fill="#6b7280" />
+                <rect
+                  x="14"
+                  y="14"
+                  width="4"
+                  height="7"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect x="7" y="24" width="3" height="7" rx="1" fill="#6b7280" />
+                <rect
+                  x="12"
+                  y="24"
+                  width="5"
+                  height="7"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <rect
+                  x="20"
+                  y="24"
+                  width="4"
+                  height="7"
+                  rx="1"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Bookshelf</div>
+          </div>
+          <div class="model-item disabled" data-model="cabinet">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="30"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="3"
+                  y1="12"
+                  x2="29"
+                  y2="12"
+                  stroke="#4b5563"
+                  stroke-width="1"
+                />
+                <line
+                  x1="3"
+                  y1="22"
+                  x2="29"
+                  y2="22"
+                  stroke="#4b5563"
+                  stroke-width="1"
+                />
+                <circle cx="16" cy="7" r="1" fill="#d1d5db" />
+                <circle cx="16" cy="17" r="1" fill="#d1d5db" />
+                <circle cx="16" cy="27" r="1" fill="#d1d5db" />
+                <rect x="5" y="32" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="24"
+                  y="32"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Cabinet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-category">
+        <div class="category-title">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style="vertical-align: -2px; margin-right: 6px"
+          >
+            <rect
+              x="3"
+              y="3"
+              width="18"
+              height="18"
+              rx="2"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="3"
+              y1="12"
+              x2="21"
+              y2="12"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="12"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg
+          >Decor & Storage
+        </div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="mirror"
+            onclick="showMirrorSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="24"
+                height="36"
+                viewBox="0 0 24 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="2"
+                  y="2"
+                  width="20"
+                  height="32"
+                  rx="10"
+                  fill="none"
+                  stroke="#6b7280"
+                  stroke-width="2"
+                />
+                <rect
+                  x="5"
+                  y="5"
+                  width="14"
+                  height="26"
+                  rx="7"
+                  fill="#6b7280"
+                  opacity="0.3"
+                />
+                <path
+                  d="M8 10 Q12 8 16 12"
+                  stroke="#d1d5db"
+                  stroke-width="1"
+                  fill="none"
+                  opacity="0.6"
+                /></svg
+            ></span>
+            <div class="model-name">Mirrors</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="false"
+            data-category="shelf"
+            onclick="showShelfSubcategory()"
+          >
+            <span class="model-icon"
+              ><svg
+                width="36"
+                height="32"
+                viewBox="0 0 36 32"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="30"
+                  height="28"
+                  rx="1"
+                  fill="none"
+                  stroke="#6b7280"
+                  stroke-width="2"
+                />
+                <line
+                  x1="3"
+                  y1="11"
+                  x2="33"
+                  y2="11"
+                  stroke="#6b7280"
+                  stroke-width="1.5"
+                />
+                <line
+                  x1="3"
+                  y1="20"
+                  x2="33"
+                  y2="20"
+                  stroke="#6b7280"
+                  stroke-width="1.5"
+                />
+                <rect
+                  x="6"
+                  y="4"
+                  width="8"
+                  height="6"
+                  rx="1"
+                  fill="#6b7280"
+                  opacity="0.4"
+                />
+                <rect
+                  x="20"
+                  y="13"
+                  width="6"
+                  height="6"
+                  rx="1"
+                  fill="#6b7280"
+                  opacity="0.4"
+                />
+                <rect
+                  x="8"
+                  y="22"
+                  width="10"
+                  height="6"
+                  rx="1"
+                  fill="#6b7280"
+                  opacity="0.4"
+                /></svg
+            ></span>
+            <div class="model-name">Shelves</div>
+          </div>
+          <div class="model-item disabled" data-model="lamp">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="24"
+                height="36"
+                viewBox="0 0 24 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M4 4 L20 4 L16 16 L8 16 Z" fill="#6b7280" />
+                <rect
+                  x="10"
+                  y="16"
+                  width="4"
+                  height="12"
+                  rx="1"
+                  fill="#6b7280"
+                />
+                <ellipse cx="12" cy="30" rx="6" ry="2" fill="#6b7280" /></svg
+            ></span>
+            <div class="model-name">Lamp</div>
+          </div>
+          <div class="model-item disabled" data-model="plant">
+            <div class="disabled-overlay">SOON</div>
+            <span class="model-icon"
+              ><svg
+                width="28"
+                height="36"
+                viewBox="0 0 28 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M14 18 Q8 12 6 6 Q12 8 14 14" fill="#6b7280" />
+                <path d="M14 18 Q20 12 22 6 Q16 8 14 14" fill="#6b7280" />
+                <path
+                  d="M14 22 Q10 16 4 14 Q10 16 14 18"
+                  fill="#6b7280"
+                  opacity="0.7"
+                />
+                <path
+                  d="M14 22 Q18 16 24 14 Q18 16 14 18"
+                  fill="#6b7280"
+                  opacity="0.7"
+                />
+                <rect
+                  x="7"
+                  y="24"
+                  width="14"
+                  height="10"
+                  rx="2"
+                  fill="#6b7280"
+                /></svg
+            ></span>
+            <div class="model-name">Plant</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wardrobe Subcategory (hidden by default) -->
+      <div
+        class="model-category"
+        id="wardrobe-subcategory"
+        style="display: none"
+      >
+        <div class="category-title">Wardrobe Options</div>
+        <div class="model-grid">
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe1"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="30"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="16"
+                  y1="2"
+                  x2="16"
+                  y2="32"
+                  stroke="#4b5563"
+                  stroke-width="1.5"
+                />
+                <circle cx="13" cy="17" r="1.5" fill="#d1d5db" />
+                <circle cx="19" cy="17" r="1.5" fill="#d1d5db" />
+                <rect x="5" y="32" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="24"
+                  y="32"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Wardrobe 1</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe2"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="30"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="16"
+                  y1="2"
+                  x2="16"
+                  y2="32"
+                  stroke="#4b5563"
+                  stroke-width="1.5"
+                />
+                <circle cx="13" cy="17" r="1.5" fill="#d1d5db" />
+                <circle cx="19" cy="17" r="1.5" fill="#d1d5db" />
+                <rect x="5" y="32" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="24"
+                  y="32"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Wardrobe 2</div>
+          </div>
+          <div
+            class="model-item enabled"
+            draggable="true"
+            data-model="wardrobe3"
+            data-scale="1 1 1"
+          >
+            <span class="model-icon"
+              ><svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="2"
+                  width="26"
+                  height="30"
+                  rx="2"
+                  fill="#6b7280"
+                />
+                <line
+                  x1="16"
+                  y1="2"
+                  x2="16"
+                  y2="32"
+                  stroke="#4b5563"
+                  stroke-width="1.5"
+                />
+                <circle cx="13" cy="17" r="1.5" fill="#d1d5db" />
+                <circle cx="19" cy="17" r="1.5" fill="#d1d5db" />
+                <rect x="5" y="32" width="3" height="3" rx="1" fill="#4b5563" />
+                <rect
+                  x="24"
+                  y="32"
+                  width="3"
+                  height="3"
+                  rx="1"
+                  fill="#4b5563"
+                /></svg
+            ></span>
+            <div class="model-name">Wardrobe 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resize Dimension Panel (hidden by default) -->
+    <div id="resize-dimension-panel">
+      <div class="panel-header">
+        <button
+          onclick="goBackToMainPanel()"
+          style="
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+          "
+          onmouseover="this.style.background = 'rgba(255, 255, 255, 0.15)'"
+          onmouseout="this.style.background = 'rgba(255, 255, 255, 0.08)'"
+        >
+          ← Back
+        </button>
+        <h3>Resize Room Dimensions</h3>
+        <small>Enter your room dimensions in feet</small>
+      </div>
+      <div class="resize-dimension-content">
+        <div class="dimension-input-group">
+          <label for="room-width-input">Width (ft)</label>
+          <input
+            type="number"
+            id="room-width-input"
+            step="0.5"
+            min="3"
+            placeholder="Enter width in feet"
+          />
+        </div>
+        <div class="dimension-input-group">
+          <label for="room-length-input">Length (ft)</label>
+          <input
+            type="number"
+            id="room-length-input"
+            step="0.5"
+            min="3"
+            placeholder="Enter length in feet"
+          />
+        </div>
+        <div class="dimension-input-group">
+          <label for="room-height-input">Height (ft)</label>
+          <input
+            type="number"
+            id="room-height-input"
+            step="0.5"
+            min="3"
+            placeholder="Enter height in feet"
+          />
+        </div>
+        <button class="dimension-save-btn" onclick="saveRoomDimensions()">
+          Save Dimensions
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Center Bar: Dimension Badge + Teleport -->
+    <div id="bottom-center-bar">
+      <!-- Room Dimensions Badge -->
+      <div id="room-info-badge">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          class="room-info-icon"
+        >
+          <rect
+            x="2"
+            y="4"
+            width="12"
+            height="9"
+            rx="1"
+            stroke="currentColor"
+            stroke-width="1.2"
+            fill="none"
+          />
+          <line
+            x1="2"
+            y1="7"
+            x2="14"
+            y2="7"
+            stroke="currentColor"
+            stroke-width="0.8"
+            opacity="0.35"
+          />
+          <line
+            x1="6"
+            y1="4"
+            x2="6"
+            y2="13"
+            stroke="currentColor"
+            stroke-width="0.8"
+            opacity="0.35"
+          />
+          <path
+            d="M5 2.5L8 1L11 2.5"
+            stroke="currentColor"
+            stroke-width="1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            fill="none"
+          />
+        </svg>
+        <span id="room-info"></span>
+      </div>
+
+      <!-- Teleport Button -->
+      <button
+        id="teleport-btn"
+        onclick="teleportToRoom()"
+        title="Teleport inside the room"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 2L12 16M12 2L8 6M12 2L16 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            transform="rotate(180 12 9)"
+          />
+          <path
+            d="M3 14v4a2 2 0 002 2h14a2 2 0 002-2v-4"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        Go inside
+      </button>
+    </div>
+
+    <!-- Drop Indicator -->
+    <div class="drop-indicator" id="drop-indicator">Drop Item Here</div>
+
+    <!-- Furniture Control Panel -->
+    <div id="furniture-control-panel">
+      <button class="close-controls" onclick="closeControlPanel()">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M15 5L5 15M5 5L15 15"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <h3 id="control-panel-title">Furniture Controls</h3>
+      <div class="control-buttons">
+        <button
+          class="control-btn rotate-left"
+          onclick="rotateFurnitureLeft()"
+          title="Rotate Left"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7.5 7.5C9.16 5.84 11.42 5 13.5 5A8.5 8.5 0 1 1 5 13.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M3.5 3.5L7.5 7.5L3.5 7.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          class="control-btn rotate-right"
+          onclick="rotateFurnitureRight()"
+          title="Rotate Right"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M16.5 7.5C14.84 5.84 12.58 5 10.5 5A8.5 8.5 0 1 0 19 13.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M20.5 3.5L16.5 7.5L20.5 7.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          class="control-btn delete"
+          onclick="deleteFurniture()"
+          title="Delete"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3 6H5H21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M10 11V17"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M14 11V17"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- A-Frame Scene - Full Screen Workspace -->
+    <a-scene
+      id="scene"
+      embedded
+      style="height: 100vh; width: 100vw"
+      vr-mode-ui="enabled: false"
+      renderer="preserveDrawingBuffer: true; physicallyCorrectLights: true; toneMapping: ACESFilmic; exposure: 1.0"
+    >
+      <!-- Sky/Background – soft warm gray studio -->
+      <a-sky color="#C8C4BC"></a-sky>
+
+      <!-- Camera Rig with continuous movement -->
+      <a-entity id="cameraRig" position="0 1.6 5" custom-movement>
+        <a-camera
+          look-controls="pointerLockEnabled: false; enabled: true; magicWindowTrackingEnabled: false"
+          wasd-controls="enabled: false"
+          cursor="rayOrigin: mouse"
+        ></a-camera>
+      </a-entity>
+
+      <!-- Lighting: soft studio with simulated bounce -->
+      <!-- Ambient base — prevents pure black, soft fill everywhere -->
+      <a-light type="ambient" color="#F5F3F0" intensity="0.65"></a-light>
+      <!-- Key light — warm sun from upper-right, soft shadows -->
+      <a-light
+        type="directional"
+        position="3 6 4"
+        color="#FFF8F0"
+        intensity="1.6"
+        castShadow="true"
+        shadow-bias="-0.0001"
+        shadow-mapSize-width="1024"
+        shadow-mapSize-height="1024"
+      ></a-light>
+      <!-- Bounce fill — simulates light bouncing off left wall -->
+      <a-light
+        type="directional"
+        position="-5 3 0"
+        color="#EDEAE6"
+        intensity="0.4"
+      ></a-light>
+      <!-- Bounce fill — simulates light bouncing off floor upward -->
+      <a-light
+        type="directional"
+        position="0 -1 2"
+        color="#E8DDD0"
+        intensity="0.35"
+      ></a-light>
+      <!-- Back fill — subtle rim separation from behind -->
+      <a-light
+        type="directional"
+        position="-2 4 -5"
+        color="#F0F0F8"
+        intensity="0.3"
+      ></a-light>
+      <!-- Interior ceiling bounce — warm glow from above -->
+      <a-light
+        type="point"
+        position="0 2.8 0"
+        color="#FFF5EA"
+        intensity="0.4"
+        decay="1.8"
+        distance="8"
+      ></a-light>
+
+      <!-- Reflective ground – subtle reflection, not a mirror -->
+      <a-entity
+        id="mirror-ground"
+        reflective-ground="color: #B8B4AC; size: 500; reflectivity: 0.25; resolution: 1024"
+      ></a-entity>
+
+      <!-- Floor with wood material (room interior) -->
+      <a-box
+        id="floor"
+        position="0 -0.05 0"
+        width="10"
+        height="0.1"
+        depth="10"
+        material="src: url(asset/textures/wood2k.jpg); color: #C9A87C; roughness: 0.55; metalness: 0.08; repeat: 2 2"
+        shadow="receive: true"
+        floor-resize
+      ></a-box>
+
+      <!-- Room Walls -->
+      <a-entity id="room-walls"></a-entity>
+
+      <!-- Furniture Container -->
+      <a-entity id="furniture-container"></a-entity>
+
+      <!-- Grid helper for better spatial awareness -->
+      <a-entity id="grid-helper" visible="false"></a-entity>
+    </a-scene>
+
+    <!-- Authentication Modal -->
+    <div id="auth-modal" data-mode="signin">
+      <div id="auth-modal-content">
+        <button id="auth-modal-close" onclick="hideAuthModal()">×</button>
+        <h2 id="auth-modal-title">Sign In</h2>
+        <div class="auth-form-group">
+          <label for="auth-email">Email</label>
+          <input
+            type="email"
+            id="auth-email"
+            placeholder="your.email@example.com"
+            required
+          />
+        </div>
+        <div class="auth-form-group">
+          <label for="auth-password">Password</label>
+          <input
+            type="password"
+            id="auth-password"
+            placeholder="Enter your password"
+            required
+          />
+        </div>
+        <div
+          class="auth-form-group"
+          id="auth-confirm-group"
+          style="display: none"
+        >
+          <label for="auth-confirm-password">Confirm Password</label>
+          <input
+            type="password"
+            id="auth-confirm-password"
+            placeholder="Confirm your password"
+            required
+          />
+        </div>
+
+        <button id="auth-submit-btn" onclick="handleAuthSubmit()">
+          Sign In
+        </button>
+        <div id="auth-error"></div>
+        <div id="auth-success"></div>
+        <div class="auth-divider">
+          <span>or</span>
+        </div>
+        <button
+          id="auth-google-btn"
+          onclick="handleGoogleSignIn()"
+          type="button"
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
+          </svg>
+          Continue with Google
+        </button>
+        <div id="auth-switch">
+          <span id="auth-switch-text">Don't have an account?</span>
+          <button id="auth-switch-btn" onclick="switchAuthMode()">
+            Sign Up
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog Modal -->
+    <div id="dialog-modal">
+      <div id="dialog-content">
+        <h2 id="dialog-title">Dialog</h2>
+        <p id="dialog-message"></p>
+        <div id="dialog-buttons"></div>
+      </div>
+    </div>
+  </body>
+</html>

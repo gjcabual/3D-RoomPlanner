@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile - 3D Room Planner</title>
+    <!-- Design Tokens -->
+    <!-- Tailwind CSS -->
+    <script
+      src="https://cdn.tailwindcss.com"
+      onerror="console.warn('Tailwind CDN unavailable (offline mode)')"
+    ></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "bg-primary": "#0a0a0a",
+              "bg-surface": "rgba(15, 15, 15, 0.96)",
+              "text-primary": "#ffffff",
+              "text-secondary": "#f5f5f5",
+              "text-muted": "rgba(255, 255, 255, 0.7)",
+              "border-default": "rgba(255, 255, 255, 0.08)",
+              "border-hover": "rgba(255, 255, 255, 0.15)",
+              "accent-success": "#4CAF50",
+            },
+            spacing: {
+              xs: "4px",
+              sm: "8px",
+              md: "12px",
+              base: "16px",
+              lg: "20px",
+              xl: "24px",
+            },
+            boxShadow: {
+              sm: "0 1px 3px rgba(0, 0, 0, 0.3)",
+              md: "0 4px 20px rgba(0, 0, 0, 0.3)",
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Custom Styles -->
+    <script src="/vendor/supabase.min.js"></script>
+    <script src="js/utils/supabase.js"></script>
+    <script src="js/auth/auth.js"></script>
+    <script src="js/utils/cost-estimation.js"></script>
+    <script src="js/utils/dialog.js"></script>
+    <script src="js/utils/workspace-state.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="js/profile.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/dialog-CSGw4P5k.css">
+    <link rel="stylesheet" crossorigin href="./assets/profile-Gc7tAkF6.css">
+  </head>
+  <body class="dark">
+    <div class="profile-container">
+      <header class="profile-header">
+        <h1>My Profile</h1>
+        <div class="profile-header-actions">
+          <button class="btn-secondary" onclick="goBackToPlanner()">
+            ← Back to Planner
+          </button>
+          <button class="btn-secondary" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <div id="profile-content">
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+          <p>Loading...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error-message" style="display: none">
+          <p id="error-text"></p>
+        </div>
+
+        <!-- Profile Info -->
+        <div id="profile-info" style="display: none">
+          <div class="profile-info">
+            <div class="info-item">
+              <label>Email</label>
+              <div class="value" id="profile-email">-</div>
+            </div>
+            <div class="info-item">
+              <label>Role</label>
+              <div class="value" id="profile-role">-</div>
+            </div>
+            <div class="info-item">
+              <label>Account Created</label>
+              <div class="value" id="profile-created">-</div>
+            </div>
+            <div class="info-item">
+              <label>Total Saved Estimations</label>
+              <div class="value" id="profile-plans-count">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved Plans Section -->
+        <div
+          id="plans-section"
+          class="plans-section"
+          style="display: none; margin-top: 20px"
+        >
+          <h2>My Saved Cost Estimations</h2>
+          <div id="plans-list" class="plans-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog Modal -->
+    <div id="dialog-modal">
+      <div id="dialog-content">
+        <h2 id="dialog-title">Dialog</h2>
+        <p id="dialog-message"></p>
+        <div id="dialog-buttons"></div>
+      </div>
+    </div>
+  </body>
+</html>
