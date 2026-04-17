@@ -814,6 +814,47 @@ body.mobile-layout #instructions.open .instructions-content {
   transition-delay: 0s;
 }
 
+body:not(.mobile-layout) #cost-panel .cost-header::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  left: 14px;
+  top: 50%;
+  border-radius: 999px;
+  opacity: 1;
+  line-height: 1;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dcffe7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19h16'/%3E%3Cpath d='M7 16v-5'/%3E%3Cpath d='M12 16V8'/%3E%3Cpath d='M17 16v-3'/%3E%3C/svg%3E")
+      center / 11px 11px no-repeat,
+    rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.42);
+  transform: translateY(-50%) scale(1);
+  transition:
+    opacity 0.18s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+body:not(.mobile-layout) #cost-panel.collapsed .cost-header::after {
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%) scale(1);
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+body:not(.mobile-layout) #cost-panel:not(.collapsed) .cost-header::after {
+  left: 14px;
+  top: 50%;
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  transition-delay: 0s;
+}
+
+body:not(.mobile-layout) #cost-panel.collapsed:hover .cost-header::after {
+  transform: translateY(-50%) scale(1.05);
+}
+
 #cost-panel .cost-header h3 {
   transition: opacity 0.2s ease;
   opacity: 1;
@@ -1283,6 +1324,15 @@ body.mobile-layout #instructions.open .instructions-content {
   cursor: pointer;
 }
 
+body:not(.mobile-layout) .space-constraint-panel:hover {
+  transform: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+body:not(.mobile-layout) .space-constraint-panel.collapsed:hover {
+  transform: scale(1.05);
+}
+
 .space-constraint-toggle {
   width: 100%;
   min-height: 48px;
@@ -1297,6 +1347,10 @@ body.mobile-layout #instructions.open .instructions-content {
   text-align: left;
   position: relative;
   overflow: hidden;
+}
+
+body:not(.mobile-layout) .space-constraint-toggle {
+  transition: padding 0.4s ease;
 }
 
 .space-constraint-panel.collapsed .space-constraint-toggle {
@@ -1427,6 +1481,20 @@ body.mobile-layout #instructions.open .instructions-content {
   pointer-events: none;
 }
 
+body:not(.mobile-layout) .space-constraint-title-wrap,
+body:not(.mobile-layout) .space-constraint-chevron {
+  transition-delay: 0.24s;
+}
+
+body:not(.mobile-layout)
+  .space-constraint-panel.collapsed
+  .space-constraint-title-wrap,
+body:not(.mobile-layout)
+  .space-constraint-panel.collapsed
+  .space-constraint-chevron {
+  transition-delay: 0s;
+}
+
 .space-constraint-panel.collapsed .space-constraint-chevron {
   opacity: 0;
   transform: translateY(-50%) scale(0.85);
@@ -1437,6 +1505,18 @@ body.mobile-layout #instructions.open .instructions-content {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+body:not(.mobile-layout)
+  .space-constraint-panel.collapsed
+  .space-constraint-icon {
+  transition-delay: 0.08s;
+}
+
+body:not(.mobile-layout)
+  .space-constraint-panel:not(.collapsed)
+  .space-constraint-icon {
+  transition-delay: 0s;
 }
 
 .space-constraint-body {
